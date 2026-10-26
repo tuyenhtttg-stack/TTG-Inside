@@ -1,11 +1,13 @@
 # Không Gian Số Nội Bộ · TTG Inside
 
 Bộ tiện ích nội bộ dành cho cán bộ **VietinBank Chi nhánh Tây Tiền Giang**, thiết kế cho điện thoại.
-Phiên bản 1.1.1 – 26/10/2026: thêm đăng nhập bằng ID và phân quyền theo Google Sheet.
+Phiên bản 1.4.0 – 26/10/2026: thêm đăng nhập bằng ID và phân quyền theo Google Sheet.
 
 | Nhóm | Tiện ích | Mô tả |
 |---|---|---|
 | Mã QR | Tạo QR kết nối WiFi | 4 bước: chọn điểm giao dịch → chọn mạng WiFi → quét thử → in thẻ niêm yết A6 |
+| Chi phí | Quản lý chi phí (I003) | Hạn mức phê duyệt còn lại theo thời gian thực; trưởng/phó phòng nhập khoản đã duyệt; PGĐ, Giám đốc, kế toán xem theo quyền |
+| Chi phí | Báo cáo chi phí (I004) | Tổng quan, dự báo hạn mức, theo phòng/nhóm, ma trận, xu hướng 12 tháng, kế hoạch năm, khoản lớn/lặp lại, nhận xét AI |
 | Mã QR | Tạo QR theo yêu cầu | Biểu mẫu tạo mã: đường link, gọi điện, tin nhắn, email, danh thiếp, văn bản; ô nhập tự nhận dạng |
 
 ## Cấu trúc thư mục
@@ -63,6 +65,7 @@ const WIFI_LIST={
 3. Triển khai → Triển khai mới → Ứng dụng web; Thực thi với tư cách: **Tôi**; Người có quyền truy cập: **Bất kỳ ai**.
 4. Copy URL `.../exec`, dán vào `API_URL` trong `index.html`, tăng `VERSION` trong `sw.js`, commit lên GitHub.
 5. Cấp ID cho cán bộ theo sheet `HuongDan` trong file.
+6. (v1.2.0) Menu **Không Gian Số → Cài đặt Phòng/Ban**: tạo sheet `PhongBan` (Mã phòng/ban, Tên, Loại, Đang dùng) và danh sách chọn cho cột Phòng/Ban ở `CanBo`. Máy chủ trả thêm `maPhongBan`, `loaiPhongBan` cho ứng dụng phân quyền theo phòng.
 
 Cách hoạt động:
 - Cán bộ nhập ID 5 số (che như mật khẩu, bấm biểu tượng con mắt để hiện). Đăng nhập có hiệu lực đến hết ngày.
@@ -71,6 +74,20 @@ Cách hoạt động:
 - Sai 5 lần trên một máy → khóa máy 15 phút; toàn hệ thống sai quá 30 lần/10 phút → tạm ngưng đăng nhập 15 phút và email báo quản trị.
 - Lượt truy cập (hôm nay / tổng) hiện nhỏ ở cuối trang; quản trị xem thêm qua menu **Không Gian Số → Thống kê truy cập**.
 - Lưu ý: tiện ích chạy hoàn toàn trên máy (như tạo QR) chỉ được ẩn với người không có quyền. Tiện ích có dữ liệu nội bộ phải lấy dữ liệu qua Apps Script, kiểm tra phiên đăng nhập ở mỗi lần gọi.
+
+## Quản lý chi phí (I003) và Báo cáo chi phí (I004) – từ v1.3.0 / v1.4.0
+
+1. Dán `apps-script/Code.gs` v1.3.0 vào Apps Script của file phân quyền → Lưu.
+2. Trong file phân quyền: menu **Không Gian Số → Cài đặt / cập nhật Quản lý chi phí (I003, I004)** (chạy lại an toàn, tự nâng cấp file cũ). Script tạo file `KhongGianSoNoiBo_ChiPhi`
+   (ở thư mục gốc Drive – kéo vào thư mục KhongGianSoNoiBo), đăng ký I003 (tick: Giám đốc, Phó Giám đốc, Quản trị hệ thống, Trưởng phòng, Phó phòng, Kế toán chi tiêu) và I004 (tick: Giám đốc, Phó Giám đốc, Quản trị hệ thống, Trưởng phòng, Kế toán chi tiêu).
+3. Triển khai → Quản lý triển khai → Phiên bản mới (URL giữ nguyên). Tải `index.html` + `sw.js` mới lên GitHub.
+4. Cấu hình trong file chi phí (không cần sửa code): `CP_NguoiDuyet` (người duyệt, hạn mức; để trống = không giới hạn), `CP_PhuTrach` (phòng → người duyệt),
+   `CP_NhomChiPhi`, `CP_KeHoach` (kế hoạch năm theo phòng/nhóm, để trống nếu chưa có), `CP_CauHinh` (vai trò nhập / xem toàn bộ / được hủy / xem báo cáo phòng mình, phòng kế toán = Phòng DVKH, số ngày đầu tháng nhập cho tháng trước, ngưỡng cảnh báo).
+6. Nhận xét AI (I004): thêm thuộc tính tập lệnh `ANTHROPIC_API_KEY`; tùy chọn `MODEL_BAO_CAO` (mặc định claude-sonnet-5-5). Chỉ gửi số liệu tổng hợp, không gửi ID/tên cán bộ; kết quả cùng số liệu được dùng lại trong 30 phút.
+5. Đổi tên cán bộ hoặc phòng ở file phân quyền xong: menu **Đồng bộ danh mục sang file chi phí**.
+
+Quy tắc: vượt hạn mức không cho lưu; người nhập tự hủy trong ngày (ghi lý do), sau đó Giám đốc/Quản trị hủy; không sửa số tiền (hủy và nhập lại);
+khoản đã nhập luôn tính cho người duyệt tại thời điểm nhập (phân công lại không làm lệch hạn mức).
 
 ## Cập nhật phiên bản
 

@@ -217,6 +217,87 @@ footer .shell{display:flex;flex-direction:column;align-items:center;gap:6px;padd
 .disc{font-size:12px;color:var(--muted);max-width:46ch;margin:0}
 .dai-hoa-no{height:10px;background:linear-gradient(100deg,#1BA9E1 0%,#12C2EE 32%,#0A7FB8 48%,#005993 58%,#3D4E86 66%,#8B3A5E 76%,#D71249 90%,#C21F2C 100%)}
 .toast{position:fixed;left:50%;bottom:calc(84px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);background:var(--ink);color:#fff;padding:10px 16px;border-radius:999px;font-size:14px;z-index:40;max-width:calc(100% - 32px);text-align:center}
+/* Nhật ký phê duyệt chi phí */
+.cp-top{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.cp-top h2{flex:1 1 100%}
+.cp-top .inp{flex:1;min-width:0;min-height:42px;font-size:15px}
+.cp-top .btn{flex:0 0 auto}
+.upd{font-size:12px;color:var(--muted)}
+.ap{display:flex;flex-direction:column;gap:8px}
+.ap-h{display:flex;justify-content:space-between;align-items:baseline;gap:10px}
+.ap-h b{font-size:16px;color:var(--ink)}
+.ap-h span{font-size:12px;color:var(--muted);text-align:right}
+.ap-big{font:700 26px/1.1 var(--font);font-variant-numeric:tabular-nums;color:var(--vtb-xanh-dam)}
+.ap-big small{font-size:14px;font-weight:600;color:var(--muted)}
+.bar{height:10px;border-radius:6px;background:var(--vtb-nen-sang);overflow:hidden}
+.bar i{display:block;height:100%;border-radius:6px;background:var(--vtb-xanh-dam);transition:width .4s ease}
+.ap.warn .ap-big,.ap.warn .pct{color:#B86E00}.ap.warn .bar i{background:#E89A1E}
+.ap.over .ap-big,.ap.over .pct{color:var(--vtb-do)}.ap.over .bar i{background:var(--vtb-do)}
+.ap-f{display:flex;justify-content:space-between;gap:8px;font-size:12.5px;color:var(--muted);font-variant-numeric:tabular-nums}
+.pct{font-weight:700;color:var(--vtb-xanh-dam)}
+.ap-dvs{font-size:12px;color:var(--muted)}
+.money{font-variant-numeric:tabular-nums}
+.preview-box{border-radius:12px;padding:10px 12px;font-size:14px;background:var(--vtb-nen-sang)}
+.preview-box.bad{background:#FDE7EC;color:#9B0E35;font-weight:600}
+.preview-box b{font-variant-numeric:tabular-nums}
+.cp-list{display:flex;flex-direction:column;gap:10px}
+.cp-it{border:1px solid var(--line);border-radius:12px;padding:12px;display:flex;flex-direction:column;gap:6px;min-width:0}
+.cp-r1{display:flex;align-items:center;gap:8px;min-width:0}
+.cp-date{flex:none;font:700 12px var(--font);background:var(--vtb-nen-sang);color:var(--vtb-xanh-dam);border-radius:8px;padding:4px 7px}
+.cp-pb{flex:1;min-width:0;font-size:13px;font-weight:600;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.cp-amt{flex:none;font:700 16px var(--font);font-variant-numeric:tabular-nums;color:var(--ink)}
+.cp-nd{font-size:14.5px;overflow-wrap:anywhere}
+.cp-meta{font-size:12px;color:var(--muted);overflow-wrap:anywhere}
+.cp-it.huy{background:var(--page)}
+.cp-it.huy .cp-amt,.cp-it.huy .cp-nd{text-decoration:line-through;color:var(--muted)}
+.cp-huy{font-size:12.5px;color:#9B0E35}
+.cp-cancel{display:flex;flex-direction:column;gap:8px;border-top:1px dashed var(--line);padding-top:8px}
+.cp-cancel .row{display:flex;gap:8px}
+.cp-cancel .inp{min-height:42px;font-size:15px}
+.linkred{align-self:flex-start;border:0;background:none;color:var(--vtb-do);font:600 13px var(--font);padding:2px 0;cursor:pointer}
+.tbl{width:100%;border-collapse:collapse;font-size:13.5px;font-variant-numeric:tabular-nums}
+.tbl td{padding:7px 0;border-bottom:1px solid var(--line);vertical-align:middle}
+.tbl td:last-child{text-align:right;font-weight:700;white-space:nowrap;padding-left:8px}
+.tbl .mini{height:6px;margin-top:4px;border-radius:4px;background:var(--vtb-nen-sang)}
+.tbl .mini i{display:block;height:100%;border-radius:4px;background:var(--vtb-xanh-nhat)}
+.empty{font-size:14px;color:var(--muted);text-align:center;padding:12px 0}
+.sum-line{display:flex;justify-content:space-between;gap:8px;font-size:13px;color:var(--muted)}
+.sum-line b{color:var(--ink);font-variant-numeric:tabular-nums}
+/* Báo cáo chi phí */
+.scope{align-self:flex-start;font-size:12px;font-weight:700;letter-spacing:.04em;background:var(--vtb-nen-sang);color:var(--vtb-xanh-dam);border-radius:999px;padding:4px 10px}
+.kpis{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.kpi{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:12px;display:flex;flex-direction:column;gap:4px;min-width:0}
+.kpi span{font-size:12px;color:var(--muted);font-weight:600}
+.kpi b{font:700 19px/1.15 var(--font);font-variant-numeric:tabular-nums;color:var(--ink);overflow-wrap:anywhere}
+.kpi small{font-size:12px;color:var(--muted);font-variant-numeric:tabular-nums}
+.up{color:var(--vtb-do)!important;font-weight:700}.down{color:var(--ok)!important;font-weight:700}
+.hbar{display:flex;flex-direction:column;gap:10px}
+.hb{display:flex;flex-direction:column;gap:4px}
+.hb-h{display:flex;justify-content:space-between;gap:8px;font-size:13.5px}
+.hb-h span{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.hb-h b{flex:none;font-variant-numeric:tabular-nums}
+.hb .track{height:8px;border-radius:5px;background:var(--vtb-nen-sang);overflow:hidden}
+.hb .track i{display:block;height:100%;border-radius:5px;background:var(--vtb-xanh-dam)}
+.hb-f{font-size:11.5px;color:var(--muted);font-variant-numeric:tabular-nums}
+.seg2{display:flex;gap:6px}
+.seg2 button{border:1px solid var(--line);background:var(--surface);color:var(--vtb-xanh-dam);border-radius:999px;padding:6px 12px;font:600 12.5px var(--font);cursor:pointer}
+.seg2 button[aria-pressed="true"]{background:var(--vtb-xanh-dam);border-color:var(--vtb-xanh-dam);color:#fff}
+.chart svg{display:block;width:100%;height:auto}
+.legend{display:flex;gap:14px;font-size:12px;color:var(--muted);flex-wrap:wrap}
+.legend i{display:inline-block;width:12px;height:8px;border-radius:2px;margin-right:5px;vertical-align:middle}
+.mx-wrap{overflow-x:auto;margin:0 -16px;padding:0 16px}
+.mx{border-collapse:separate;border-spacing:2px;font-size:11.5px;font-variant-numeric:tabular-nums}
+.mx th{font-weight:600;color:var(--muted);text-align:left;padding:4px;white-space:nowrap}
+.mx thead th{writing-mode:vertical-rl;transform:rotate(180deg);height:150px;vertical-align:bottom;font-size:11px;white-space:nowrap}
+.mx td{min-width:46px;height:30px;text-align:center;border-radius:6px;padding:2px 4px;color:var(--ink)}
+.plan-bar{position:relative;height:14px;border-radius:7px;background:var(--vtb-nen-sang);overflow:visible}
+.plan-bar i{display:block;height:100%;border-radius:7px;background:var(--vtb-xanh-dam)}
+.plan-bar u{position:absolute;top:-4px;bottom:-4px;width:2px;background:var(--vtb-do);text-decoration:none}
+.ai-out{display:flex;flex-direction:column;gap:6px;font-size:14.5px}
+.ai-out h3{margin:8px 0 0;font-size:15px;color:var(--vtb-xanh-dam)}
+.ai-out ul{margin:0;padding-left:18px;display:flex;flex-direction:column;gap:4px}
+.ai-out p{margin:0}
+.note{font-size:12px;color:var(--muted)}
 @media (prefers-reduced-motion:no-preference){.view{animation:fade .2s ease}}
 @media (prefers-reduced-motion:reduce){.shake{animation:none}}
 @keyframes fade{from{opacity:.6}to{opacity:1}}
@@ -400,6 +481,101 @@ footer .shell{display:flex;flex-direction:column;align-items:center;gap:6px;padd
   </div>
 </section>
 
+<!-- ============ QUẢN LÝ CHI PHÍ (I003) ============ -->
+<section class="view" id="v-cp-nhatky" hidden>
+ <div class="stack">
+  <div class="card">
+    <div class="cp-top">
+      <h2>Quản lý chi phí</h2>
+      <label class="lbl" for="cpMonth" style="flex:none">Tháng</label>
+      <input class="inp" type="month" id="cpMonth">
+      <button class="btn sm ghost" id="cpReload" aria-label="Làm mới"><svg viewBox="0 0 24 24"><path d="M20 11a8 8 0 1 0-2.3 5.7M20 4v7h-7"/></svg>Làm mới</button>
+    </div>
+    <span class="upd" id="cpUpd" role="status">Đang tải…</span>
+    <div class="callout warn" id="cpErr" hidden></div>
+  </div>
+
+  <div id="cpApprovers" class="stack"></div>
+
+  <form class="card" id="cpForm" hidden novalidate>
+    <h2>Nhập khoản đã được phê duyệt</h2>
+    <p class="lead" id="cpFormInfo"></p>
+    <div class="field"><label for="cpNhom">Nhóm chi phí <i>*</i></label><select class="inp" id="cpNhom"></select></div>
+    <div class="field"><label for="cpNoiDung">Nội dung chi phí <i>*</i></label><textarea class="inp" id="cpNoiDung" maxlength="300" placeholder="VD: Mua mực in, giấy A4 quý IV"></textarea></div>
+    <div class="field"><label for="cpTien">Số tiền được duyệt (đ) <i>*</i></label><input class="inp money" id="cpTien" inputmode="numeric" autocomplete="off" placeholder="0"></div>
+    <div class="field"><label for="cpNgay">Ngày phê duyệt <i>*</i></label><input class="inp" type="date" id="cpNgay"></div>
+    <div class="field"><label for="cpToTrinh">Số tờ trình / chứng từ</label><input class="inp" id="cpToTrinh" maxlength="50" autocomplete="off" placeholder="Không bắt buộc"></div>
+    <div class="preview-box" id="cpPreview" hidden></div>
+    <span class="hint bad" id="cpFormErr" role="alert" hidden></span>
+    <button class="btn" id="cpSave" type="submit">Lưu khoản chi phí</button>
+  </form>
+
+  <div class="card" id="cpPhongCard" hidden>
+    <h2>Tổng theo phòng/ban</h2>
+    <table class="tbl" id="cpPhong"></table>
+  </div>
+
+  <div class="card">
+    <h2 id="cpListTitle">Nhật ký</h2>
+    <div class="sum-line" id="cpSum"></div>
+    <div class="chips" id="cpChips" hidden></div>
+    <div class="cp-list" id="cpList"></div>
+  </div>
+ </div>
+</section>
+
+<!-- ============ BÁO CÁO CHI PHÍ (I004) ============ -->
+<section class="view" id="v-cp-baocao" hidden>
+ <div class="stack">
+  <div class="card">
+    <div class="cp-top">
+      <h2>Báo cáo chi phí</h2>
+      <label class="lbl" for="bcMonth" style="flex:none">Tháng</label>
+      <input class="inp" type="month" id="bcMonth">
+      <button class="btn sm ghost" id="bcReload"><svg viewBox="0 0 24 24"><path d="M20 11a8 8 0 1 0-2.3 5.7M20 4v7h-7"/></svg>Làm mới</button>
+    </div>
+    <span class="scope" id="bcScope"></span>
+    <span class="upd" id="bcUpd" role="status">Đang tải…</span>
+    <div class="callout warn" id="bcErr" hidden></div>
+  </div>
+
+  <div class="kpis" id="bcKpis"></div>
+
+  <div class="card" id="bcHmCard" hidden><h2>Hạn mức ủy quyền và dự báo</h2><div class="hbar" id="bcHm"></div></div>
+
+  <div class="card"><h2>Xu hướng 12 tháng</h2><div class="chart" id="bcTrend"></div><div class="legend" id="bcTrendLg"></div></div>
+
+  <div class="card" id="bcPbCard"><h2>Theo phòng/ban</h2><div class="hbar" id="bcPb"></div></div>
+
+  <div class="card"><h2>Theo nhóm chi phí</h2><div class="hbar" id="bcNhom"></div></div>
+
+  <div class="card" id="bcMxCard">
+    <h2>Ma trận phòng × nhóm chi phí</h2>
+    <div class="seg2" id="bcMxSeg"><button type="button" data-v="cur" aria-pressed="true">Tháng</button><button type="button" data-v="ytd" aria-pressed="false">Lũy kế năm</button></div>
+    <div class="mx-wrap"><table class="mx" id="bcMx"></table></div>
+    <span class="note">Ô càng đậm, số tiền càng lớn. Vuốt ngang để xem hết.</span>
+  </div>
+
+  <div class="card"><h2>Thực hiện so với kế hoạch năm</h2><div class="stack" id="bcPlan" style="gap:12px"></div></div>
+
+  <div class="card">
+    <h2>Khoản chi lớn nhất</h2>
+    <div class="seg2" id="bcTopSeg"><button type="button" data-v="m" aria-pressed="true">Trong tháng</button><button type="button" data-v="y" aria-pressed="false">Từ đầu năm</button></div>
+    <div class="cp-list" id="bcTop"></div>
+  </div>
+
+  <div class="card" id="bcRepCard" hidden><h2>Khoản lặp lại (3 tháng gần nhất)</h2><p class="lead">Cân nhắc gom lại mua sắm tập trung hoặc ký hợp đồng định kỳ.</p><div class="cp-list" id="bcRep"></div></div>
+
+  <div class="card">
+    <h2>Nhận xét và định hướng (AI)</h2>
+    <p class="lead">AI đọc số liệu tổng hợp của phạm vi đang xem (không gồm tên cán bộ) và đề xuất nhận xét, kết luận, định hướng điều hành.</p>
+    <button class="btn" id="bcAiBtn" type="button">Phân tích bằng AI</button>
+    <div class="ai-out" id="bcAi" aria-live="polite"></div>
+    <span class="note" id="bcAiNote"></span>
+  </div>
+ </div>
+</section>
+
 <!-- ============ TẠO QR THEO YÊU CẦU ============ -->
 <section class="view" id="v-qr-tuychon" hidden>
   <div class="card">
@@ -442,7 +618,7 @@ footer .shell{display:flex;flex-direction:column;align-items:center;gap:6px;padd
 /* =====================================================================
    CẤU HÌNH — chỉnh tại đây khi triển khai
    ===================================================================== */
-const APP_VERSION='1.1.1 · 26/10/2026';
+const APP_VERSION='1.4.0 · 26/10/2026';
 // Tên bộ công cụ (song ngữ)
 const SUITE={vi:'Không Gian Số Nội Bộ',en:'TTG Inside'};
 
@@ -456,12 +632,18 @@ const ICONS={
   sms:'<svg class="i" viewBox="0 0 24 24"><path d="M4 5h16v11H9l-5 4z"/><path d="M8 10h8M8 13h5"/></svg>',
   email:'<svg class="i" viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M3 7l9 6 9-6"/></svg>',
   vcard:'<svg class="i" viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="14" rx="2"/><circle cx="9" cy="11" r="2.2"/><path d="M5.5 16.5c.8-1.8 2-2.5 3.5-2.5s2.7.7 3.5 2.5M15 10h3M15 13h3"/></svg>',
-  text:'<svg class="i" viewBox="0 0 24 24"><path d="M5 6h14M5 10h14M5 14h9M5 18h6"/></svg>'
+  text:'<svg class="i" viewBox="0 0 24 24"><path d="M5 6h14M5 10h14M5 14h9M5 18h6"/></svg>',
+  chart:'<svg class="i" viewBox="0 0 24 24"><path d="M4 20h16"/><rect x="6" y="11" width="3" height="7" rx="1"/><rect x="11" y="7" width="3" height="11" rx="1"/><rect x="16" y="13" width="3" height="5" rx="1"/><path d="M5 8l5-4 4 3 5-4"/></svg>',
+  ledger:'<svg class="i" viewBox="0 0 24 24"><rect x="4" y="3" width="16" height="18" rx="2"/><path d="M8 8h8M8 12h5M8 16h3"/><path d="M15.5 14.5l1.5 1.5 3-3"/></svg>'
 };
 const TOOLKIT=[
   {id:'qr',vi:'Mã QR',en:'QR Codes',tools:[
     {id:'qr-wifi',app:'I001',title:'Tạo QR kết nối WiFi',desc:'Từng bước tạo thẻ QR để khách quét là vào WiFi, không cần nhập mật khẩu.',icon:'wifi'},
     {id:'qr-tuychon',app:'I002',title:'Tạo QR theo yêu cầu',desc:'Mã cho link, số điện thoại, tin nhắn, email, danh thiếp, văn bản.',icon:'qrchat'}
+  ]}
+  ,{id:'cp',vi:'Chi phí',en:'Expenses',tools:[
+    {id:'cp-nhatky',app:'I003',title:'Quản lý chi phí',desc:'Hạn mức phê duyệt còn lại theo thời gian thực, nhập và tra cứu các khoản đã duyệt.',icon:'ledger'},
+    {id:'cp-baocao',app:'I004',title:'Báo cáo chi phí',desc:'Theo phòng, nhóm chi phí, kế hoạch, dự báo hạn mức và nhận xét AI.',icon:'chart'}
   ]}
 ];
 
@@ -557,6 +739,7 @@ function go(id,fromHash){
   }
   if(!fromHash){try{history.pushState(null,'','#'+id)}catch(e){}}
   window.scrollTo({top:0});
+  window.dispatchEvent(new CustomEvent('ttg:view',{detail:id}));
 }
 window.addEventListener('popstate',()=>go((location.hash||'#home').slice(1),true)); // nút Back của điện thoại
 $('#homeBtn').onclick=()=>go('home');$('#suiteHome').onclick=()=>go('home');
@@ -802,6 +985,367 @@ $('#dlQr').onclick=()=>saveCanvas(drawQR(document.createElement('canvas'),makeQR
 $('#shareCard').hidden=!CAN_SHARE;
 $('#shareCard').onclick=()=>lastCard&&shareCanvas(lastCard,'the-wifi-'+slug(currentPoint())+'.png','Thẻ WiFi '+currentPoint());
 setSrc('list');render();
+
+/* ---- Dùng chung máy chủ (Code.gs) và trang (index.html): tính chỉ số báo cáo, tóm tắt cho AI ---- */
+const CP_AI_PROMPT = 'Bạn là chuyên viên phân tích chi phí hoạt động của VietinBank Chi nhánh Tây Tiền Giang, viết nhận xét tham mưu cho Ban Giám đốc.\n' +
+  'Dựa DUY NHẤT vào số liệu được cung cấp, viết nhận xét bằng tiếng Việt, văn phong hành chính – ngân hàng, ngắn gọn, cụ thể.\n' +
+  'Cấu trúc bắt buộc, mỗi phần mở đầu bằng "## ":\n## Tình hình chung\n## Điểm cần lưu ý\n## Kết luận\n## Định hướng điều hành\n' +
+  'Trong mỗi phần dùng gạch đầu dòng "- ". Phần Định hướng điều hành có 3–5 ý hành động cụ thể (ai, việc gì).\n' +
+  'Quy tắc: không bịa số liệu; số tiền ghi dạng 1.000.000 đ; nêu rõ khi chưa đủ dữ liệu để so sánh (năm trước, kế hoạch); ' +
+  'cảnh báo khi hạn mức người duyệt dự kiến hết trước cuối tháng hoặc thực hiện vượt tiến độ kế hoạch; không nêu tên cá nhân; tối đa 380 từ.';
+
+function cpFmt(n) { return String(Math.round(n || 0)).replace(/\B(?=(\d{3})+(?!\d))/g, '.') + ' đ'; }
+function cpShift(m, k) { let y = +m.slice(0, 4), mo = +m.slice(5, 7) + k; while (mo < 1) { mo += 12; y--; } while (mo > 12) { mo -= 12; y++; } return y + '-' + String(mo).padStart(2, '0'); }
+
+/** Tính toàn bộ chỉ số từ dữ liệu báo cáo d (kết quả cp_report) */
+function cpMetrics(d) {
+  const m = d.month, y = +m.slice(0, 4), py = y - 1, mm = m.slice(5), prev = cpShift(m, -1);
+  const sum = f => d.cube.filter(f).reduce((s, c) => s + c.sum, 0);
+  const cnt = f => d.cube.filter(f).reduce((s, c) => s + c.n, 0);
+  const inYtd = (c, yy) => c.t >= yy + '-01' && c.t <= yy + '-' + mm;
+  const last3 = [cpShift(m, -1), cpShift(m, -2), cpShift(m, -3)];
+  const months = {}; d.cube.forEach(c => months[c.t] = 1);
+  const hasPrevYear = Object.keys(months).some(t => t.slice(0, 4) === String(py));
+  const n3 = last3.filter(t => months[t]).length;
+  const tot = { cur: sum(c => c.t === m), n: cnt(c => c.t === m), prev: sum(c => c.t === prev), hasPrev: !!months[prev],
+    avg3: n3 ? sum(c => last3.includes(c.t)) / n3 : null, n3, ytd: sum(c => inYtd(c, y)), ytdPrev: sum(c => inYtd(c, py)), hasPrevYear,
+    sameLastYear: sum(c => c.t === py + '-' + mm) };
+  const pbs = Array.from(new Set((d.phongs || []).concat(d.cube.map(c => c.pb))));
+  const byPhong = pbs.map(pb => ({ pb, cur: sum(c => c.pb === pb && c.t === m), prev: sum(c => c.pb === pb && c.t === prev),
+    avg3: n3 ? sum(c => c.pb === pb && last3.includes(c.t)) / n3 : null, ytd: sum(c => c.pb === pb && inYtd(c, y)), ytdPrev: sum(c => c.pb === pb && inYtd(c, py)) }))
+    .sort((a, b) => b.cur - a.cur || b.ytd - a.ytd);
+  const nhoms = Array.from(new Set((d.nhomList || []).concat(d.cube.map(c => c.nhom))));
+  const byNhom = nhoms.map(nh => ({ nhom: nh, cur: sum(c => c.nhom === nh && c.t === m), prev: sum(c => c.nhom === nh && c.t === prev),
+    ytd: sum(c => c.nhom === nh && inYtd(c, y)) })).filter(x => x.cur || x.prev || x.ytd).sort((a, b) => b.cur - a.cur || b.ytd - a.ytd);
+  byNhom.forEach(x => { x.share = tot.cur ? x.cur / tot.cur : 0; x.shareYtd = tot.ytd ? x.ytd / tot.ytd : 0; });
+  const trend = [], trendPrev = [];
+  for (let i = 1; i <= 12; i++) { const k = String(i).padStart(2, '0'); trend.push(sum(c => c.t === y + '-' + k)); trendPrev.push(sum(c => c.t === py + '-' + k)); }
+  // Tiến độ thời gian của năm tính đến tháng chọn
+  const today = d.today, isCur = today.slice(0, 7) === m, dim = new Date(y, +mm, 0).getDate(), day = isCur ? +today.slice(8, 10) : dim;
+  const timePct = ((+mm - 1) + day / dim) / 12;
+  // Kế hoạch
+  const kh = d.keHoach || [];
+  const planAll = kh.filter(k => k.pb === 'Toàn chi nhánh' && !k.nhom).reduce((s, k) => s + k.kh, 0);
+  const planPb = {}; kh.filter(k => k.pb !== 'Toàn chi nhánh' && !k.nhom).forEach(k => planPb[k.pb] = (planPb[k.pb] || 0) + k.kh);
+  const planNhom = {}; kh.filter(k => k.nhom).forEach(k => { const key = k.pb + '|' + k.nhom; planNhom[key] = (planNhom[key] || 0) + k.kh; });
+  const planTotal = d.scope.type === 'all' && planAll ? planAll : Object.values(planPb).reduce((s, v) => s + v, 0);
+  const plan = { total: planTotal, timePct, ytdPct: planTotal ? tot.ytd / planTotal : null,
+    byPhong: byPhong.filter(p => planPb[p.pb]).map(p => ({ pb: p.pb, kh: planPb[p.pb], ytd: p.ytd, pct: p.ytd / planPb[p.pb] })),
+    byNhom: Object.entries(planNhom).map(([k, v]) => { const [pb, nh] = k.split('|'); const ytd = sum(c => c.nhom === nh && (pb === 'Toàn chi nhánh' || c.pb === pb) && inYtd(c, y)); return { pb, nhom: nh, kh: v, ytd, pct: ytd / v }; }) };
+  // Hạn mức và dự báo ngày hết hạn mức
+  const hanMuc = (d.hanMuc || []).map(h => { const rate = isCur && day ? h.used / day : 0, proj = isCur ? rate * dim : h.used;
+    const dayOut = isCur && rate > 0 && h.used < h.limit ? Math.ceil(h.limit / rate) : null;
+    return Object.assign({}, h, { pct: h.used / h.limit, remaining: h.limit - h.used, proj, dayOut: dayOut && dayOut <= dim ? dayOut : null, isCur }); });
+  // Ma trận phòng × nhóm (tháng chọn và lũy kế năm)
+  const matrix = (f) => { const cells = {}; let max = 0; d.cube.filter(f).forEach(c => { const k = c.pb + '|' + c.nhom; cells[k] = (cells[k] || 0) + c.sum; max = Math.max(max, cells[k]); }); return { cells, max }; };
+  return { m, y, py, prev, tot, byPhong, byNhom, trend, trendPrev, plan, hanMuc, isCur, day, dim,
+    matrixCur: matrix(c => c.t === m), matrixYtd: matrix(c => inYtd(c, y)) };
+}
+
+/** Bản tóm tắt số liệu gửi AI (không chứa ID, tên cán bộ) */
+function cpSummary(d) {
+  const k = cpMetrics(d), L = [], ml = k.m.slice(5) + '/' + k.y, pct = v => (v * 100).toFixed(1).replace('.', ',') + '%';
+  const chg = (a, b) => b ? (a >= b ? '+' : '') + pct((a - b) / b) : 'không có số liệu so sánh';
+  L.push('PHẠM VI: ' + d.scope.label + '. THÁNG BÁO CÁO: ' + ml + (k.isCur ? ' (đang diễn ra, số liệu đến ngày ' + k.day + '/' + k.dim + ')' : ' (đã kết thúc)') + '.');
+  L.push('Tổng chi phí đã phê duyệt tháng: ' + cpFmt(k.tot.cur) + ' (' + k.tot.n + ' khoản). Tháng trước: ' + (k.tot.hasPrev ? cpFmt(k.tot.prev) + ', thay đổi ' + chg(k.tot.cur, k.tot.prev) : 'chưa có dữ liệu') +
+    '. Bình quân 3 tháng trước: ' + (k.tot.avg3 !== null ? cpFmt(k.tot.avg3) + ' (tính trên ' + k.tot.n3 + ' tháng có dữ liệu)' : 'chưa có dữ liệu') + '.');
+  L.push('Lũy kế từ đầu năm ' + k.y + ': ' + cpFmt(k.tot.ytd) + '. Cùng kỳ năm ' + k.py + ': ' + (k.tot.hasPrevYear ? cpFmt(k.tot.ytdPrev) + ' (' + chg(k.tot.ytd, k.tot.ytdPrev) + ')' : 'chưa có dữ liệu năm trước') + '.');
+  L.push('Kế hoạch năm: ' + (k.plan.total ? cpFmt(k.plan.total) + ', đã thực hiện ' + pct(k.plan.ytdPct) + ' trong khi tiến độ thời gian là ' + pct(k.plan.timePct) : 'chưa giao kế hoạch') + '.');
+  k.plan.byPhong.forEach(p => L.push('  Kế hoạch ' + p.pb + ': ' + cpFmt(p.kh) + ', thực hiện ' + pct(p.pct) + '.'));
+  L.push('THEO PHÒNG/BAN (tháng | tháng trước | bình quân 3 tháng | lũy kế năm):');
+  k.byPhong.filter(p => p.cur || p.prev || p.ytd).forEach(p => L.push('- ' + p.pb + ': ' + cpFmt(p.cur) + ' | ' + cpFmt(p.prev) + ' | ' + (p.avg3 !== null ? cpFmt(p.avg3) : '—') + ' | ' + cpFmt(p.ytd)));
+  L.push('THEO NHÓM CHI PHÍ (tháng, tỷ trọng | tháng trước | lũy kế năm):');
+  k.byNhom.forEach(x => L.push('- ' + x.nhom + ': ' + cpFmt(x.cur) + ', ' + pct(x.share) + ' | ' + cpFmt(x.prev) + ' | ' + cpFmt(x.ytd)));
+  if (k.hanMuc.length) { L.push('HẠN MỨC PHÊ DUYỆT ỦY QUYỀN (tháng ' + ml + '):');
+    k.hanMuc.forEach(h => L.push('- ' + h.label + ': hạn mức ' + cpFmt(h.limit) + ', đã dùng ' + cpFmt(h.used) + ' (' + pct(h.pct) + '), còn ' + cpFmt(h.remaining) +
+      (h.isCur ? '; theo tốc độ hiện tại dự kiến cả tháng ' + cpFmt(h.proj) + (h.dayOut ? ', hết hạn mức khoảng ngày ' + h.dayOut : '') : ''))); }
+  if (d.top.length) { L.push('CÁC KHOẢN LỚN NHẤT TRONG THÁNG:'); d.top.slice(0, 5).forEach(t => L.push('- ' + t.noiDung + ' (' + t.pb + ', ' + t.nhom + '): ' + cpFmt(t.soTien))); }
+  if (d.lapLai.length) { L.push('KHOẢN LẶP LẠI TRONG 3 THÁNG GẦN NHẤT:'); d.lapLai.forEach(r => L.push('- ' + r.noiDung + ': ' + r.n + ' lần, tổng ' + cpFmt(r.sum) + ' (' + r.pbs.join(', ') + ')')); }
+  return L.join('\n');
+}
+
+/* ===== QUẢN LÝ CHI PHÍ (I003) – dữ liệu chỉ lấy từ máy chủ ===== */
+const CP={data:null,filter:'',loading:false,timer:null};
+const vnd=n=>fmtN(Math.round(n||0))+' đ';
+const ddmm=s=>s?s.slice(8,10)+'/'+s.slice(5,7):'';
+const curMonth=()=>VN_DAY().replace(/^(\d{4})(\d{2}).*/,'$1-$2');
+$('#cpMonth').value=curMonth();$('#cpMonth').max=curMonth();
+
+async function cpCall(action,data={}){
+  if(DEMO)return cpDemo(action,data);
+  const r=await api(action,{token:S?.token,...data});
+  if(r.error==='expired'||r.error==='revoked'){logout(r.error);throw r}
+  return r;
+}
+async function cpLoad(silent){
+  if(CP.loading)return;CP.loading=true;
+  if(!silent)$('#cpUpd').textContent='Đang tải…';
+  try{const r=await cpCall('cp_load',{month:$('#cpMonth').value||curMonth()});cpApply(r)}
+  catch(e){}finally{CP.loading=false}
+}
+function cpApply(r){
+  if(r.error){$('#cpErr').hidden=false;$('#cpErr').textContent=r.message||(r.error==='network'?'Không kết nối được máy chủ. Kiểm tra mạng rồi bấm Làm mới.':r.error==='forbidden'?'Tài khoản chưa được phân công trong Quản lý chi phí.':'Máy chủ đang bận, thử lại sau ít phút.');$('#cpUpd').textContent='';return}
+  $('#cpErr').hidden=true;CP.data=r;
+  if(r.month&&$('#cpMonth').value!==r.month)$('#cpMonth').value=r.month;
+  $('#cpUpd').textContent='Cập nhật lúc '+new Intl.DateTimeFormat('vi-VN',{timeZone:'Asia/Ho_Chi_Minh',hour:'2-digit',minute:'2-digit',second:'2-digit'}).format(new Date())+(DEMO?' · dữ liệu xem thử':'');
+  cpRenderApprovers();cpRenderForm();cpRenderList();
+}
+function cpRenderApprovers(){
+  const d=CP.data,ml=d.month.slice(5)+'/'+d.month.slice(0,4);
+  $('#cpApprovers').innerHTML=d.approvers.map(a=>{
+    if(!a.limit)return`<div class="card ap"><div class="ap-h"><b>${esc(a.ten)}</b><span>Không giới hạn hạn mức</span></div>
+      <div class="ap-big money">${vnd(a.used)}</div><div class="ap-f"><span>Tổng đã duyệt tháng ${ml}</span></div>${a.phong.length?`<div class="ap-dvs">Phụ trách: ${esc(a.phong.join(', '))}</div>`:''}</div>`;
+    const pct=Math.min(100,Math.round(a.used/a.limit*100)),rem=a.limit-a.used;
+    const st=rem<=0?'over':(rem/a.limit*100<=d.nguong?'warn':'');
+    return`<div class="card ap ${st}"><div class="ap-h"><b>${esc(a.ten)}</b><span>Hạn mức tháng ${ml}</span></div>
+      <div class="ap-big money">${vnd(Math.max(0,rem))} <small>còn lại</small></div>
+      <div class="bar" role="img" aria-label="Đã dùng ${pct}% hạn mức"><i style="width:${pct}%"></i></div>
+      <div class="ap-f"><span>Đã duyệt <b class="money">${vnd(a.used)}</b> / ${vnd(a.limit)}</span><span class="pct">${pct}%</span></div>
+      ${a.phong.length?`<div class="ap-dvs">Phụ trách: ${esc(a.phong.join(', '))}</div>`:''}${a.active?'':'<div class="ap-dvs">Đã thôi hiệu lực</div>'}</div>`}).join('');
+}
+function cpRenderForm(){
+  const f=CP.data.form;$('#cpForm').hidden=!f;if(!f)return;
+  $('#cpFormInfo').textContent=`${f.phong} · Người phê duyệt: ${f.approver}`+(f.limit?'':' (không giới hạn hạn mức)');
+  const sel=$('#cpNhom'),keep=sel.value;
+  sel.innerHTML='<option value="">Chọn nhóm chi phí</option>'+f.nhom.map(n=>`<option>${esc(n)}</option>`).join('');
+  if(f.nhom.includes(keep))sel.value=keep;
+  const minM=f.months[f.months.length-1];$('#cpNgay').min=minM+'-01';$('#cpNgay').max=f.today;
+  if(!$('#cpNgay').value)$('#cpNgay').value=f.today;
+  cpPreview();
+}
+const cpAmount=()=>+($('#cpTien').value.replace(/\D/g,'')||0);
+$('#cpTien').addEventListener('input',()=>{const n=cpAmount();$('#cpTien').value=n?fmtN(n):'';cpPreview()});
+$('#cpNgay').addEventListener('change',cpPreview);
+function cpPreview(){
+  const f=CP.data?.form,box=$('#cpPreview'),btn=$('#cpSave');if(!f)return;
+  const amt=cpAmount(),m=($('#cpNgay').value||'').slice(0,7);
+  btn.disabled=false;box.className='preview-box';
+  if(m&&!f.months.includes(m)){box.hidden=false;box.classList.add('bad');box.textContent='Ngày phê duyệt phải trong tháng này'+(f.months.length>1?' hoặc tháng trước.':'.');btn.disabled=true;return}
+  if(!f.limit){box.hidden=!amt;box.innerHTML=`Khoản này do Giám đốc phê duyệt, không giới hạn hạn mức.`;return}
+  const used=f.used[m]??0,rem=f.limit-used,after=rem-amt;
+  box.hidden=false;
+  if(!amt){box.innerHTML=`Hạn mức còn lại của ${esc(f.approver)} tháng ${m.slice(5)}/${m.slice(0,4)}: <b>${vnd(rem)}</b>`;return}
+  if(after<0){box.classList.add('bad');box.innerHTML=`Vượt hạn mức: chỉ còn <b>${vnd(Math.max(0,rem))}</b>. Không thể lưu khoản này.`;btn.disabled=true;return}
+  box.innerHTML=`Sau khoản này, hạn mức còn lại: <b>${vnd(after)}</b>`;
+}
+$('#cpForm').addEventListener('submit',async e=>{
+  e.preventDefault();const err=$('#cpFormErr'),btn=$('#cpSave');
+  const data={nhom:$('#cpNhom').value,noiDung:$('#cpNoiDung').value.trim(),soTien:String(cpAmount()),ngayDuyet:$('#cpNgay').value,soToTrinh:$('#cpToTrinh').value.trim()};
+  const miss=!data.nhom?'Chọn nhóm chi phí.':!data.noiDung?'Nhập nội dung chi phí.':!cpAmount()?'Nhập số tiền.':!data.ngayDuyet?'Chọn ngày phê duyệt.':'';
+  if(miss){err.textContent=miss;err.hidden=false;vibrate();return}
+  if(SENSITIVE.test(data.noiDung)){err.textContent='Nội dung có thể chứa số CCCD hoặc số tài khoản. Không ghi thông tin khách hàng vào nhật ký.';err.hidden=false;return}
+  err.hidden=true;btn.disabled=true;btn.textContent='Đang lưu…';
+  try{
+    const r=await cpCall('cp_add',{data});
+    if(r.error){err.textContent=r.message||'Không lưu được, thử lại.';err.hidden=false;vibrate();if(r.error==='over_limit')cpLoad(true)}
+    else{cpApply(r);['#cpNoiDung','#cpTien','#cpToTrinh'].forEach(s=>$(s).value='');cpPreview();toast('Đã lưu khoản '+vnd(+data.soTien));vibrate();$('#cpList').scrollIntoView({behavior:'smooth',block:'start'})}
+  }catch(e){}finally{btn.textContent='Lưu khoản chi phí';cpPreview()}
+});
+function cpRenderList(){
+  const d=CP.data,role=d.role,showPb=role.viewAll||role.isApprover;
+  const pbs=[...new Set(d.entries.map(x=>x.pb))];
+  if(CP.filter&&!pbs.includes(CP.filter))CP.filter='';
+  $('#cpChips').hidden=!(showPb&&pbs.length>1);
+  $('#cpChips').innerHTML=['',...pbs].map(p=>`<button type="button" class="chip" data-pb="${esc(p)}" aria-pressed="${CP.filter===p}" style="${CP.filter===p?'background:var(--vtb-xanh-dam);color:#fff;border-color:var(--vtb-xanh-dam)':''}">${p?esc(p):'Tất cả'}</button>`).join('');
+  $('#cpChips').querySelectorAll('.chip').forEach(b=>b.onclick=()=>{CP.filter=b.dataset.pb;cpRenderList()});
+  const list=d.entries.filter(x=>!CP.filter||x.pb===CP.filter),ok=list.filter(x=>x.tt==='Hợp lệ');
+  $('#cpListTitle').textContent=`Nhật ký tháng ${d.month.slice(5)}/${d.month.slice(0,4)}`;
+  $('#cpSum').innerHTML=`<span>${ok.length} khoản hợp lệ${list.length>ok.length?` · ${list.length-ok.length} đã hủy`:''}</span><span>Tổng <b>${vnd(ok.reduce((s,x)=>s+x.soTien,0))}</b></span>`;
+  $('#cpList').innerHTML=list.length?list.map(x=>`<div class="cp-it${x.tt==='Hợp lệ'?'':' huy'}" data-ma="${esc(x.ma)}">
+    <div class="cp-r1"><span class="cp-date">${ddmm(x.ngayDuyet)}</span><span class="cp-pb">${esc(x.pb)}</span><span class="cp-amt">${vnd(x.soTien)}</span></div>
+    <div class="cp-nd">${esc(x.noiDung)}</div>
+    <div class="cp-meta"><b style="color:var(--vtb-xanh-dam)">${esc(x.nhom)}</b>${x.soToTrinh?' · ':''}${x.soToTrinh?'Tờ trình '+esc(x.soToTrinh):''}<br>Duyệt: ${esc(x.duyetTen)} · Nhập: ${esc(x.nhapTen)} lúc ${esc(x.nhapLuc)}</div>
+    ${x.tt!=='Hợp lệ'?`<div class="cp-huy">Đã hủy: ${esc(x.lyDoHuy)} (${esc(x.huyBoi)}, ${esc(x.huyLuc)})</div>`:''}
+    ${x.canCancel?'<button type="button" class="linkred" data-act="huy">Hủy khoản này</button>':''}</div>`).join(''):'<p class="empty">Chưa có khoản chi phí nào trong tháng này.</p>';
+  $('#cpList').querySelectorAll('[data-act=huy]').forEach(b=>b.onclick=()=>cpCancelForm(b.closest('.cp-it')));
+  // Tổng theo phòng (xem toàn bộ)
+  $('#cpPhongCard').hidden=!role.viewAll;
+  if(role.viewAll){
+    const by={};d.entries.filter(x=>x.tt==='Hợp lệ').forEach(x=>by[x.pb]=(by[x.pb]||0)+x.soTien);
+    const rows=Object.entries(by).sort((a,b)=>b[1]-a[1]),max=rows[0]?.[1]||1;
+    $('#cpPhong').innerHTML=rows.length?rows.map(([p,v])=>`<tr><td>${esc(p)}<div class="mini"><i style="width:${Math.round(v/max*100)}%"></i></div></td><td>${vnd(v)}</td></tr>`).join(''):'<tr><td class="empty">Chưa có số liệu.</td><td></td></tr>';
+  }
+}
+function cpCancelForm(it){
+  if(it.querySelector('.cp-cancel'))return;
+  const box=document.createElement('div');box.className='cp-cancel';
+  box.innerHTML=`<label class="lbl">Lý do hủy</label><input class="inp" maxlength="200" placeholder="VD: Nhập sai số tiền"><span class="hint bad" hidden></span>
+    <div class="row"><button type="button" class="btn sm ghost">Không hủy</button><button type="button" class="btn sm" style="background:var(--vtb-do);border-color:var(--vtb-do)">Xác nhận hủy</button></div>`;
+  it.append(box);const [inp]=box.getElementsByTagName('input'),[no,yes]=box.querySelectorAll('button'),msg=box.querySelector('.hint');inp.focus();
+  no.onclick=()=>box.remove();
+  yes.onclick=async()=>{
+    if(inp.value.trim().length<5){msg.textContent='Ghi lý do hủy (tối thiểu 5 ký tự).';msg.hidden=false;return}
+    yes.disabled=true;yes.textContent='Đang hủy…';
+    try{const r=await cpCall('cp_cancel',{ma:it.dataset.ma,lyDo:inp.value.trim(),month:CP.data.month});
+      if(r.error){msg.textContent=r.message||'Không hủy được.';msg.hidden=false;yes.disabled=false;yes.textContent='Xác nhận hủy'}else{cpApply(r);toast('Đã hủy khoản chi phí')}}catch(e){}
+  };
+}
+$('#cpMonth').addEventListener('change',()=>{CP.filter='';cpLoad()});
+$('#cpReload').onclick=()=>cpLoad();
+// Tự cập nhật mỗi 60 giây khi đang mở ứng dụng
+function cpActive(){return S&&!$('#v-cp-nhatky').hidden&&!document.hidden}
+setInterval(()=>{if(cpActive())cpLoad(true)},60000);
+document.addEventListener('visibilitychange',()=>{if(cpActive())cpLoad(true)});
+window.addEventListener('ttg:view',e=>{if(e.detail==='cp-nhatky')cpLoad()});
+if(S&&!$('#v-cp-nhatky').hidden)cpLoad(); // mở thẳng #cp-nhatky khi đã đăng nhập
+
+/* Dữ liệu xem thử (chỉ dùng trong Claude, không có máy chủ) */
+let CPD=null;
+function cpDemo(action,data){
+  const today=VN_DAY().replace(/(\d{4})(\d{2})(\d{2})/,'$1-$2-$3'),m=today.slice(0,7);
+  if(!CPD){const d=(n)=>today.slice(0,8)+String(Math.max(1,+today.slice(8)-n)).padStart(2,'0');
+    CPD={seq:6,rows:[
+      {ma:'CP1',ngayDuyet:d(9),pb:'Phòng DVKH',nhom:'Văn phòng phẩm, in ấn',noiDung:'Mua mực in, giấy A4 quý IV',soTien:6500000,soToTrinh:'125/TTr-DVKH',duyet:'L',nhapTen:'Lê Văn Hai'},
+      {ma:'CP2',ngayDuyet:d(6),pb:'PGD Long Định',nhom:'Sửa chữa, bảo dưỡng tài sản',noiDung:'Sửa máy lạnh quầy giao dịch',soTien:9800000,soToTrinh:'',duyet:'L',nhapTen:'Ngô Thị Tư'},
+      {ma:'CP3',ngayDuyet:d(4),pb:'Phòng Bán lẻ',nhom:'Quảng cáo, khuyến mại, sự kiện',noiDung:'In tờ rơi chương trình tiết kiệm',soTien:12000000,soToTrinh:'88/TTr-BL',duyet:'P',nhapTen:'Trần Văn Năm'},
+      {ma:'CP4',ngayDuyet:d(2),pb:'Phòng TCTH',nhom:'Điện, nước, viễn thông',noiDung:'Cước internet dự phòng tháng',soTien:3200000,soToTrinh:'',duyet:'G',nhapTen:'Võ Văn Bốn'},
+      {ma:'CP5',ngayDuyet:d(1),pb:'Phòng HTTD',nhom:'Tiếp khách, hội nghị',noiDung:'Tiếp đoàn kiểm tra hồ sơ tín dụng',soTien:8400000,soToTrinh:'',duyet:'L',nhapTen:'Phan Thị Sáu'},
+      {ma:'CP6',ngayDuyet:d(1),pb:'PGD Cái Bè',nhom:'Công cụ dụng cụ, mua sắm nhỏ',noiDung:'Mua ghế chờ khách hàng',soTien:15600000,soToTrinh:'31/TTr-CB',duyet:'P',nhapTen:'Trần Thị Ba',huy:'Trùng khoản đã nhập'}]}}
+  const AP={L:{id:'L',ten:'Phạm Minh Linh',limit:30000000,phong:['Phòng DVKH','Phòng HTTD','PGD Long Định','PGD An Hữu']},P:{id:'P',ten:'Nguyễn Kim Phương',limit:30000000,phong:['Phòng Bán lẻ','PGD Cái Bè','PGD Hưng Long','PGD Ấp Bắc']},G:{id:'G',ten:'Nguyễn Tiến Vĩnh',limit:0,phong:['Phòng TCTH','Phòng KHDN']}};
+  const used=id=>CPD.rows.filter(x=>!x.huy&&x.duyet===id&&x.ngayDuyet.slice(0,7)===m).reduce((s,x)=>s+x.soTien,0);
+  const NHOM=['Văn phòng phẩm, in ấn','Tiếp khách, hội nghị','Quảng cáo, khuyến mại, sự kiện','Sửa chữa, bảo dưỡng tài sản','Công cụ dụng cụ, mua sắm nhỏ','Điện, nước, viễn thông','Xăng dầu, vận chuyển','Công tác phí','Phúc lợi, hoạt động đoàn thể','Chi phí khác'];
+  const load=()=>{const mm=data.month||m;return{ok:true,month:mm,today,nguong:20,role:{canEnter:true,viewAll:true,isApprover:false},nhom:NHOM,
+    approvers:Object.values(AP).map(a=>({...a,used:mm===m?used(a.id):0,remaining:a.limit?a.limit-(mm===m?used(a.id):0):null,active:true})),
+    entries:mm!==m?[]:CPD.rows.slice().sort((a,b)=>b.ngayDuyet.localeCompare(a.ngayDuyet)||b.ma.localeCompare(a.ma)).map(x=>({ma:x.ma,ngayDuyet:x.ngayDuyet,pb:x.pb,nhom:x.nhom,noiDung:x.noiDung,soTien:x.soTien,soToTrinh:x.soToTrinh,
+      duyetTen:AP[x.duyet].ten,nhapTen:x.nhapTen,nhapLuc:ddmm(x.ngayDuyet)+'/'+m.slice(0,4)+' 09:15',tt:x.huy?'Đã hủy':'Hợp lệ',lyDoHuy:x.huy||'',huyBoi:x.huy?'Trần Thị Ba':'',huyLuc:x.huy?ddmm(x.ngayDuyet)+' 10:02':'',canCancel:!x.huy})),
+    form:{phong:'Phòng DVKH',approver:'Phạm Minh Linh',limit:30000000,nhom:NHOM,months:[m],used:{[m]:used('L')},today}}};
+  return new Promise(res=>setTimeout(()=>{
+    if(action==='cp_add'){const n=+data.data.soTien;if(used('L')+n>30000000)return res({error:'over_limit',message:'Vượt hạn mức phê duyệt của Phạm Minh Linh. Còn lại '+vnd(30000000-used('L'))+'.'});
+      CPD.rows.push({ma:'CP'+(++CPD.seq),ngayDuyet:data.data.ngayDuyet,pb:'Phòng DVKH',nhom:data.data.nhom,noiDung:data.data.noiDung,soTien:n,soToTrinh:data.data.soToTrinh,duyet:'L',nhapTen:'Huỳnh Thanh Tuyến'})}
+    if(action==='cp_cancel'){const x=CPD.rows.find(r=>r.ma===data.ma);if(x)x.huy=data.lyDo}
+    res(load())},350));
+}
+
+/* ===== BÁO CÁO CHI PHÍ (I004) – số liệu tổng hợp từ máy chủ, chỉ số tính bằng cpMetrics (dùng chung với máy chủ) ===== */
+const BC={data:null,k:null,mx:'cur',top:'m',loading:false};
+$('#bcMonth').value=curMonth();$('#bcMonth').max=curMonth();
+const pctTxt=v=>(v*100).toFixed(1).replace('.',',')+'%';
+const shortVnd=n=>n>=1e9?(n/1e9).toFixed(2).replace('.',',')+' tỷ':n>=1e6?(n/1e6).toFixed(1).replace('.',',')+' tr':fmtN(n);
+function delta(a,b,lbl){if(!b)return`<small>${lbl}: chưa có số liệu</small>`;const d=(a-b)/b;return`<small class="${d>0?'up':'down'}">${d>0?'▲':'▼'} ${pctTxt(Math.abs(d))}</small> <small>so ${lbl}</small>`}
+
+async function bcLoad(silent){
+  if(BC.loading)return;BC.loading=true;if(!silent)$('#bcUpd').textContent='Đang tải…';
+  try{
+    const r=DEMO?await bcDemo($('#bcMonth').value||curMonth()):await api('cp_report',{token:S?.token,month:$('#bcMonth').value||curMonth()});
+    if(r.error==='expired'||r.error==='revoked'){logout(r.error);return}
+    if(r.error){$('#bcErr').hidden=false;$('#bcErr').textContent=r.message||(r.error==='network'?'Không kết nối được máy chủ. Kiểm tra mạng rồi bấm Làm mới.':'Tài khoản chưa có quyền xem báo cáo chi phí.');$('#bcUpd').textContent='';return}
+    $('#bcErr').hidden=true;BC.data=r;BC.k=cpMetrics(r);bcRender();
+    $('#bcUpd').textContent='Cập nhật lúc '+new Intl.DateTimeFormat('vi-VN',{timeZone:'Asia/Ho_Chi_Minh',hour:'2-digit',minute:'2-digit'}).format(new Date())+(DEMO?' · dữ liệu xem thử':'');
+  }finally{BC.loading=false}
+}
+function bcRender(){
+  const d=BC.data,k=BC.k,ml=k.m.slice(5)+'/'+k.y;
+  $('#bcScope').textContent='Phạm vi: '+d.scope.label;
+  // KPI
+  const avgItem=k.tot.n?k.tot.cur/k.tot.n:0;
+  $('#bcKpis').innerHTML=`
+    <div class="kpi"><span>Chi phí tháng ${ml}</span><b>${vnd(k.tot.cur)}</b>${delta(k.tot.cur,k.tot.hasPrev?k.tot.prev:0,'tháng trước')}</div>
+    <div class="kpi"><span>Lũy kế năm ${k.y}</span><b>${vnd(k.tot.ytd)}</b>${k.plan.total?`<small>${pctTxt(k.plan.ytdPct)} kế hoạch · tiến độ ${pctTxt(k.plan.timePct)}</small>`:delta(k.tot.ytd,k.tot.hasPrevYear?k.tot.ytdPrev:0,'cùng kỳ')}</div>
+    <div class="kpi"><span>Số khoản đã duyệt</span><b>${k.tot.n}</b><small>Bình quân ${vnd(avgItem)}/khoản</small></div>
+    <div class="kpi"><span>So bình quân 3 tháng</span><b>${k.tot.avg3!==null?vnd(k.tot.avg3):'—'}</b>${k.tot.avg3?delta(k.tot.cur,k.tot.avg3,'bình quân'):'<small>Chưa đủ dữ liệu</small>'}</div>`;
+  // Hạn mức & dự báo
+  $('#bcHmCard').hidden=!k.hanMuc.length;
+  $('#bcHm').innerHTML=k.hanMuc.map(h=>{const p=Math.min(100,Math.round(h.pct*100)),c=h.remaining<=0?'var(--vtb-do)':h.remaining/h.limit*100<=20?'#E89A1E':'var(--vtb-xanh-dam)';
+    const fc=!h.isCur?'Tháng đã kết thúc.':h.remaining<=0?'Đã dùng hết hạn mức tháng.':h.dayOut?`Theo tốc độ hiện tại, dự kiến <b class="up">hết hạn mức khoảng ngày ${h.dayOut}/${k.m.slice(5)}</b>.`:`Theo tốc độ hiện tại, cả tháng khoảng ${vnd(h.proj)}, trong hạn mức.`;
+    return`<div class="hb"><div class="hb-h"><span><b style="color:var(--ink)">${esc(h.ten)}</b></span><b>${p}%</b></div>
+      <div class="track"><i style="width:${p}%;background:${c}"></i></div>
+      <div class="hb-f">Đã duyệt ${vnd(h.used)} / ${vnd(h.limit)} · còn ${vnd(Math.max(0,h.remaining))}</div><div class="hb-f">${fc}</div></div>`}).join('');
+  // Theo phòng
+  const pbs=k.byPhong.filter(p=>p.cur||p.prev||p.ytd),maxP=Math.max(1,...pbs.map(p=>p.cur));
+  $('#bcPbCard').hidden=d.scope.type==='phong';
+  $('#bcPb').innerHTML=pbs.length?pbs.map(p=>`<div class="hb"><div class="hb-h"><span>${esc(p.pb)}</span><b>${vnd(p.cur)}</b></div>
+    <div class="track"><i style="width:${Math.round(p.cur/maxP*100)}%"></i></div>
+    <div class="hb-f">Tháng trước ${vnd(p.prev)}${p.prev?` (${p.cur>=p.prev?'+':''}${pctTxt((p.cur-p.prev)/p.prev)})`:''} · Lũy kế ${vnd(p.ytd)}</div></div>`).join(''):'<p class="empty">Chưa có số liệu.</p>';
+  // Theo nhóm
+  const maxN=Math.max(1,...k.byNhom.map(x=>x.cur));
+  $('#bcNhom').innerHTML=k.byNhom.length?k.byNhom.map(x=>`<div class="hb"><div class="hb-h"><span>${esc(x.nhom)}</span><b>${vnd(x.cur)}</b></div>
+    <div class="track"><i style="width:${Math.round(x.cur/maxN*100)}%;background:var(--vtb-xanh-nhat)"></i></div>
+    <div class="hb-f">${pctTxt(x.share)} tháng · ${pctTxt(x.shareYtd)} lũy kế năm · tháng trước ${vnd(x.prev)}</div></div>`).join(''):'<p class="empty">Chưa có số liệu.</p>';
+  bcTrend();bcMatrix();bcPlan();bcTop();
+  // Lặp lại
+  $('#bcRepCard').hidden=!d.lapLai.length;
+  $('#bcRep').innerHTML=d.lapLai.map(r=>`<div class="cp-it"><div class="cp-r1"><span class="cp-date">${r.n} lần</span><span class="cp-pb">${esc(r.pbs.join(', '))}</span><span class="cp-amt">${vnd(r.sum)}</span></div><div class="cp-nd">${esc(r.noiDung)}</div></div>`).join('');
+  $('#bcAiNote').textContent=DEMO?(sampleApi?'Xem thử: phân tích bằng Claude ngay trong trang.':'Xem thử: hiển thị nhận xét mẫu.'):(d.ai?'Nhận xét do AI tạo, chỉ để tham khảo; số liệu gốc ở các mục bên trên.':'Chưa bật AI: quản trị thêm ANTHROPIC_API_KEY vào thuộc tính tập lệnh của Apps Script.');
+  $('#bcAiBtn').disabled=!DEMO&&!d.ai;
+}
+function bcTrend(){
+  const k=BC.k,W=340,H=190,L=34,B=24,T=12,R=6,cw=(W-L-R)/12,max=Math.max(1,...k.trend,...k.trendPrev);
+  const step=[1e6,2e6,5e6,1e7,2e7,5e7,1e8,2e8,5e8,1e9].find(s=>max/s<=5)||1e9,top=Math.ceil(max/step)*step;
+  const yv=v=>T+(H-T-B)*(1-v/top),hasPrev=k.trendPrev.some(v=>v),curM=+k.m.slice(5);
+  let g='';for(let v=0;v<=top;v+=step)g+=`<line x1="${L}" x2="${W-R}" y1="${yv(v)}" y2="${yv(v)}" stroke="#CBE2F0" stroke-width="1"/><text x="${L-4}" y="${yv(v)+3}" font-size="9" text-anchor="end" fill="#557089">${shortVnd(v)}</text>`;
+  const bars=k.trend.map((v,i)=>{const x=L+i*cw+cw*.18,w=cw*.64;return(i<curM?`<rect x="${x}" y="${yv(v)}" width="${w}" height="${Math.max(0,H-B-yv(v))}" rx="2" fill="${i+1===curM?'#005993':'#7ED3F7'}"><title>T${i+1}/${k.y}: ${vnd(v)}</title></rect>`:'')+`<text x="${L+i*cw+cw/2}" y="${H-8}" font-size="9" text-anchor="middle" fill="${i+1===curM?'#005993':'#557089'}" font-weight="${i+1===curM?700:400}">T${i+1}</text>`}).join('');
+  // Năm trước: chỉ nối các tháng có số liệu (tháng chưa có dữ liệu không vẽ thành 0)
+  const segs=[];let cur=[];k.trendPrev.forEach((v,i)=>{if(v){cur.push(`${L+i*cw+cw/2},${yv(v)}`)}else if(cur.length){segs.push(cur);cur=[]}});if(cur.length)segs.push(cur);
+  const line=hasPrev?segs.map(sg=>`<polyline fill="none" stroke="#D71249" stroke-width="1.6" stroke-dasharray="4 3" points="${sg.join(' ')}"/>`).join('')+k.trendPrev.map((v,i)=>v?`<circle cx="${L+i*cw+cw/2}" cy="${yv(v)}" r="2.4" fill="#D71249"><title>T${i+1}/${k.py}: ${vnd(v)}</title></circle>`:'').join(''):'';
+  const lab=k.trend[curM-1]?`<text x="${L+(curM-1)*cw+cw/2}" y="${yv(k.trend[curM-1])-5}" font-size="9.5" font-weight="700" text-anchor="middle" fill="#0D2B45">${shortVnd(k.trend[curM-1])}</text>`:'';
+  $('#bcTrend').innerHTML=`<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Chi phí theo tháng năm ${k.y}">${g}${bars}${line}${lab}</svg>`;
+  $('#bcTrendLg').innerHTML=`<span><i style="background:#7ED3F7"></i>Năm ${k.y}</span>`+(hasPrev?`<span><i style="background:#D71249;height:2px"></i>Năm ${k.py}</span>`:`<span>Chưa có dữ liệu năm ${k.py} để so sánh</span>`);
+}
+function bcMatrix(){
+  const k=BC.k,mx=BC.mx==='cur'?k.matrixCur:k.matrixYtd;
+  const pbs=k.byPhong.map(p=>p.pb).filter(pb=>Object.keys(mx.cells).some(c=>c.startsWith(pb+'|')));
+  const nhoms=k.byNhom.map(x=>x.nhom).filter(nh=>Object.keys(mx.cells).some(c=>c.endsWith('|'+nh)));
+  $('#bcMxCard').hidden=BC.data.scope.type==='phong';
+  if(!pbs.length){$('#bcMx').innerHTML='<tr><td class="empty">Chưa có số liệu.</td></tr>';return}
+  $('#bcMx').innerHTML=`<thead><tr><th></th>${nhoms.map(n=>`<th>${esc(n)}</th>`).join('')}</tr></thead><tbody>`+pbs.map(pb=>`<tr><th>${esc(pb)}</th>${nhoms.map(nh=>{const v=mx.cells[pb+'|'+nh]||0,a=v?0.12+0.78*v/mx.max:0;
+    return`<td style="background:rgba(0,89,147,${a.toFixed(2)});color:${a>.55?'#fff':'var(--ink)'}" title="${esc(pb)} · ${esc(nh)}: ${vnd(v)}">${v?shortVnd(v):''}</td>`}).join('')}</tr>`).join('')+'</tbody>';
+}
+function bcPlan(){
+  const p=BC.k.plan,el=$('#bcPlan');
+  if(!p.total&&!p.byPhong.length&&!p.byNhom.length){el.innerHTML='<p class="note">Chưa có kế hoạch chi phí năm cho phạm vi này. Quản trị nhập ở sheet CP_KeHoach của file chi phí.</p>';return}
+  const row=(lbl,kh,ytd,pct)=>`<div class="hb"><div class="hb-h"><span>${esc(lbl)}</span><b class="${pct>p.timePct+0.05?'up':''}">${pctTxt(pct)}</b></div>
+    <div class="plan-bar"><i style="width:${Math.min(100,pct*100).toFixed(1)}%;background:${pct>p.timePct+0.05?'var(--vtb-do)':'var(--vtb-xanh-dam)'}"></i><u style="left:${(p.timePct*100).toFixed(1)}%" title="Tiến độ thời gian"></u></div>
+    <div class="hb-f">Thực hiện ${vnd(ytd)} / kế hoạch ${vnd(kh)}</div></div>`;
+  el.innerHTML=(p.total?row('Tổng phạm vi',p.total,BC.k.tot.ytd,p.ytdPct):'')+p.byPhong.map(x=>row(x.pb,x.kh,x.ytd,x.pct)).join('')+p.byNhom.map(x=>row(x.nhom+' ('+x.pb+')',x.kh,x.ytd,x.pct)).join('')+
+    `<span class="note">Vạch đỏ là tiến độ thời gian (${pctTxt(p.timePct)} năm). Thanh đỏ: thực hiện vượt tiến độ trên 5 điểm %.</span>`;
+}
+function bcTop(){
+  const list=BC.top==='m'?BC.data.top:BC.data.topNam;
+  $('#bcTop').innerHTML=list.length?list.map((t,i)=>`<div class="cp-it"><div class="cp-r1"><span class="cp-date">${i+1}</span><span class="cp-pb">${esc(t.pb)} · ${ddmm(t.ngay)}</span><span class="cp-amt">${vnd(t.soTien)}</span></div><div class="cp-nd">${esc(t.noiDung)}</div><div class="cp-meta"><b style="color:var(--vtb-xanh-dam)">${esc(t.nhom)}</b></div></div>`).join(''):'<p class="empty">Chưa có số liệu.</p>';
+}
+['bcMxSeg','bcTopSeg'].forEach(id=>$('#'+id).addEventListener('click',e=>{const b=e.target.closest('button');if(!b)return;
+  $('#'+id).querySelectorAll('button').forEach(x=>x.setAttribute('aria-pressed',x===b));
+  if(id==='bcMxSeg'){BC.mx=b.dataset.v;bcMatrix()}else{BC.top=b.dataset.v;bcTop()}}));
+function aiHtml(t){ // chuyển "## tiêu đề" và "- ý" của AI thành HTML an toàn
+  let h='',inList=false;const close=()=>{if(inList){h+='</ul>';inList=false}};
+  t.split('\n').forEach(l=>{l=l.trim().replace(/\*\*/g,'');if(!l)return;
+    if(/^#{1,3}\s/.test(l)){close();h+=`<h3>${esc(l.replace(/^#+\s*/,''))}</h3>`}
+    else if(/^[-•*]\s/.test(l)){if(!inList){h+='<ul>';inList=true}h+=`<li>${esc(l.replace(/^[-•*]\s*/,''))}</li>`}
+    else{close();h+=`<p>${esc(l)}</p>`}});
+  close();return h;
+}
+$('#bcAiBtn').onclick=async()=>{
+  const btn=$('#bcAiBtn'),out=$('#bcAi');btn.disabled=true;btn.textContent='Đang phân tích…';out.innerHTML='<p class="dots">AI đang đọc số liệu</p>';
+  try{
+    let r;
+    if(DEMO){r=sampleApi?{ok:true,text:(await sampleApi([{role:'user',content:CP_AI_PROMPT+'\n\nSỐ LIỆU:\n'+cpSummary(BC.data)}],{modelTier:'default',effort:'low'})).text}
+      :{ok:true,text:'## Tình hình chung\n- (Nhận xét mẫu) Chi phí tháng giảm so với tháng trước.\n## Định hướng điều hành\n- Rà soát các khoản lặp lại để mua sắm tập trung.'}}
+    else r=await api('cp_ai',{token:S?.token,month:BC.data.month});
+    if(r.error==='expired'||r.error==='revoked')return logout(r.error);
+    out.innerHTML=r.error?`<p class="hint bad">${esc(r.message||'Không phân tích được, thử lại sau.')}</p>`:aiHtml(r.text)+(r.cached?'<p class="note">Kết quả đã phân tích trước đó với cùng số liệu.</p>':'');
+  }catch(e){out.innerHTML=`<p class="hint bad">${esc(e?.code==='not_granted'?'Chưa cho phép trang dùng Claude.':'Không phân tích được, thử lại sau.')}</p>`}
+  finally{btn.disabled=false;btn.textContent='Phân tích lại'}
+};
+$('#bcMonth').addEventListener('change',()=>{$('#bcAi').innerHTML='';$('#bcAiBtn').textContent='Phân tích bằng AI';bcLoad()});
+$('#bcReload').onclick=()=>bcLoad();
+window.addEventListener('ttg:view',e=>{if(e.detail==='cp-baocao')bcLoad()});
+if(S&&!$('#v-cp-baocao').hidden)bcLoad();
+
+/* Dữ liệu xem thử cho báo cáo (17 tháng giả lập) */
+function bcDemo(month){
+  const pbs=['Phòng DVKH','Phòng HTTD','PGD Long Định','PGD An Hữu','Phòng Bán lẻ','PGD Cái Bè','PGD Hưng Long','PGD Ấp Bắc','Phòng TCTH','Phòng KHDN'];
+  const nh=['Văn phòng phẩm, in ấn','Tiếp khách, hội nghị','Quảng cáo, khuyến mại, sự kiện','Sửa chữa, bảo dưỡng tài sản','Điện, nước, viễn thông','Công tác phí'];
+  const cube=[],y=+month.slice(0,4);let seed=7;const rnd=()=>(seed=(seed*9301+49297)%233280)/233280;
+  for(let k=-21;k<=0;k++){const t=cpShift(month,k);pbs.forEach((pb,a)=>nh.forEach((n,b)=>{if(rnd()<.32){const v=Math.round((1+rnd()*5+(a<2?2:0))*(1+.04*(k+21)))*1e6;cube.push({t,pb,nhom:n,sum:v,n:1+Math.floor(rnd()*2)})}}))}
+  const used=(ps)=>cube.filter(c=>c.t===month&&ps.includes(c.pb)).reduce((s,c)=>s+c.sum,0);
+  return new Promise(r=>setTimeout(()=>r({ok:true,month,today:VN_DAY().replace(/(\d{4})(\d{2})(\d{2})/,'$1-$2-$3'),scope:{type:'all',label:'Toàn chi nhánh (dữ liệu mẫu)'},phongs:pbs,nhomList:nh,cube,
+    top:[{ngay:month+'-12',pb:'Phòng TCTH',nhom:'Sửa chữa, bảo dưỡng tài sản',noiDung:'Sửa chữa mái tôn kho tiền',soTien:18500000},{ngay:month+'-08',pb:'Phòng Bán lẻ',nhom:'Quảng cáo, khuyến mại, sự kiện',noiDung:'In tờ rơi chương trình tiết kiệm',soTien:12000000},{ngay:month+'-15',pb:'PGD Long Định',nhom:'Sửa chữa, bảo dưỡng tài sản',noiDung:'Sửa máy lạnh quầy giao dịch',soTien:9800000}],
+    topNam:[{ngay:y+'-03-20',pb:'Phòng KHDN',nhom:'Tiếp khách, hội nghị',noiDung:'Hội nghị khách hàng doanh nghiệp',soTien:45000000},{ngay:month+'-12',pb:'Phòng TCTH',nhom:'Sửa chữa, bảo dưỡng tài sản',noiDung:'Sửa chữa mái tôn kho tiền',soTien:18500000}],
+    lapLai:[{noiDung:'Mua mực in, giấy A4',n:4,sum:14200000,pbs:['Phòng DVKH','PGD Cái Bè','PGD Ấp Bắc']}],
+    hanMuc:[{label:'Người duyệt phụ trách Phòng DVKH, Phòng HTTD, PGD Long Định, PGD An Hữu',ten:'Phạm Minh Linh',limit:30000000,used:Math.min(30000000,used(pbs.slice(0,4)))},
+            {label:'Người duyệt phụ trách Phòng Bán lẻ, PGD Cái Bè, PGD Hưng Long, PGD Ấp Bắc',ten:'Nguyễn Kim Phương',limit:30000000,used:Math.min(30000000,used(pbs.slice(4,8)))}],
+    keHoach:[{pb:'Toàn chi nhánh',nhom:'',kh:1500000000},{pb:'Phòng DVKH',nhom:'',kh:260000000},{pb:'Phòng KHDN',nhom:'',kh:150000000}],ai:false}),300));
+}
 
 /* ===== TẠO QR THEO YÊU CẦU ===== */
 const chat=$('#chat'),ask=$('#ask'),sendBtn=$('#send'),st=$('#aiStatus');
