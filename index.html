@@ -195,6 +195,22 @@ details.dev summary{cursor:pointer;font-weight:700;color:var(--vtb-xanh-dam);lis
 .dots::after{content:"…";animation:blink 1s steps(3) infinite}
 @keyframes blink{50%{opacity:.3}}
 
+/* Đăng nhập */
+.login{align-items:stretch;text-align:left}
+.lk{width:52px;height:52px;border-radius:14px;background:var(--vtb-nen-sang);display:grid;place-items:center}
+.lk svg{width:28px;height:28px}
+.idbox .inp{font:600 24px/1 var(--mono);letter-spacing:.35em;padding-left:18px;padding-right:60px;height:56px}
+.idbox .inp::placeholder{letter-spacing:.2em;font-size:18px;color:#A7B9C8}
+.idbox button{display:grid;place-items:center;width:44px;padding:0}
+.idbox button svg{width:22px;height:22px;fill:none;stroke:var(--vtb-xanh-dam);stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.btn:disabled{opacity:.6;cursor:progress}
+.shake{animation:shake .3s}
+@keyframes shake{25%{transform:translateX(-6px)}75%{transform:translateX(6px)}}
+.who{display:flex;align-items:flex-start;justify-content:space-between;gap:12px}
+.who-tx{display:flex;flex-direction:column;gap:2px;min-width:0}
+.who .hello{color:var(--ink);font-size:17px;font-weight:700}
+.linkbtn{flex:none;border:1px solid var(--line);background:var(--surface);color:var(--vtb-xanh-dam);border-radius:999px;min-height:34px;padding:0 12px;font:600 13px var(--font);cursor:pointer}
+.stats{align-self:flex-end;margin:4px 0 0;font-size:11px;color:var(--muted);font-variant-numeric:tabular-nums;letter-spacing:.02em}
 footer .shell{display:flex;flex-direction:column;align-items:center;gap:6px;padding-block:8px 16px;text-align:center}
 .hotline{display:flex;gap:8px;align-items:center;font-weight:700;color:var(--vtb-xanh-dam);font-size:16px}
 .hotline svg{width:18px;height:18px;fill:var(--vtb-do)}
@@ -202,6 +218,7 @@ footer .shell{display:flex;flex-direction:column;align-items:center;gap:6px;padd
 .dai-hoa-no{height:10px;background:linear-gradient(100deg,#1BA9E1 0%,#12C2EE 32%,#0A7FB8 48%,#005993 58%,#3D4E86 66%,#8B3A5E 76%,#D71249 90%,#C21F2C 100%)}
 .toast{position:fixed;left:50%;bottom:calc(84px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);background:var(--ink);color:#fff;padding:10px 16px;border-radius:999px;font-size:14px;z-index:40;max-width:calc(100% - 32px);text-align:center}
 @media (prefers-reduced-motion:no-preference){.view{animation:fade .2s ease}}
+@media (prefers-reduced-motion:reduce){.shake{animation:none}}
 @keyframes fade{from{opacity:.6}to{opacity:1}}
 :root{padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
 </style>
@@ -231,8 +248,31 @@ footer .shell{display:flex;flex-direction:column;align-items:center;gap:6px;padd
 <main class="shell gut">
 
 <!-- ============ TRANG CHỦ ============ -->
-<section class="view stack" id="v-home">
-  <p class="hello" id="hello"></p>
+<section class="view" id="v-login" hidden>
+  <div class="card login">
+    <div class="lk"><svg class="i" viewBox="0 0 24 24"><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/><circle cx="12" cy="16" r="1.2"/></svg></div>
+    <h2>Đăng nhập</h2>
+    <p class="lead">Nhập mã ID 5 số được cấp để vào Không Gian Số Nội Bộ.</p>
+    <form id="loginForm" class="stack" novalidate>
+      <div class="field">
+        <label for="uid">Mã ID cán bộ</label>
+        <div class="pw idbox"><input class="inp" id="uid" name="uid" type="password" inputmode="numeric" pattern="[0-9]*" maxlength="5" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="•••••" enterkeyhint="go">
+          <button type="button" id="uidEye" aria-label="Hiện mã ID" aria-pressed="false"></button></div>
+      </div>
+      <span class="hint bad" id="loginErr" role="alert" hidden></span>
+      <button class="btn" id="loginBtn" type="submit">Vào Không Gian Số</button>
+    </form>
+    <p class="hint">Đăng nhập có hiệu lực đến hết ngày hôm nay. Chưa có hoặc quên mã ID, liên hệ cán bộ quản trị.</p>
+    <div class="callout warn" id="demoNote" hidden><p><b>Chế độ xem thử:</b> chưa kết nối máy chủ phân quyền. Nhập bất kỳ mã 5 số bắt đầu bằng 9 để xem giao diện.</p></div>
+  </div>
+</section>
+
+<section class="view stack" id="v-home" hidden>
+  <div class="who">
+    <div class="who-tx"><p class="hello" id="hello"></p><span class="hint" id="whoSub"></span></div>
+    <button class="linkbtn" id="logoutBtn">Đăng xuất</button>
+  </div>
+  <div class="callout info" id="noApps" hidden><p>Tài khoản chưa được cấp quyền dùng tiện ích nào. Liên hệ cán bộ quản trị.</p></div>
   <div id="homeGroups" class="stack"></div>
   <div class="tip" id="installTip" hidden>
     <svg class="i" viewBox="0 0 24 24"><rect x="6" y="2" width="12" height="20" rx="2"/><path d="M12 7v7M9 11l3 3 3-3"/></svg>
@@ -389,6 +429,7 @@ footer .shell{display:flex;flex-direction:column;align-items:center;gap:6px;padd
     <div class="hotline"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6.6 10.8a15.1 15.1 0 0 0 6.6 6.6l2.2-2.2a1 1 0 0 1 1-.25 11.4 11.4 0 0 0 3.6.57 1 1 0 0 1 1 1V20a1 1 0 0 1-1 1A17 17 0 0 1 3 4a1 1 0 0 1 1-1h3.5a1 1 0 0 1 1 1c0 1.25.2 2.45.57 3.6a1 1 0 0 1-.25 1z"/></svg>1900 558 868</div>
     <div style="color:var(--vtb-xanh-dam);font-size:14px">www.vietinbank.vn</div>
     <p class="disc">Công cụ nội bộ cho cán bộ VietinBank Chi nhánh Tây Tiền Giang. Không nhập thông tin khách hàng, số tài khoản, CCCD.</p>
+    <p class="stats" id="stats" hidden></p>
   </div>
   <div class="dai-hoa-no" aria-hidden="true"></div>
 </footer>
@@ -401,11 +442,12 @@ footer .shell{display:flex;flex-direction:column;align-items:center;gap:6px;padd
 /* =====================================================================
    CẤU HÌNH — chỉnh tại đây khi triển khai
    ===================================================================== */
-const APP_VERSION='1.0.0 · 21/10/2026';
+const APP_VERSION='1.1.1 · 26/10/2026';
 // Tên bộ công cụ (song ngữ)
 const SUITE={vi:'Không Gian Số Nội Bộ',en:'TTG Inside'};
 
-// Danh mục tiện ích. Thêm ứng dụng mới: thêm 1 mục vào tools (id trùng với <section id="v-...">) hoặc thêm 1 nhóm mới.
+// Danh mục tiện ích. app = mã ứng dụng trong sheet UngDung (I001, I002…) dùng để phân quyền.
+// Thêm ứng dụng mới: thêm 1 mục vào tools (id trùng với <section id="v-...">), khai báo cùng mã ở Sheet.
 const ICONS={
   wifi:'<svg class="i" viewBox="0 0 24 24"><path d="M2.5 9a14 14 0 0 1 19 0"/><path d="M5.5 12.5a9.5 9.5 0 0 1 13 0"/><path d="M8.7 15.8a5 5 0 0 1 6.6 0"/><circle cx="12" cy="19" r="1.2" fill="#005993"/></svg>',
   qrchat:'<svg class="i" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><path d="M14 14h3v3M21 14v.01M14 21h7v-4"/></svg>',
@@ -418,8 +460,8 @@ const ICONS={
 };
 const TOOLKIT=[
   {id:'qr',vi:'Mã QR',en:'QR Codes',tools:[
-    {id:'qr-wifi',title:'Tạo QR kết nối WiFi',desc:'Từng bước tạo thẻ QR để khách quét là vào WiFi, không cần nhập mật khẩu.',icon:'wifi'},
-    {id:'qr-tuychon',title:'Tạo QR theo yêu cầu',desc:'Mã cho link, số điện thoại, tin nhắn, email, danh thiếp, văn bản.',icon:'qrchat'}
+    {id:'qr-wifi',app:'I001',title:'Tạo QR kết nối WiFi',desc:'Từng bước tạo thẻ QR để khách quét là vào WiFi, không cần nhập mật khẩu.',icon:'wifi'},
+    {id:'qr-tuychon',app:'I002',title:'Tạo QR theo yêu cầu',desc:'Mã cho link, số điện thoại, tin nhắn, email, danh thiếp, văn bản.',icon:'qrchat'}
   ]}
 ];
 
@@ -436,8 +478,9 @@ const WIFI_LIST={
   'PGD Ấp Bắc':[{ssid:'VTB_ApBac_Guest',sec:'WPA2'}]
 };
 
-// Giai đoạn 2: dán URL Web App Apps Script (https://script.google.com/macros/s/.../exec) để bật trợ lý AI.
-const APPS_SCRIPT_URL='';
+// URL Web App Apps Script của file Sheet phân quyền (https://script.google.com/macros/s/.../exec).
+// Bắt buộc để đăng nhập. Trợ lý AI (giai đoạn 2) dùng chung URL này khi máy chủ có ANTHROPIC_API_KEY.
+const API_URL='https://script.google.com/macros/s/AKfycbyZbM3O_eXOtjMCsz6P4fWkWr2yDiO3qTZsONq06biherYBhmtMJluEbm0UUfNP6_w/exec';
 
 /* ===================================================================== */
 const $=s=>document.querySelector(s);
@@ -453,29 +496,127 @@ const vibrate=()=>{try{navigator.vibrate?.(12)}catch(e){}};
 /* ===== Khung bộ công cụ ===== */
 $('#suiteVi').textContent=SUITE.vi;$('#suiteEn').textContent=SUITE.en;
 const ALL=TOOLKIT.flatMap(g=>g.tools.map(t=>({...t,group:g})));
-(()=>{const h=new Date().getHours();$('#hello').textContent=(h<11?'Chào buổi sáng':h<14?'Chào buổi trưa':h<18?'Chào buổi chiều':'Chào buổi tối')+'. Chọn tiện ích để bắt đầu.'})();
 const CHEV='<svg class="chev" viewBox="0 0 24 24"><path d="M9 6l6 6-6 6"/></svg>';
-$('#homeGroups').innerHTML=TOOLKIT.map(g=>`<div class="group"><div class="group-h"><h2>${esc(g.vi)}</h2><span>${esc(g.en)}</span></div>
+const fmtN=n=>String(n||0).replace(/\B(?=(\d{3})+(?!\d))/g,'.');
+const VN_DAY=()=>new Intl.DateTimeFormat('en-CA',{timeZone:'Asia/Ho_Chi_Minh'}).format(new Date()).replace(/-/g,''); // yyyymmdd giờ VN
+const DEMO=!API_URL&&IN_FRAME; // xem thử trong Claude, không có máy chủ
+const deviceId=store.get('device')||(()=>{const d=(crypto.randomUUID?crypto.randomUUID():Date.now()+'-'+Math.random()).replace(/-/g,'').slice(0,16);store.set('device',d);return d})();
+
+/* Phiên đăng nhập: lưu trên máy đến hết ngày (giờ Việt Nam) */
+let S=null; // {token,user:{ten,xungHo,phongBan,vaiTro},apps:[],stats:{total,today},ai,day}
+function loadSess(){try{const s=JSON.parse(store.get('session')||'null');return s&&s.day===VN_DAY()&&s.token?s:null}catch(e){return null}}
+function saveSess(s){S=s;store.set('session',s?JSON.stringify(s):'')}
+const canUse=t=>!!S&&S.apps.includes(t.app);
+const xh=()=>S?.user?.xungHo||'anh/chị';
+
+/** Gọi máy chủ Apps Script (text/plain để tránh CORS preflight) */
+async function api(action,data={},signal){
+  const ctl=new AbortController(),timer=setTimeout(()=>ctl.abort(),25000);
+  signal?.addEventListener('abort',()=>ctl.abort());
+  try{const r=await fetch(API_URL,{method:'POST',headers:{'Content-Type':'text/plain;charset=utf-8'},body:JSON.stringify({action,...data}),signal:ctl.signal});return await r.json()}
+  catch(e){return{error:signal?.aborted?'cancelled':'network'}}
+  finally{clearTimeout(timer)}
+}
+
+function applySession(res){
+  saveSess({token:res.token||S?.token,user:res.user,apps:res.apps||[],stats:res.stats||null,ai:!!res.ai,day:VN_DAY(),checked:Date.now()});
+  renderHome();renderStats();updateMode?.();
+}
+function renderHome(){
+  if(!S)return;
+  const h=+new Intl.DateTimeFormat('en-GB',{timeZone:'Asia/Ho_Chi_Minh',hour:'2-digit',hour12:false}).format(new Date());
+  const greet=h<11?'Chào buổi sáng':h<14?'Chào buổi trưa':h<18?'Chào buổi chiều':'Chào buổi tối';
+  $('#hello').textContent=`${greet}, ${xh()} ${S.user.ten||''}`.trim();
+  $('#whoSub').textContent=[S.user.phongBan,S.user.vaiTro].filter(Boolean).join(' · ');
+  const groups=TOOLKIT.map(g=>({...g,tools:g.tools.filter(canUse)})).filter(g=>g.tools.length);
+  $('#noApps').hidden=groups.length>0;
+  $('#homeGroups').innerHTML=groups.map(g=>`<div class="group"><div class="group-h"><h2>${esc(g.vi)}</h2><span>${esc(g.en)}</span></div>
   <div class="tiles">${g.tools.map(t=>`<button class="tile" data-go="${t.id}"><span class="ic">${ICONS[t.icon]||''}</span><span class="tx"><b>${esc(t.title)}</b><small>${esc(t.desc)}</small></span>${CHEV}</button>`).join('')}</div></div>`).join('');
-document.querySelectorAll('[data-go]').forEach(el=>el.addEventListener('click',()=>go(el.dataset.go)));
+  $('#homeGroups').querySelectorAll('[data-go]').forEach(el=>el.addEventListener('click',()=>go(el.dataset.go)));
+}
+function renderStats(){
+  const st=S?.stats;$('#stats').hidden=!st;
+  if(st)$('#stats').textContent=`Lượt truy cập · Hôm nay ${fmtN(st.today)} · Tổng ${fmtN(st.total)}`;
+}
 
 function go(id,fromHash){
   id={wifi:'qr-wifi',tuychon:'qr-tuychon'}[id]||id;
-  const tool=ALL.find(t=>t.id===id);if(!tool)id='home';
+  if(!S){showLogin();return}
+  let tool=ALL.find(t=>t.id===id);
+  if(tool&&!canUse(tool)){toast(`${xh()[0].toUpperCase()+xh().slice(1)} chưa được cấp quyền dùng “${tool.title}”.`);tool=null}
+  if(!tool)id='home';
   document.querySelectorAll('.view').forEach(v=>v.hidden=v.id!=='v-'+id);
   $('#ctx').hidden=!tool;
   if(tool){
     $('#crumbTxt').innerHTML=`${esc(tool.group.vi)} › <b>${esc(tool.title)}</b>`;
-    const sibs=tool.group.tools;$('#seg').hidden=sibs.length<2;
+    const sibs=tool.group.tools.filter(canUse);$('#seg').hidden=sibs.length<2;
     $('#seg').innerHTML=sibs.map(t=>`<button role="tab" aria-selected="${t.id===id}" data-id="${t.id}">${esc(t.title)}</button>`).join('');
     $('#seg').querySelectorAll('button').forEach(b=>b.onclick=()=>go(b.dataset.id));
+    if(!DEMO)api('open',{token:S.token,app:tool.app}).then(r=>{ // máy chủ kiểm tra lại quyền và ghi nhật ký
+      if(r.error==='forbidden'){refreshSession()}else if(r.error==='expired'||r.error==='revoked')logout(r.error)});
   }
   if(!fromHash){try{history.pushState(null,'','#'+id)}catch(e){}}
   window.scrollTo({top:0});
 }
 window.addEventListener('popstate',()=>go((location.hash||'#home').slice(1),true)); // nút Back của điện thoại
 $('#homeBtn').onclick=()=>go('home');$('#suiteHome').onclick=()=>go('home');
-go((location.hash||'#home').slice(1),true);
+
+/* Màn hình đăng nhập */
+const EYE='<svg viewBox="0 0 24 24"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></svg>';
+const EYE_OFF='<svg viewBox="0 0 24 24"><path d="M3 3l18 18M10.6 5.1A10.8 10.8 0 0 1 12 5c6.5 0 10 7 10 7a17 17 0 0 1-3.2 4.2M6.6 6.6C3.9 8.4 2 12 2 12s3.5 7 10 7c1.7 0 3.2-.5 4.5-1.2M9.9 9.9a3 3 0 0 0 4.2 4.2"/></svg>';
+const uid=$('#uid'),eye=$('#uidEye');eye.innerHTML=EYE;
+eye.onclick=()=>{const show=uid.type==='password';uid.type=show?'text':'password';eye.innerHTML=show?EYE_OFF:EYE;eye.setAttribute('aria-pressed',show);eye.setAttribute('aria-label',show?'Ẩn mã ID':'Hiện mã ID');uid.focus()};
+uid.addEventListener('input',()=>{uid.value=uid.value.replace(/\D/g,'').slice(0,5);$('#loginErr').hidden=true;if(uid.value.length===5)$('#loginForm').requestSubmit()});
+function showLogin(msg){
+  document.querySelectorAll('.view').forEach(v=>v.hidden=v.id!=='v-login');$('#ctx').hidden=true;
+  $('#demoNote').hidden=!DEMO;uid.value='';uid.type='password';eye.innerHTML=EYE;
+  if(!API_URL&&!DEMO)msg='Chưa cấu hình máy chủ phân quyền (API_URL). Liên hệ cán bộ quản trị.';
+  loginErr(msg);try{history.replaceState(null,'',location.pathname+location.search)}catch(e){}
+}
+function loginErr(m){$('#loginErr').textContent=m||'';$('#loginErr').hidden=!m;if(m){uid.classList.add('err');setTimeout(()=>uid.classList.remove('err'),1500)}}
+const LOGIN_ERR={
+  wrong:r=>`Mã ID không đúng. Còn ${r.remaining} lần thử trước khi máy bị khóa 15 phút.`,
+  device_locked:r=>`Nhập sai quá nhiều lần. Máy này tạm khóa ${r.minutes} phút.`,
+  suspended:r=>`Hệ thống tạm ngưng đăng nhập ${r.minutes} phút do có nhiều lượt nhập sai. Thử lại sau.`,
+  locked_user:()=>'Mã ID này đang bị khóa. Liên hệ cán bộ quản trị.',
+  network:()=>'Không kết nối được máy chủ. Kiểm tra mạng rồi thử lại.'
+};
+$('#loginForm').addEventListener('submit',async e=>{
+  e.preventDefault();const id=uid.value.trim(),btn=$('#loginBtn');
+  if(!/^\d{5}$/.test(id))return loginErr('Mã ID gồm 5 chữ số.');
+  if(!API_URL&&!DEMO)return showLogin();
+  btn.disabled=true;btn.textContent='Đang kiểm tra…';loginErr('');
+  let r;
+  if(DEMO){await new Promise(x=>setTimeout(x,400));
+    r=id[0]==='9'?{ok:true,token:'demo',user:{ten:'Tuyến',xungHo:'anh',phongBan:'Phòng Tổng hợp',vaiTro:'Quản trị hệ thống'},apps:ALL.map(t=>t.app),stats:{total:1286,today:47},ai:false}:{error:'wrong',remaining:4}}
+  else r=await api('login',{id,device:deviceId});
+  btn.disabled=false;btn.textContent='Vào Không Gian Số';
+  if(r.ok){vibrate();applySession(r);go((location.hash||'#home').slice(1),true);toast(`${$('#hello').textContent}!`);return}
+  uid.value='';$('.login').classList.remove('shake');void $('.login').offsetWidth;$('.login').classList.add('shake');vibrate();
+  loginErr((LOGIN_ERR[r.error]||(()=>r.message||'Máy chủ đang bận, thử lại sau ít phút.'))(r));uid.focus();
+});
+function logout(reason){
+  saveSess(null);
+  showLogin({expired:'Phiên đăng nhập đã hết hạn. Nhập lại mã ID.',revoked:'Tài khoản đã bị khóa hoặc thay đổi. Liên hệ cán bộ quản trị.'}[reason]||'');
+}
+$('#logoutBtn').onclick=()=>{logout();toast('Đã đăng xuất')};
+async function refreshSession(){
+  if(!S||DEMO)return;
+  const r=await api('verify',{token:S.token});
+  if(r.ok){applySession(r);const cur=ALL.find(t=>!$('#v-'+t.id).hidden);if(cur&&!canUse(cur))go('home')}
+  else if(r.error==='expired'||r.error==='revoked')logout(r.error);
+}
+// Quay lại ứng dụng: qua ngày mới thì đăng nhập lại; quá 30 phút thì kiểm tra lại quyền
+document.addEventListener('visibilitychange',()=>{
+  if(document.hidden||!S)return;
+  if(S.day!==VN_DAY())return logout('expired');
+  if(Date.now()-(S.checked||0)>30*60e3)refreshSession();
+});
+
+// Khởi động
+S=loadSess();
+if(S){renderHome();renderStats();go((location.hash||'#home').slice(1),true);refreshSession()}else{saveSess(null);showLogin()}
+if(!IN_FRAME)uid.focus?.();
 
 /* Gợi ý cài lên màn hình chính (chỉ khi chạy trên web, chưa cài, chưa ẩn) */
 const standalone=matchMedia('(display-mode: standalone)').matches||navigator.standalone;
@@ -719,7 +860,7 @@ $('#qform').addEventListener('submit',e=>{
 });
 function qfail(m){$('#qerr').textContent=m;$('#qerr').hidden=false;vibrate()}
 
-/* Trợ lý: (1) trong Claude → capability "sample"; (2) có APPS_SCRIPT_URL → Apps Script; (3) còn lại → nhận dạng tự động */
+/* Trợ lý: (1) trong Claude → capability "sample"; (2) máy chủ bật AI (ANTHROPIC_API_KEY) → Apps Script; (3) còn lại → nhận dạng tự động */
 // Giữ đồng bộ với SYSTEM_PROMPT trong Code.gs
 const RULES=`Bạn là trợ lý tạo mã QR cho cán bộ VietinBank Chi nhánh Tây Tiền Giang (các điểm: Trụ sở Chi nhánh, PGD Cái Bè, An Hữu, Long Định, Hưng Long, Ấp Bắc).
 Nhiệm vụ: đọc yêu cầu và soạn chính xác chuỗi sẽ mã hóa vào QR.
@@ -737,10 +878,7 @@ Quy tắc:
 let sampleApi=null,mode='local',turns=[],busy=false,ctl=null;
 async function askAI(history,signal){
   if(mode==='claude')return sampleApi.json([{role:'user',content:RULES},...history],{cache:false,signal,modelTier:'default',effort:'low'});
-  let r;
-  try{r=await fetch(APPS_SCRIPT_URL,{method:'POST',headers:{'Content-Type':'text/plain;charset=utf-8'},body:JSON.stringify({messages:history}),signal})}
-  catch(e){throw{code:e?.name==='AbortError'?'cancelled':'network'}}
-  let j;try{j=await r.json()}catch(e){throw{code:'upstream_error'}}
+  const j=await api('ai',{token:S?.token,messages:history},signal);
   if(j.error)throw{code:j.error,message:j.message};
   return j;
 }
@@ -791,7 +929,7 @@ async function send(text){
     if(res?.qr?.payload)addQR({kind:String(res.qr.kind||'text'),title:String(res.qr.title||'Mã QR'),payload:String(res.qr.payload),caption:String(res.qr.caption||'')});
   }catch(e){
     turns.pop();
-    const map={cancelled:'Đã dừng.',rate_limited:'Trợ lý đang quá tải, thử lại sau ít phút.',daily_limit:'Đã hết lượt dùng trợ lý trong ngày.',network:'Không kết nối được máy chủ trợ lý. Kiểm tra mạng rồi gửi lại.',session_expired:'Phiên đăng nhập Claude đã hết hạn, đăng nhập lại.',refused:'Trợ lý không xử lý được yêu cầu này. Thử diễn đạt khác.',invalid_json:'Trợ lý trả lời sai định dạng. Gửi lại yêu cầu.'};
+    const map={cancelled:'Đã dừng.',rate_limited:'Trợ lý đang quá tải, thử lại sau ít phút.',daily_limit:'Đã hết lượt dùng trợ lý trong ngày.',network:'Không kết nối được máy chủ trợ lý. Kiểm tra mạng rồi gửi lại.',session_expired:'Phiên đăng nhập Claude đã hết hạn, đăng nhập lại.',refused:'Trợ lý không xử lý được yêu cầu này. Thử diễn đạt khác.',invalid_json:'Trợ lý trả lời sai định dạng. Gửi lại yêu cầu.',expired:'Phiên đăng nhập đã hết hạn. Đăng nhập lại.',forbidden:'Tài khoản chưa được cấp quyền dùng trợ lý.'};
     if(['not_granted','sampling_disabled','not_declared','capability_disabled','capability_removed','not_configured'].includes(e?.code)){
       mode='local';bubble.remove();setStatus();const r=localParse(text);addMsg('ai',r.reply);if(r.qr)addQR(r.qr);
     }else bubble.textContent=map[e?.code]||'Mất kết nối với trợ lý. Gửi lại yêu cầu.';
@@ -803,12 +941,13 @@ function autosize(){ask.style.height='auto';ask.style.height=Math.min(ask.scroll
 ask.addEventListener('input',autosize);
 [['Tổng đài 1900 558 868','Mã gọi tổng đài 1900 558 868'],['Website VietinBank','Mã mở website VietinBank']].forEach(([l,t])=>{const b=document.createElement('button');b.className='chip';b.textContent=l;b.onclick=()=>send(t);$('#chips').append(b)});
 addMsg('ai','Chọn loại mã ở trên để điền theo mẫu, hoặc gõ thẳng đường link, số điện thoại, email, nội dung vào ô bên dưới.');
+function updateMode(){mode=sampleApi?'claude':(S?.ai&&API_URL?'proxy':'local');setStatus()}
 function setStatus(){st.textContent={claude:'Trợ lý AI do Claude hỗ trợ: có thể mô tả yêu cầu bằng lời. Lần gửi đầu sẽ hỏi quyền sử dụng.',proxy:'Trợ lý AI do Claude hỗ trợ: có thể mô tả yêu cầu bằng lời.',local:'Ô nhập tự nhận dạng link, số điện thoại, email; nội dung khác tạo thành mã văn bản. Phiên bản '+APP_VERSION+'.'}[mode]}
 
 (async()=>{
   const cl=window.claude;
   if(cl?.use){try{downloadsApi=await cl.use('downloads')}catch(e){}try{sampleApi=await cl.use('sample')}catch(e){}}
-  mode=sampleApi?'claude':(/^https:\/\/script\.google(usercontent)?\.com\//.test(APPS_SCRIPT_URL)?'proxy':'local');setStatus();
+  updateMode();
 })();
 </script>
 <script>
