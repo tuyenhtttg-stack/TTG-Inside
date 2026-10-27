@@ -618,7 +618,7 @@ footer .shell{display:flex;flex-direction:column;align-items:center;gap:6px;padd
 /* =====================================================================
    CẤU HÌNH — chỉnh tại đây khi triển khai
    ===================================================================== */
-const APP_VERSION='1.4.0 · 26/10/2026';
+const APP_VERSION='1.4.1 · 27/10/2026';
 // Tên bộ công cụ (song ngữ)
 const SUITE={vi:'Không Gian Số Nội Bộ',en:'TTG Inside'};
 
@@ -1131,13 +1131,16 @@ function cpPreview(){
 $('#cpForm').addEventListener('submit',async e=>{
   e.preventDefault();const err=$('#cpFormErr'),btn=$('#cpSave');
   const data={nhom:$('#cpNhom').value,noiDung:$('#cpNoiDung').value.trim(),soTien:String(cpAmount()),ngayDuyet:$('#cpNgay').value,soToTrinh:$('#cpToTrinh').value.trim()};
+  if(CP.xacNhanTrung){data.xacNhanTrung=true;CP.xacNhanTrung=false}
   const miss=!data.nhom?'Chọn nhóm chi phí.':!data.noiDung?'Nhập nội dung chi phí.':!cpAmount()?'Nhập số tiền.':!data.ngayDuyet?'Chọn ngày phê duyệt.':'';
   if(miss){err.textContent=miss;err.hidden=false;vibrate();return}
   if(SENSITIVE.test(data.noiDung)){err.textContent='Nội dung có thể chứa số CCCD hoặc số tài khoản. Không ghi thông tin khách hàng vào nhật ký.';err.hidden=false;return}
   err.hidden=true;btn.disabled=true;btn.textContent='Đang lưu…';
   try{
     const r=await cpCall('cp_add',{data});
-    if(r.error){err.textContent=r.message||'Không lưu được, thử lại.';err.hidden=false;vibrate();if(r.error==='over_limit')cpLoad(true)}
+    if(r.error==='duplicate'){err.innerHTML=esc(r.message)+' <button type="button" class="btn sm" id="cpDupOk" style="margin-top:8px">Vẫn lưu</button>';err.hidden=false;vibrate();
+      $('#cpDupOk').onclick=()=>{CP.xacNhanTrung=true;$('#cpForm').requestSubmit()}}
+    else if(r.error){err.textContent=r.message||'Không lưu được, thử lại.';err.hidden=false;vibrate();if(r.error==='over_limit')cpLoad(true)}
     else{cpApply(r);['#cpNoiDung','#cpTien','#cpToTrinh'].forEach(s=>$(s).value='');cpPreview();toast('Đã lưu khoản '+vnd(+data.soTien));vibrate();$('#cpList').scrollIntoView({behavior:'smooth',block:'start'})}
   }catch(e){}finally{btn.textContent='Lưu khoản chi phí';cpPreview()}
 });

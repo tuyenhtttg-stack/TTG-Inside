@@ -1,7 +1,7 @@
 # Không Gian Số Nội Bộ · TTG Inside
 
 Bộ tiện ích nội bộ dành cho cán bộ **VietinBank Chi nhánh Tây Tiền Giang**, thiết kế cho điện thoại.
-Phiên bản 1.4.0 – 26/10/2026: thêm đăng nhập bằng ID và phân quyền theo Google Sheet.
+Phiên bản 1.4.1 – 27/10/2026: thêm đăng nhập bằng ID và phân quyền theo Google Sheet.
 
 | Nhóm | Tiện ích | Mô tả |
 |---|---|---|

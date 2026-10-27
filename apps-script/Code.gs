@@ -1,6 +1,6 @@
 /**
  * KHÔNG GIAN SỐ NỘI BỘ (TTG Inside) – Máy chủ phân quyền
- * VietinBank Chi nhánh Tây Tiền Giang · phiên bản 1.4.0 · 26/10/2026
+ * VietinBank Chi nhánh Tây Tiền Giang · phiên bản 1.4.1 · 27/10/2026
  *
  * Script này GẮN VỚI file Google Sheet phân quyền (Tiện ích mở rộng → Apps Script), làm 2 việc:
  *   1. Menu quản trị + tự tick quyền theo vai trò ngay trong Sheet.
@@ -854,10 +854,17 @@ function cpRows_(cp) {
   const fd = (d, f) => d instanceof Date ? Utilities.formatDate(d, TZ, f) : String(d || '');
   return sh.getRange(2, 1, n, CP_NK_HEAD.length).getValues().map((r, i) => ({
     row: i + 2, ma: String(r[0]), nhapLuc: fd(r[1], 'dd/MM/yyyy HH:mm'), nhapNgay: fd(r[1], 'yyyy-MM-dd'), ngayDuyet: fd(r[2], 'yyyy-MM-dd'),
-    thang: String(r[3]), maPB: String(r[4]), pb: String(r[5]), nhom: String(r[6]), noiDung: String(r[7]), soTien: Number(r[8]) || 0,
-    soToTrinh: String(r[9] || ''), duyetId: String(r[10]), duyetTen: String(r[11]), nhapId: String(r[12]), nhapTen: String(r[13]),
+    thang: cpThang_(r[2], r[3]), maPB: String(r[4]).trim(), pb: String(r[5]), nhom: String(r[6]), noiDung: String(r[7]), soTien: Number(r[8]) || 0,
+    soToTrinh: String(r[9] || ''), duyetId: String(r[10]).trim(), duyetTen: String(r[11]), nhapId: String(r[12]).trim(), nhapTen: String(r[13]),
     tt: String(r[14]), lyDoHuy: String(r[15] || ''), huyBoi: String(r[16] || ''), huyLuc: fd(r[17], 'dd/MM/yyyy HH:mm')
   })).filter(x => x.ma);
+}
+/** Tháng yyyy-MM của 1 dòng nhật ký: ưu tiên Ngày phê duyệt; cột Tháng có thể bị Google Sheets tự đổi thành ngày */
+function cpThang_(ngayDuyet, thang) {
+  if (ngayDuyet instanceof Date) return Utilities.formatDate(ngayDuyet, TZ, 'yyyy-MM');
+  if (thang instanceof Date) return Utilities.formatDate(thang, TZ, 'yyyy-MM');
+  const m = String(thang || '').trim().match(/^(\d{4})-(\d{1,2})/);
+  return m ? m[1] + '-' + m[2].padStart(2, '0') : String(thang || '').trim();
 }
 function cpUsed_(rows, approverId, month) {
   return rows.filter(x => x.tt === CP_ST.OK && x.duyetId === approverId && x.thang === month).reduce((s, x) => s + x.soTien, 0);
@@ -926,13 +933,18 @@ function apiCpAdd_(b) {
   try {
     const cp = cpFile_(), all = cpRows_(cp), ap = cfg.duyet[role.approverId];
     const used = cpUsed_(all, role.approverId, month);
+    const dup = all.find(x => x.tt === CP_ST.OK && x.pb === user.pb && x.ngayDuyet === ngay && x.soTien === soTien &&
+      x.noiDung.trim().toLowerCase() === noiDung.toLowerCase());
+    if (dup && !d.xacNhanTrung)
+      return { error: 'duplicate', message: 'Đã có khoản giống hệt (cùng ngày, số tiền, nội dung) nhập lúc ' + dup.nhapLuc + ' bởi ' + dup.nhapTen + '. Nếu đây là khoản khác, bấm "Vẫn lưu".' };
     if (ap.limit && used + soTien > ap.limit)
       return { error: 'over_limit', remaining: ap.limit - used, message: 'Vượt hạn mức phê duyệt tháng ' + month.slice(5) + '/' + month.slice(0, 4) + ' của ' + ap.ten + '. Còn lại ' + fmt_(ap.limit - used) + ' đ.' };
     const pb = phongBanMap_()[user.pb] || {};
     const ma = 'CP' + Utilities.formatDate(new Date(), TZ, 'yyMMddHHmmss') + Math.floor(Math.random() * 90 + 10);
     const sh = cp.getSheetByName(CP_SH.NK);
-    sh.appendRow([ma, new Date(), new Date(ngay + 'T12:00:00+07:00'), month, pb.ma || '', user.pb, nhom, noiDung, soTien, soToTrinh,
-      role.approverId, ap.ten, user.id, user.hoTen, CP_ST.OK, '', '', '']);
+    const txt = v => v === '' || v === null || v === undefined ? '' : "'" + String(v);
+    sh.appendRow([ma, new Date(), new Date(ngay + 'T12:00:00+07:00'), txt(month), txt(pb.ma || ''), user.pb, nhom, txt(noiDung), soTien, txt(soToTrinh),
+      txt(role.approverId), ap.ten, txt(user.id), user.hoTen, CP_ST.OK, '', '', '']);
     log_(user.id, user.hoTen, 'Nhập chi phí', CP_APP, ma + ' · ' + fmt_(soTien) + ' đ · duyệt: ' + ap.ten, '');
   } finally { lock.releaseLock(); }
   return apiCpLoad_({ token: b.token, month });
