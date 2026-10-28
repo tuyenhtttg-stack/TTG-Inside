@@ -1,6 +1,6 @@
 /**
  * KHÔNG GIAN SỐ NỘI BỘ (TTG Inside) – Máy chủ phân quyền
- * VietinBank Chi nhánh Tây Tiền Giang · phiên bản 1.4.1 · 27/10/2026
+ * VietinBank Chi nhánh Tây Tiền Giang · phiên bản 1.5.0 · 28/10/2026
  *
  * Script này GẮN VỚI file Google Sheet phân quyền (Tiện ích mở rộng → Apps Script), làm 2 việc:
  *   1. Menu quản trị + tự tick quyền theo vai trò ngay trong Sheet.
@@ -18,6 +18,8 @@
  *   ADMIN_EMAIL        : email nhận cảnh báo (mặc định email chủ script)
  *   ANTHROPIC_API_KEY  : (giai đoạn 2) khóa Claude API cho trợ lý AI; để trống = tắt AI
  *   MODEL, DAILY_LIMIT, PER_MINUTE_LIMIT : (giai đoạn 2) như hướng dẫn cũ
+ *   BT_FOLDER_ID       : (v1.5.0) ID thư mục BanTin chứa file BanTin_YYYY-MM-DD.json (tự đặt khi chạy Cài đặt Bản tin sáng)
+ * Manifest appsscript.json (v1.5.0) khai báo quyền tối thiểu, Drive chỉ ĐỌC (drive.readonly).
  */
 
 const TZ = 'Asia/Ho_Chi_Minh';
@@ -50,6 +52,7 @@ function onOpen() {
     .addItem('Cài đặt Phòng/Ban', 'caiDatPhongBan')
     .addItem('Cài đặt / cập nhật Quản lý chi phí (I003, I004)', 'caiDatChiPhi')
     .addItem('Đồng bộ danh mục sang file chi phí', 'dongBoChiPhi')
+    .addItem('Cài đặt Bản tin sáng (I005)', 'caiDatBanTin')
     .addItem('Thêm ứng dụng mới…', 'themUngDung')
     .addItem('Sinh thêm ID dự phòng…', 'sinhThemID')
     .addItem('Áp dụng lại quyền theo vai trò (tất cả)', 'apDungLaiVaiTro')
@@ -350,6 +353,8 @@ function doPost(e) {
       case 'cp_cancel': return json_(apiCpCancel_(body));
       case 'cp_report': return json_(apiCpReport_(body));
       case 'cp_ai':     return json_(apiCpAi_(body));
+      case 'bt_list':   return json_(apiBtList_(body));
+      case 'bt_get':    return json_(apiBtGet_(body));
       default:       return json_({ error: 'bad_request' });
     }
   } catch (err) {
@@ -1138,4 +1143,78 @@ function cpSummary(d) {
   if (d.top.length) { L.push('CÁC KHOẢN LỚN NHẤT TRONG THÁNG:'); d.top.slice(0, 5).forEach(t => L.push('- ' + t.noiDung + ' (' + t.pb + ', ' + t.nhom + '): ' + cpFmt(t.soTien))); }
   if (d.lapLai.length) { L.push('KHOẢN LẶP LẠI TRONG 3 THÁNG GẦN NHẤT:'); d.lapLai.forEach(r => L.push('- ' + r.noiDung + ': ' + r.n + ' lần, tổng ' + cpFmt(r.sum) + ' (' + r.pbs.join(', ') + ')')); }
   return L.join('\n');
+}
+
+/* =====================================================================
+   PHẦN 6 – BẢN TIN SÁNG (ứng dụng I005) – từ v1.5.0
+   Bản tin do tác vụ định kỳ của Claude tạo lúc 06:19 hằng ngày, lưu file BanTin_YYYY-MM-DD.json
+   vào thư mục BanTin (trong KhongGianSoNoiBo). Script chỉ ĐỌC thư mục này (quyền drive.readonly).
+   ===================================================================== */
+const BT_APP = 'I005', BT_TEN = 'Bản tin sáng';
+const BT_FOLDER_DEFAULT = '1WpMZsPOTvPcJOaSfDqKlTZbuKbNK9tKB';   // thư mục KhongGianSoNoiBo/BanTin
+const BT_VAI_TRO_MO = ['Giám đốc', 'Phó Giám đốc', 'Quản trị hệ thống', 'Trưởng phòng', 'Phó phòng'];
+const BT_SO_NGAY = 30, BT_FILE_RE = /^BanTin_(\d{4}-\d{2}-\d{2})\.json$/;
+
+/** Menu: đăng ký I005, kiểm tra thư mục bản tin. Chạy lại an toàn. */
+function caiDatBanTin() {
+  const ui = SpreadsheetApp.getUi(), props = PropertiesService.getScriptProperties();
+  if (!props.getProperty('BT_FOLDER_ID')) props.setProperty('BT_FOLDER_ID', BT_FOLDER_DEFAULT);
+  let folder;
+  try { folder = DriveApp.getFolderById(props.getProperty('BT_FOLDER_ID')); }
+  catch (e) { ui.alert(BT_TEN, 'Không mở được thư mục bản tin (BT_FOLDER_ID = ' + props.getProperty('BT_FOLDER_ID') + ').\nKiểm tra lại ID thư mục trong Thuộc tính tập lệnh.', ui.ButtonSet.OK); return; }
+  const isNew = dangKyUngDung_(BT_APP, BT_TEN, 'Bản tin sáng phục vụ điều hành: địa bàn, chính sách, thị trường, gợi ý điều hành', BT_VAI_TRO_MO);
+  CacheService.getScriptCache().remove('bt_idx');
+  lamMoiBoNhoDem(true);
+  const idx = btIndex_(), ds = Object.keys(idx).sort();
+  ui.alert(BT_TEN,
+    (isNew ? 'Đã đăng ký ' + BT_APP + ' – ' + BT_TEN + ', tick quyền: ' + BT_VAI_TRO_MO.join(', ') + '.\n\n' : BT_APP + ' đã có, giữ nguyên quyền.\n\n') +
+    'Thư mục bản tin: ' + folder.getName() + '\nSố bản tin trong ' + BT_SO_NGAY + ' ngày: ' + ds.length +
+    (ds.length ? ' (mới nhất ' + ds[ds.length - 1].split('-').reverse().join('/') + ')' : '') +
+    '\n\nCuối cùng: Triển khai → Quản lý triển khai → Phiên bản mới.', ui.ButtonSet.OK);
+}
+
+/** Danh mục bản tin 30 ngày: { 'YYYY-MM-DD': {id, t} }. Trùng ngày thì lấy file sửa sau cùng. Đệm 10 phút. */
+function btIndex_() {
+  const cache = CacheService.getScriptCache(), hit = cache.get('bt_idx');
+  if (hit) return JSON.parse(hit);
+  const from = Utilities.formatDate(new Date(Date.now() - BT_SO_NGAY * 864e5), TZ, 'yyyy-MM-dd'), out = {};
+  const it = DriveApp.getFolderById(PropertiesService.getScriptProperties().getProperty('BT_FOLDER_ID') || BT_FOLDER_DEFAULT).getFiles();
+  while (it.hasNext()) {
+    const f = it.next(), m = f.getName().match(BT_FILE_RE);
+    if (!m || m[1] < from || f.isTrashed()) continue;
+    const t = f.getLastUpdated().getTime();
+    if (!out[m[1]] || out[m[1]].t < t) out[m[1]] = { id: f.getId(), t: t };
+  }
+  cache.put('bt_idx', JSON.stringify(out), 600);
+  return out;
+}
+/** Đọc 1 bản tin (đệm 6 giờ theo phiên bản file) */
+function btDoc_(ngay, meta) {
+  const cache = CacheService.getScriptCache(), key = 'bt_' + ngay + '_' + meta.t, hit = cache.get(key);
+  if (hit) return JSON.parse(hit);
+  let d;
+  try { d = JSON.parse(DriveApp.getFileById(meta.id).getBlob().getDataAsString('UTF-8')); } catch (e) { return null; }
+  if (!d || d.phienBan !== 2 || !Array.isArray(d.diemNhan)) return null;
+  const s = JSON.stringify(d);
+  if (Utilities.newBlob(s).getBytes().length < 95000) cache.put(key, s, 21600); // CacheService tối đa 100 KB/khóa
+  return d;
+}
+function btGuard_(b) {
+  const v = checkToken_(b.token); if (v.error) return v;
+  if (!userApps_(v.user).includes(BT_APP)) return { error: 'forbidden' };
+  return v;
+}
+/** Danh sách ngày có bản tin + nội dung bản tin mới nhất (thẻ trang chủ dùng diemNhan) */
+function apiBtList_(b) {
+  const v = btGuard_(b); if (v.error) return v;
+  const idx = btIndex_(), ds = Object.keys(idx).sort().reverse();
+  for (const n of ds) { const d = btDoc_(n, idx[n]); if (d) return { ok: true, ngay: ds, latest: d }; }
+  return { ok: true, ngay: ds, latest: null };
+}
+function apiBtGet_(b) {
+  const v = btGuard_(b); if (v.error) return v;
+  const ngay = String(b.ngay || ''), idx = btIndex_();
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(ngay) || !idx[ngay]) return { error: 'not_found' };
+  const d = btDoc_(ngay, idx[ngay]);
+  return d ? { ok: true, doc: d } : { error: 'not_found' };
 }

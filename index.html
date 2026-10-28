@@ -301,6 +301,58 @@ footer .shell{display:flex;flex-direction:column;align-items:center;gap:6px;padd
 @media (prefers-reduced-motion:no-preference){.view{animation:fade .2s ease}}
 @media (prefers-reduced-motion:reduce){.shake{animation:none}}
 @keyframes fade{from{opacity:.6}to{opacity:1}}
+/* ===== Bản tin sáng (I005) ===== */
+.bt-home{background:linear-gradient(160deg,#005993 0%,#0B6FAE 100%);color:#fff;border-radius:18px;padding:16px;display:flex;flex-direction:column;gap:10px;border:0;text-align:left;font:inherit;cursor:pointer;width:100%}
+.bt-home .bt-k{display:flex;align-items:center;gap:8px;font-size:12px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--vtb-xanh-nhat)}
+.bt-home .bt-k svg{width:18px;height:18px;fill:none;stroke:currentColor;stroke-width:1.8}
+.bt-home h3{margin:0;font-size:17px;line-height:1.3}
+.bt-home ul{margin:0;padding-left:18px;display:flex;flex-direction:column;gap:6px;font-size:14px;line-height:1.45}
+.bt-home ul li::marker{color:var(--vtb-xanh-nhat)}
+.bt-home .bt-more{align-self:flex-start;font-weight:700;font-size:14px;display:flex;align-items:center;gap:4px}
+.bt-home .bt-more svg{width:16px;height:16px;fill:none;stroke:#fff;stroke-width:2.2}
+.bt-home.empty{background:var(--surface);color:var(--ink);border:1px dashed var(--line)}
+.bt-home.empty .bt-k{color:var(--muted)}
+.bt-head{display:flex;gap:10px;align-items:flex-end}
+.bt-head .field{flex:1;min-width:0}
+.bt-jump{display:flex;gap:8px;overflow-x:auto;scrollbar-width:none;margin:0 -16px;padding:2px 16px}
+.bt-jump::-webkit-scrollbar{display:none}
+.bt-jump button{cursor:pointer;flex:none;border:1px solid var(--line);background:var(--surface);border-radius:999px;padding:8px 12px;font:600 13px var(--font);color:var(--vtb-xanh-dam);text-decoration:none;white-space:nowrap}
+.bt-hl{background:var(--vtb-nen-sang);border-color:transparent}
+.bt-hl ol{margin:0;padding-left:20px;display:flex;flex-direction:column;gap:10px;font-size:15px;line-height:1.5}
+.bt-hl ol li::marker{font-weight:700;color:var(--vtb-xanh-dam)}
+.bt-dh{display:flex;flex-direction:column;gap:6px;border-top:1px solid var(--line);padding-top:12px}
+.bt-dh:first-of-type{border-top:0;padding-top:0}
+.bt-dh .bt-row{display:flex;gap:6px;flex-wrap:wrap;align-items:center}
+.bt-dh p{margin:0;font-size:14.5px;line-height:1.5}
+.bt-dh small{font-size:12.5px;color:var(--muted)}
+.bt-pri{font-size:11px;font-weight:700;border-radius:999px;padding:3px 8px;background:#FDE7EE;color:var(--vtb-do)}
+.bt-pri.mid{background:var(--warn-bg);color:var(--warn-ink)}
+.bt-luuy{margin:0;padding-left:18px;font-size:14px;line-height:1.5;display:flex;flex-direction:column;gap:6px}
+.bt-idx{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.bt-idx .kpi a{font-size:11.5px;color:var(--muted)}
+.bt-cal{display:flex;flex-direction:column;gap:0}
+.bt-cal div{display:grid;grid-template-columns:62px 1fr;gap:10px;padding:10px 0;border-top:1px solid var(--line);font-size:14px;line-height:1.4}
+.bt-cal div:first-child{border-top:0;padding-top:0}
+.bt-cal b{font-variant-numeric:tabular-nums;color:var(--vtb-xanh-dam);display:flex;flex-direction:column}
+.bt-cal b small{font-weight:600;color:var(--muted);font-size:11.5px}
+.bt-cal b small.soon{color:var(--vtb-do)}
+.bt-cal span i{font-style:normal;font-weight:700}
+.bt-sec summary{list-style:none;display:flex;align-items:center;justify-content:space-between;gap:10px;cursor:pointer}
+.bt-sec summary::-webkit-details-marker{display:none}
+.bt-sec summary h2{font-size:17px}
+.bt-sec summary .badge{margin-left:auto}
+.bt-sec summary .chev{width:20px;height:20px;fill:none;stroke:var(--muted);stroke-width:2;transition:transform .2s;transform:rotate(90deg)}
+.bt-sec[open] summary .chev{transform:rotate(-90deg)}
+.bt-sec>div{display:flex;flex-direction:column;gap:0;margin-top:12px}
+.bt-it{display:flex;flex-direction:column;gap:6px;padding:12px 0;border-top:1px solid var(--line)}
+.bt-it:first-child{border-top:0;padding-top:0}
+.bt-it h3{margin:0;font-size:15px;line-height:1.4;color:var(--ink)}
+.bt-it p{margin:0;font-size:14px;line-height:1.55;color:var(--ink)}
+.bt-it .bt-tac{background:var(--page);border-left:3px solid var(--vtb-xanh-dam);border-radius:0 8px 8px 0;padding:8px 10px;font-size:13.5px}
+.bt-meta{display:flex;flex-wrap:wrap;gap:4px 10px;font-size:12.5px;color:var(--muted);align-items:center}
+.bt-meta a{color:var(--vtb-xanh-dam);font-weight:600}
+.bt-note{font-size:12.5px;color:var(--muted);text-align:center;margin:0}
+.bt-anchor{scroll-margin-top:120px}
 :root{padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
 </style>
 </head>
@@ -524,6 +576,22 @@ footer .shell{display:flex;flex-direction:column;align-items:center;gap:6px;padd
  </div>
 </section>
 
+<!-- ============ BẢN TIN SÁNG (I005) ============ -->
+<section class="view" id="v-bantin" hidden>
+ <div class="stack">
+  <div class="card">
+   <div class="bt-head">
+    <div class="field"><label class="lbl" for="btDate">Bản tin ngày</label><select class="inp" id="btDate"></select></div>
+    <button class="btn ghost" id="btReload" aria-label="Tải lại" style="flex:none;min-width:48px;padding:0 12px"><svg class="i" viewBox="0 0 24 24"><path d="M20 11a8 8 0 1 0-2.3 5.7"/><path d="M20 4v7h-7"/></svg></button>
+   </div>
+   <p class="hint" id="btUpd" style="margin:0"></p>
+   <div class="bt-jump" id="btJump"></div>
+  </div>
+  <div class="callout info" id="btMsg" hidden><p></p></div>
+  <div id="btBody" class="stack"></div>
+ </div>
+</section>
+
 <!-- ============ BÁO CÁO CHI PHÍ (I004) ============ -->
 <section class="view" id="v-cp-baocao" hidden>
  <div class="stack">
@@ -618,7 +686,7 @@ footer .shell{display:flex;flex-direction:column;align-items:center;gap:6px;padd
 /* =====================================================================
    CẤU HÌNH — chỉnh tại đây khi triển khai
    ===================================================================== */
-const APP_VERSION='1.4.1 · 27/10/2026';
+const APP_VERSION='1.5.0 · 28/10/2026';
 // Tên bộ công cụ (song ngữ)
 const SUITE={vi:'Không Gian Số Nội Bộ',en:'TTG Inside'};
 
@@ -634,9 +702,13 @@ const ICONS={
   vcard:'<svg class="i" viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="14" rx="2"/><circle cx="9" cy="11" r="2.2"/><path d="M5.5 16.5c.8-1.8 2-2.5 3.5-2.5s2.7.7 3.5 2.5M15 10h3M15 13h3"/></svg>',
   text:'<svg class="i" viewBox="0 0 24 24"><path d="M5 6h14M5 10h14M5 14h9M5 18h6"/></svg>',
   chart:'<svg class="i" viewBox="0 0 24 24"><path d="M4 20h16"/><rect x="6" y="11" width="3" height="7" rx="1"/><rect x="11" y="7" width="3" height="11" rx="1"/><rect x="16" y="13" width="3" height="5" rx="1"/><path d="M5 8l5-4 4 3 5-4"/></svg>',
+  news:'<svg class="i" viewBox="0 0 24 24"><rect x="3" y="4" width="15" height="16" rx="2"/><path d="M18 8h3v10a2 2 0 0 1-2 2h-1M7 8h7M7 12h7M7 16h4"/></svg>',
   ledger:'<svg class="i" viewBox="0 0 24 24"><rect x="4" y="3" width="16" height="18" rx="2"/><path d="M8 8h8M8 12h5M8 16h3"/><path d="M15.5 14.5l1.5 1.5 3-3"/></svg>'
 };
 const TOOLKIT=[
+  {id:'tt',vi:'Thông tin',en:'Briefing',tools:[
+    {id:'bantin',app:'I005',title:'Bản tin sáng',desc:'Địa bàn, chính sách, thị trường và gợi ý điều hành mỗi sáng.',icon:'news'}
+  ]},
   {id:'qr',vi:'Mã QR',en:'QR Codes',tools:[
     {id:'qr-wifi',app:'I001',title:'Tạo QR kết nối WiFi',desc:'Từng bước tạo thẻ QR để khách quét là vào WiFi, không cần nhập mật khẩu.',icon:'wifi'},
     {id:'qr-tuychon',app:'I002',title:'Tạo QR theo yêu cầu',desc:'Mã cho link, số điện thoại, tin nhắn, email, danh thiếp, văn bản.',icon:'qrchat'}
@@ -713,8 +785,9 @@ function renderHome(){
   const groups=TOOLKIT.map(g=>({...g,tools:g.tools.filter(canUse)})).filter(g=>g.tools.length);
   $('#noApps').hidden=groups.length>0;
   $('#homeGroups').innerHTML=groups.map(g=>`<div class="group"><div class="group-h"><h2>${esc(g.vi)}</h2><span>${esc(g.en)}</span></div>
-  <div class="tiles">${g.tools.map(t=>`<button class="tile" data-go="${t.id}"><span class="ic">${ICONS[t.icon]||''}</span><span class="tx"><b>${esc(t.title)}</b><small>${esc(t.desc)}</small></span>${CHEV}</button>`).join('')}</div></div>`).join('');
+  <div class="tiles">${g.tools.map(t=>t.id==='bantin'?'<button class="bt-home" id="btHome" data-go="bantin"></button>':`<button class="tile" data-go="${t.id}"><span class="ic">${ICONS[t.icon]||''}</span><span class="tx"><b>${esc(t.title)}</b><small>${esc(t.desc)}</small></span>${CHEV}</button>`).join('')}</div></div>`).join('');
   $('#homeGroups').querySelectorAll('[data-go]').forEach(el=>el.addEventListener('click',()=>go(el.dataset.go)));
+  if($('#btHome')){btHome();btLoadList()} // thẻ bản tin sáng (I005)
 }
 function renderStats(){
   const st=S?.stats;$('#stats').hidden=!st;
@@ -779,7 +852,7 @@ $('#loginForm').addEventListener('submit',async e=>{
   loginErr((LOGIN_ERR[r.error]||(()=>r.message||'Máy chủ đang bận, thử lại sau ít phút.'))(r));uid.focus();
 });
 function logout(reason){
-  saveSess(null);
+  saveSess(null);Object.assign(BT,{ngay:[],docs:{},latest:null,cur:null,at:0});
   showLogin({expired:'Phiên đăng nhập đã hết hạn. Nhập lại mã ID.',revoked:'Tài khoản đã bị khóa hoặc thay đổi. Liên hệ cán bộ quản trị.'}[reason]||'');
 }
 $('#logoutBtn').onclick=()=>{logout();toast('Đã đăng xuất')};
@@ -795,6 +868,111 @@ document.addEventListener('visibilitychange',()=>{
   if(S.day!==VN_DAY())return logout('expired');
   if(Date.now()-(S.checked||0)>30*60e3)refreshSession();
 });
+
+/* =====================================================================
+   BẢN TIN SÁNG (I005) – đọc file BanTin_YYYY-MM-DD.json qua Apps Script (bt_list, bt_get)
+   ===================================================================== */
+const BT={ngay:[],docs:{},latest:null,cur:null,at:0,busy:null};
+const BT_THU=['Chủ nhật','Thứ Hai','Thứ Ba','Thứ Tư','Thứ Năm','Thứ Sáu','Thứ Bảy'];
+const btD=s=>{const m=/^(\d{4})-(\d{2})-(\d{2})$/.exec(s||'');return m?`${m[3]}/${m[2]}/${m[1]}`:String(s||'')};
+const btThu=s=>/^\d{4}-\d{2}-\d{2}$/.test(s||'')?BT_THU[new Date(s+'T12:00:00Z').getUTCDay()]:'';
+const btToday=()=>new Intl.DateTimeFormat('en-CA',{timeZone:'Asia/Ho_Chi_Minh'}).format(new Date());
+const btUrl=u=>/^https:\/\/[^\s"'<>]+$/.test(u||'')?u:'';
+const btSrc=a=>(a||[]).filter(n=>btUrl(n.url)).map(n=>`<a href="${esc(n.url)}" target="_blank" rel="noopener noreferrer">${esc(n.ten||'Nguồn')}</a>`).join(' · ');
+const BT_ICON='<svg viewBox="0 0 24 24"><rect x="3" y="4" width="15" height="16" rx="2"/><path d="M18 8h3v10a2 2 0 0 1-2 2h-1M7 8h7M7 12h7M7 16h4"/></svg>';
+function btCached(){try{const x=JSON.parse(store.get('bt.latest')||'null');return x&&x.phienBan===2?x:null}catch(e){return null}}
+function btApi(action,data={}){return DEMO?btDemo(action,data):api(action,{token:S?.token,...data})}
+function btErr(r){if(r.error==='expired'||r.error==='revoked'){logout(r.error);return true}if(r.error==='forbidden'){refreshSession();return true}return false}
+
+/** Lấy danh sách ngày + bản tin mới nhất (đệm 10 phút trong phiên) */
+async function btLoadList(force){
+  if(!force&&BT.at&&Date.now()-BT.at<6e5)return true;
+  if(BT.busy)return BT.busy;
+  BT.busy=(async()=>{const r=await btApi('bt_list');BT.busy=null;
+    if(!r.ok){btErr(r);return false}
+    BT.ngay=r.ngay||[];BT.latest=r.latest||null;BT.at=Date.now();
+    if(r.latest){BT.docs[r.latest.ngay]=r.latest;store.set('bt.latest',JSON.stringify(r.latest))}
+    btHome();return true})();
+  return BT.busy;
+}
+/** Thẻ bản tin ở trang chủ: 3 điểm nhấn của bản tin mới nhất */
+function btHome(){
+  const el=$('#btHome');if(!el)return;
+  const d=BT.latest||btCached();
+  if(!d){el.className='bt-home empty';el.innerHTML=`<span class="bt-k">${BT_ICON}Bản tin sáng · Briefing</span><h3 style="font-size:15px">Bản tin hôm nay được cập nhật khoảng 06:30.</h3>`;return}
+  const today=d.ngay===btToday();
+  el.className='bt-home';
+  el.innerHTML=`<span class="bt-k">${BT_ICON}${today?'Bản tin sáng hôm nay':'Bản tin gần nhất'} · ${esc(btD(d.ngay))}</span>
+    <ul>${(d.diemNhan||[]).slice(0,3).map(x=>`<li>${esc(x)}</li>`).join('')}</ul>
+    <span class="bt-more">Đọc toàn bộ bản tin<svg viewBox="0 0 24 24"><path d="M9 6l6 6-6 6"/></svg></span>`;
+}
+async function btOpen(){
+  const sel=$('#btDate');
+  if(BT.latest&&!BT.cur)btRender(BT.latest);else if(!BT.cur){const c=btCached();if(c)btRender(c);else btMsg('Đang tải bản tin…')}
+  const ok=await btLoadList();
+  if(!ok){if(!BT.cur)btMsg('Không tải được bản tin. Kiểm tra mạng rồi bấm tải lại.');return}
+  sel.innerHTML=BT.ngay.map(n=>`<option value="${n}">${btThu(n)}, ${btD(n)}</option>`).join('')||'<option value="">Chưa có bản tin</option>';
+  const want=BT.cur&&BT.ngay.includes(BT.cur.ngay)?BT.cur.ngay:BT.latest?.ngay;
+  if(want){sel.value=want;btRender(BT.docs[want]||BT.latest)}
+  else{BT.cur=null;$('#btBody').innerHTML='';$('#btJump').innerHTML='';$('#btUpd').textContent='';btMsg('Chưa có bản tin trong 30 ngày gần nhất. Bản tin mới được cập nhật khoảng 06:30 mỗi sáng.')}
+}
+async function btPick(ngay){
+  if(!ngay)return;
+  if(BT.docs[ngay])return btRender(BT.docs[ngay]);
+  btMsg('Đang tải bản tin ngày '+btD(ngay)+'…');
+  const r=await btApi('bt_get',{ngay});
+  if(r.ok){BT.docs[ngay]=r.doc;btRender(r.doc)}
+  else if(!btErr(r))btMsg(r.error==='not_found'?'Không đọc được bản tin ngày '+btD(ngay)+'. Chọn ngày khác.':'Không tải được bản tin. Kiểm tra mạng rồi thử lại.');
+}
+function btMsg(t){$('#btMsg').hidden=!t;$('#btMsg p').textContent=t||''}
+
+/** Vẽ toàn bộ bản tin */
+function btRender(d){
+  if(!d)return;BT.cur=d;btMsg('');
+  const parts=[],jump=[];
+  const sec=(id,label,html)=>{jump.push([id,label]);parts.push(html.replace('<div class="card','<div id="'+id+'" class="bt-anchor card'))};
+  // 1. Điểm nhấn
+  sec('bt-hl','Điểm nhấn',`<div class="card bt-hl"><h2>Điểm nhấn trong ngày</h2><ol>${(d.diemNhan||[]).map(x=>`<li>${esc(x)}</li>`).join('')}</ol></div>`);
+  // 2. Lưu ý & gợi ý điều hành (hiển thị cho mọi người xem bản tin)
+  const dh=d.dinhHuong||[],ly=d.luuY||[];
+  if(dh.length||ly.length)sec('bt-dh','Lưu ý điều hành',`<div class="card"><h2>Lưu ý và gợi ý điều hành</h2>
+    ${dh.map(h=>`<div class="bt-dh"><div class="bt-row"><span class="badge">${esc(h.chuDe||'')}</span><span class="bt-pri${h.uuTien==='Cao'?'':' mid'}">Ưu tiên ${esc((h.uuTien||'').toLowerCase())}</span></div>
+      <p>${esc(h.noiDung||'')}</p>${h.canCu?`<small>Căn cứ: ${esc(h.canCu)}</small>`:''}</div>`).join('')}
+    ${ly.length?`<ul class="bt-luuy">${ly.map(x=>`<li>${esc(x)}</li>`).join('')}</ul>`:''}</div>`);
+  // 3. Chỉ số thị trường
+  const cs=(d.chiSo||[]).filter(c=>c&&c.ten&&c.giaTri);
+  if(cs.length)sec('bt-idx','Chỉ số',`<div class="card"><h2>Chỉ số thị trường</h2><div class="bt-idx">${cs.map(c=>`<div class="kpi"><span>${esc(c.ten)}</span><b>${esc(c.giaTri)}</b>
+    ${c.thayDoi?`<small>${esc(c.thayDoi)}</small>`:''}<small>${esc(btD(c.ngay))}${btUrl(c.nguon?.url)?` · <a href="${esc(c.nguon.url)}" target="_blank" rel="noopener noreferrer">${esc(c.nguon.ten||'Nguồn')}</a>`:''}</small></div>`).join('')}</div></div>`);
+  // 4. Lịch văn bản có hiệu lực
+  const lich=(d.lichHieuLuc||[]).slice().sort((a,b)=>String(a.ngay).localeCompare(String(b.ngay)));
+  if(lich.length){const t0=new Date(btToday()+'T00:00:00Z');
+    sec('bt-cal','Lịch hiệu lực',`<div class="card"><h2>Văn bản sắp có hiệu lực</h2><div class="bt-cal">${lich.map(l=>{
+      const n=/^\d{4}-\d{2}-\d{2}$/.test(l.ngay)?Math.round((new Date(l.ngay+'T00:00:00Z')-t0)/864e5):null;
+      const rel=n===null?'':n<0?'đã hiệu lực':n===0?'hôm nay':'còn '+n+' ngày';
+      return `<div><b>${esc(btD(l.ngay).slice(0,5))}<small class="${n!==null&&n>=0&&n<=7?'soon':''}">${rel}</small></b><span><i>${esc(l.vanBan||'')}</i> – ${esc(l.noiDung||'')}</span></div>`}).join('')}</div></div>`)}
+  // 5. Các mục tin
+  (d.mucTin||[]).filter(m=>m.tin&&m.tin.length).forEach((m,i)=>sec('bt-m-'+i,m.ten,`<details class="card bt-sec"${i<2?' open':''}><summary><h2>${esc(m.ten)}</h2><span class="badge">${m.tin.length} tin</span>${CHEV}</summary><div>
+    ${m.tin.map(t=>`<article class="bt-it"><h3>${esc(t.tieuDe||'')}</h3>
+      ${t.nhan||t.ngay?`<div class="bt-meta">${t.nhan?`<span class="bt-pri mid">${esc(t.nhan)}</span>`:''}<span>${esc(btD(t.ngay))}</span></div>`:''}
+      <p>${esc(t.tomTat||'')}</p>${t.tacDong?`<p class="bt-tac"><b>Tác động:</b> ${esc(t.tacDong)}</p>`:''}
+      ${btSrc(t.nguon)?`<div class="bt-meta">Nguồn: ${btSrc(t.nguon)}</div>`:''}</article>`).join('')}</div></details>`.replace('<details class="card','<details id="bt-m-'+i+'" class="bt-anchor card')));
+  $('#btBody').innerHTML=parts.join('')+(d.ghiChu?`<p class="bt-note">${esc(d.ghiChu)}</p>`:'');
+  $('#btJump').innerHTML=jump.map(([id,l])=>`<button data-to="${id}">${esc(l)}</button>`).join('');
+  $('#btJump').querySelectorAll('button').forEach(b=>b.onclick=()=>{const t=$('#'+b.dataset.to);if(t){if(t.tagName==='DETAILS')t.open=true;t.scrollIntoView({behavior:'smooth',block:'start'})}});
+  $('#btUpd').textContent=`${btThu(d.ngay)}, ${btD(d.ngay)}${d.taoLuc?' · tổng hợp lúc '+d.taoLuc:''}${DEMO?' · dữ liệu xem thử':''}`;
+  if($('#btDate').value!==d.ngay&&[...$('#btDate').options].some(o=>o.value===d.ngay))$('#btDate').value=d.ngay;
+}
+$('#btDate').onchange=e=>btPick(e.target.value);
+$('#btReload').onclick=async()=>{BT.at=0;BT.docs={};const n=$('#btDate').value;await btOpen();if(n&&n!==BT.cur?.ngay&&BT.ngay.includes(n)){$('#btDate').value=n;btPick(n)}};
+window.addEventListener('ttg:view',e=>{if(e.detail==='bantin')btOpen()});
+
+/* Xem thử (không có máy chủ): bản tin mẫu ngày 27/10/2026 */
+const BT_SAMPLE={"phienBan":2,"ngay":"2026-10-27","tieuDe":"Bản tin sáng – Thứ Ba, 27/10/2026","taoLuc":"06:22","diemNhan":["NHNN yêu cầu giảm tối thiểu 0,5%/năm lãi suất huy động bình quân kỳ hạn từ 6 tháng (Công văn 9736/NHNN-CSTT, 21/10) và giảm 1,5–2%/năm lãi suất cho vay sản xuất kinh doanh; ngân hàng không thực hiện có thể bị giao thấp chỉ tiêu tăng trưởng tín dụng.","Từ 01/11/2026, Thông tư 46/2026/TT-NHNN yêu cầu có sự đồng ý rõ ràng, kiểm chứng được của khách hàng trước khi chia sẻ thông tin tín dụng với CIC.","Đồng Tháp 10 tháng: 23 dự án mới (10.778 tỷ đồng), 2.577 doanh nghiệp thành lập mới; dư nợ trên địa bàn khoảng 262.966 tỷ đồng, huy động 231.079 tỷ đồng."],"chiSo":[],"mucTin":[{"id":"dongthap","ten":"Tỉnh Đồng Tháp","tin":[{"tieuDe":"Kinh tế – xã hội 10 tháng tăng khá, quyết tâm đạt 8,21%","tomTat":"Chỉ số sản xuất công nghiệp tăng 13,47%; tổng mức bán lẻ hàng hóa và dịch vụ 160.300 tỷ đồng (+15,55%); xuất khẩu khoảng 8,41 tỷ USD (+7,51%, đạt 84% kế hoạch). Giày dép, may mặc, thuốc viên giảm so với cùng kỳ.","ngay":"2026-10-26","tacDong":"Nhu cầu vốn lưu động của doanh nghiệp thương mại, công nghiệp tiếp tục tăng; theo dõi khách hàng ngành giày dép, may mặc.","nguon":[{"ten":"Báo Thanh Tra","url":"https://thanhtra.com.vn/doi-noi-52FA82FBF/dong-thap-tao-da-tang-truong-tu-nhung-ket-qua-kinh-te-xa-hoi-10-thang-nam-2026-cce973823.html"},{"ten":"Báo Pháp Luật VN","url":"https://baophapluat.vn/dong-thap-duy-tri-da-tang-truong-tap-trung-thao-go-diem-nghen-cuoi-nam.html"}]},{"tieuDe":"Thu hút 23 dự án mới, gần 14.923 tỷ đồng vốn mới và tăng thêm","tomTat":"Tính đến 26/10, tỉnh có 23 dự án mới (10.778 tỷ đồng) và 21 dự án tăng vốn (khoảng 4.145 tỷ đồng); 2.577 doanh nghiệp thành lập mới (85,9% kế hoạch), 399 doanh nghiệp hoạt động trở lại. Tỉnh có 910 sản phẩm OCOP, 4 sản phẩm đạt 5 sao.","ngay":"2026-10-26","tacDong":"Nguồn khách hàng doanh nghiệp mới cho tín dụng, tài khoản thanh toán và trả lương.","nguon":[{"ten":"Báo Pháp Luật VN","url":"https://baophapluat.vn/dong-thap-duy-tri-da-tang-truong-tap-trung-thao-go-diem-nghen-cuoi-nam.html"}]},{"tieuDe":"Nhiệm vụ tháng 11: dồn sức giải ngân đầu tư công, chuẩn bị mùa khô","tomTat":"Giải ngân vốn đầu tư công chưa đạt yêu cầu do vướng vật liệu, thủ tục và giải phóng mặt bằng. Tỉnh chỉ đạo đẩy nhanh thi công, hỗ trợ doanh nghiệp ngành tăng trưởng thấp, xây dựng phương án ứng phó hạn hán, xâm nhập mặn mùa khô 2026–2027.","ngay":"2026-10-26","nguon":[{"ten":"Báo Pháp Luật VN","url":"https://baophapluat.vn/dong-thap-duy-tri-da-tang-truong-tap-trung-thao-go-diem-nghen-cuoi-nam.html"}]},{"tieuDe":"ĐT878 nối QL1 với cao tốc Trung Lương – Mỹ Thuận vượt tiến độ","tomTat":"Tuyến dài 12,84 km, vốn khoảng 625 tỷ đồng, từ ngã tư Lương Phú (xã Long Hưng) đến ĐT865 (xã Hưng Thạnh). Gói thầu đoạn Km4+280–Km5+520 đạt gần 27%; dự kiến thông xe tháng 9/2027.","ngay":"2026-10-16","nguon":[{"ten":"Báo Xây dựng","url":"https://baoxaydung.vn/tang-toc-thi-cong-tuyen-ket-noi-ql1-voi-cao-toc-tphcm-trung-luong-qua-dong-thap-192261016172330006.htm"}]},{"tieuDe":"Yêu cầu xong DATP2 cao tốc Cao Lãnh – An Hữu trước 31/12","tomTat":"UBND tỉnh chỉ đạo nhà thầu tăng nhân lực, thiết bị, chủ động tập kết đá; cao tốc Mỹ An – Cao Lãnh ưu tiên đoạn 3,7 km nối nút giao An Bình; sớm duyệt phương án bồi thường đường gom bổ sung của DATP1.","ngay":"2026-10-12","nguon":[{"ten":"VietnamPlus","url":"https://www.vietnamplus.vn/day-nhanh-thi-cong-uu-tien-ket-noi-hai-tuyen-cao-toc-tai-dong-thap-post1141447.vnp"}]}]},{"id":"chinhsach","ten":"Ngân hàng – Chính sách mới","tin":[{"tieuDe":"Công văn 9736/NHNN-CSTT: giảm thực chất lãi suất huy động và cho vay","tomTat":"Lãi suất tiền gửi bình quân giao dịch mới kỳ hạn từ 6 tháng phải giảm tối thiểu 0,5%/năm trong các tháng cuối năm, so với mức của chính ngân hàng giai đoạn 11–20/10/2026. NHNN giám sát qua báo cáo thống kê; vi phạm có thể bị giảm chỉ tiêu tăng trưởng tín dụng.","ngay":"2026-10-21","nhan":"Đang áp dụng","tacDong":"Biểu lãi suất huy động kỳ hạn từ 6 tháng phải giảm; cần chuẩn bị phương án giữ chân khách hàng tiền gửi lớn.","nguon":[{"ten":"CafeF","url":"https://cafef.vn/ngan-hang-nha-nuoc-co-chi-dao-moi-ve-lai-suat-188261021150259725.chn"}]},{"tieuDe":"Thống đốc yêu cầu giảm 1,5–2%/năm lãi suất cho vay","tomTat":"NHNN yêu cầu tập trung giảm lãi suất cho vay sản xuất kinh doanh và lĩnh vực ưu tiên, không chạy đua tăng lãi suất huy động, không hạ chuẩn cho vay; tăng thanh tra việc chấp hành.","ngay":"2026-10-19","nguon":[{"ten":"Vietstock","url":"https://vietstock.vn/2026/10/thong-doc-nhnn-pham-duc-an-cac-ngan-hang-phai-giam-ngay-lai-suat-cho-vay-tu-15-2-757-1503631.htm"}]},{"tieuDe":"Thông tư 46/2026/TT-NHNN sửa Thông tư 15/2023 về thông tin tín dụng","tomTat":"Ban hành 09/9/2026. Bắt buộc có sự đồng ý rõ ràng, kiểm chứng được của khách hàng trước khi cung cấp thông tin tín dụng cho CIC và các bên liên quan.","ngay":"Hiệu lực 01/11","nhan":"Còn 5 ngày","tacDong":"Rà soát mẫu biểu, quy trình lấy sự đồng ý của khách hàng khi tra cứu CIC.","nguon":[{"ten":"VietnamPlus","url":"https://www.vietnamplus.vn/nhieu-chinh-sach-tai-chinh-ngan-hang-chinh-thuc-co-hieu-luc-tu-thang-11-post1144482.vnp"}]},{"tieuDe":"Nghị định 359/2026/NĐ-CP về hoạt động của VAMC","tomTat":"Ban hành 17/9/2026. VAMC là công ty TNHH một thành viên 100% vốn nhà nước, vốn điều lệ 5.000 tỷ đồng; thực hiện mua nợ xấu, cơ cấu nợ và xử lý tài sản bảo đảm.","ngay":"Hiệu lực 06/11","nguon":[{"ten":"VietnamPlus","url":"https://www.vietnamplus.vn/nhieu-chinh-sach-tai-chinh-ngan-hang-chinh-thuc-co-hieu-luc-tu-thang-11-post1144482.vnp"}]}]},{"id":"canhtranh","ten":"Thị trường và cạnh tranh","tin":[{"tieuDe":"Làn sóng giảm lãi suất lan rộng, nhiều gói tín dụng ưu đãi lớn","tomTat":"Sacombank, MSB giảm 0,5 điểm % lãi suất huy động từ 6 tháng; VPBank giảm 0,4 điểm % (26/10). Gói cho vay: Sacombank 40.000 tỷ đồng cho doanh nghiệp (giảm 2 điểm %), VIB 15.000 tỷ, MSB 10.000 tỷ (từ 7,5%/năm). Agribank, Vietcombank giảm tới 2%/năm, BIDV cho vay ngắn hạn từ 6%/năm.","ngay":"2026-10-27","tacDong":"Áp lực cạnh tranh lãi suất cho vay doanh nghiệp trên địa bàn tăng mạnh.","nguon":[{"ten":"Thời báo Ngân hàng","url":"https://thoibaonganhang.vn/lan-song-giam-lai-suat-ngay-cang-soi-dong-189659.html"}]},{"tieuDe":"Tín dụng trên địa bàn Đồng Tháp","tomTat":"Ước đến cuối tháng 10/2026, huy động vốn trên địa bàn đạt 231.079 tỷ đồng, dư nợ 262.966 tỷ đồng. Toàn NHNN Khu vực 13 (Đồng Tháp, Tây Ninh): huy động tăng 13,37%, dư nợ tăng 7,13% so với cuối năm 2025.","ngay":"2026-10-26","nguon":[{"ten":"Thị trường Tài chính Tiền tệ","url":"https://thitruongtaichinhtiente.vn/tin-dung-mo-duong-cho-dong-luc-tang-truong-hai-tinh-dong-thap-va-tay-ninh-86572.html"}]}]}],"lichHieuLuc":[{"ngay":"2026-11-01","vanBan":"Thông tư 46/2026/TT-NHNN","noiDung":"Đồng ý của khách hàng khi chia sẻ thông tin tín dụng với CIC"},{"ngay":"2026-11-01","vanBan":"Thông tư 40/2026/TT-NHNN","noiDung":"Giới hạn an toàn quỹ tín dụng nhân dân"},{"ngay":"2026-11-06","vanBan":"Nghị định 359/2026/NĐ-CP","noiDung":"Hoạt động của VAMC"},{"ngay":"2026-11-09","vanBan":"Thông tư 48/2026/TT-NHNN","noiDung":"Đăng ký quan hệ giao dịch ngoại tệ trực tuyến"},{"ngay":"2026-11-20","vanBan":"Thông tư 147/2026/TT-BTC","noiDung":"Bãi bỏ một số hướng dẫn về hỗ trợ, cấp bù lãi suất"}],"dinhHuong":[{"chuDe":"Huy động vốn","uuTien":"Cao","noiDung":"Rà soát biểu lãi suất huy động kỳ hạn từ 6 tháng so với mức bình quân 11–20/10 theo CV 9736; số liệu giao dịch mới cần khớp yêu cầu giảm tối thiểu 0,5%/năm.","canCu":"Công văn 9736/NHNN-CSTT"},{"chuDe":"Tín dụng","uuTien":"Cao","noiDung":"Nắm chính sách lãi suất mới của VietinBank để chủ động tiếp cận khách hàng sản xuất kinh doanh trước các gói giảm 1,5–2 điểm % của ngân hàng khác.","canCu":"Làn sóng giảm lãi suất; chỉ đạo của Thống đốc"},{"chuDe":"Rủi ro – tuân thủ","uuTien":"Cao","noiDung":"Trước 01/11: kiểm tra mẫu biểu, quy trình lấy sự đồng ý của khách hàng khi tra cứu, cung cấp thông tin CIC.","canCu":"Thông tư 46/2026/TT-NHNN"},{"chuDe":"Khách hàng – địa bàn","uuTien":"Trung bình","noiDung":"Tiếp cận nhà thầu, nhà cung cấp vật liệu cho ĐT878 và các tuyến cao tốc đang dồn tiến độ cuối năm; 23 dự án đầu tư mới và 2.577 doanh nghiệp thành lập mới.","canCu":"Tin Tỉnh Đồng Tháp"}],"luuY":[],"ghiChu":"Tổng hợp tự động sáng 27/10/2026 từ các nguồn báo chí có liên kết ở từng tin (chuyển từ bản tin cũ để chạy thử). Nên đối chiếu văn bản gốc trước khi áp dụng nghiệp vụ."};
+async function btDemo(action,data){
+  await new Promise(x=>setTimeout(x,250));
+  if(action==='bt_list')return{ok:true,ngay:[BT_SAMPLE.ngay],latest:BT_SAMPLE};
+  return data.ngay===BT_SAMPLE.ngay?{ok:true,doc:BT_SAMPLE}:{error:'not_found'};
+}
 
 // Khởi động
 S=loadSess();
@@ -1332,6 +1510,7 @@ $('#bcAiBtn').onclick=async()=>{
 $('#bcMonth').addEventListener('change',()=>{$('#bcAi').innerHTML='';$('#bcAiBtn').textContent='Phân tích bằng AI';bcLoad()});
 $('#bcReload').onclick=()=>bcLoad();
 window.addEventListener('ttg:view',e=>{if(e.detail==='cp-baocao')bcLoad()});
+
 if(S&&!$('#v-cp-baocao').hidden)bcLoad();
 
 /* Dữ liệu xem thử cho báo cáo (17 tháng giả lập) */

@@ -1,10 +1,11 @@
 # Không Gian Số Nội Bộ · TTG Inside
 
 Bộ tiện ích nội bộ dành cho cán bộ **VietinBank Chi nhánh Tây Tiền Giang**, thiết kế cho điện thoại.
-Phiên bản 1.4.1 – 27/10/2026: thêm đăng nhập bằng ID và phân quyền theo Google Sheet.
+Phiên bản 1.5.0 – 28/10/2026: thêm Bản tin sáng (I005).
 
 | Nhóm | Tiện ích | Mô tả |
 |---|---|---|
+| Thông tin | Bản tin sáng (I005) | Bản tin 06:30 mỗi sáng: điểm nhấn, lưu ý và gợi ý điều hành, chỉ số thị trường, văn bản sắp hiệu lực, tin địa bàn, chính sách, cạnh tranh; xem lại 30 ngày |
 | Mã QR | Tạo QR kết nối WiFi | 4 bước: chọn điểm giao dịch → chọn mạng WiFi → quét thử → in thẻ niêm yết A6 |
 | Chi phí | Quản lý chi phí (I003) | Hạn mức phê duyệt còn lại theo thời gian thực; trưởng/phó phòng nhập khoản đã duyệt; PGĐ, Giám đốc, kế toán xem theo quyền |
 | Chi phí | Báo cáo chi phí (I004) | Tổng quan, dự báo hạn mức, theo phòng/nhóm, ma trận, xu hướng 12 tháng, kế hoạch năm, khoản lớn/lặp lại, nhận xét AI |
@@ -20,6 +21,7 @@ lib/qrcode.js           Thư viện tạo mã QR (qrcode-generator 1.4.4, MIT)
 lib/jsQR.js             Thư viện đọc mã QR từ ảnh (jsQR 1.4.0, Apache-2.0)
 icons/                  Biểu tượng ứng dụng
 apps-script/Code.gs     Máy chủ phân quyền (gắn với Google Sheet) + trợ lý AI giai đoạn 2
+apps-script/appsscript.json  Manifest khai báo quyền tối thiểu (Drive chỉ đọc)
 ```
 
 Không cần cài đặt hay build. Chỉ cần đưa nguyên thư mục lên GitHub.
@@ -88,6 +90,20 @@ Cách hoạt động:
 
 Quy tắc: vượt hạn mức không cho lưu; người nhập tự hủy trong ngày (ghi lý do), sau đó Giám đốc/Quản trị hủy; không sửa số tiền (hủy và nhập lại);
 khoản đã nhập luôn tính cho người duyệt tại thời điểm nhập (phân công lại không làm lệch hạn mức).
+
+## Bản tin sáng (I005) – từ v1.5.0
+
+Luồng dữ liệu: tác vụ định kỳ của Claude (06:19 hằng ngày) nghiên cứu, soạn bản tin, lưu file `BanTin_YYYY-MM-DD.json`
+vào thư mục Drive `KhongGianSoNoiBo/BanTin`, tự xóa file quá 30 ngày → Apps Script đọc thư mục (chỉ đọc) → trang hiển thị.
+
+1. Apps Script: dán `apps-script/Code.gs` v1.5.0 → Lưu.
+2. Cài đặt dự án (bánh răng) → tick **Hiển thị tệp kê khai "appsscript.json"** → mở `appsscript.json`, dán nội dung `apps-script/appsscript.json` → Lưu.
+3. Trong file phân quyền: menu **Không Gian Số → Cài đặt Bản tin sáng (I005)** → cấp quyền (Google hỏi thêm quyền *xem tệp trên Drive*).
+   Script đăng ký I005, tick quyền cho Giám đốc, Phó Giám đốc, Quản trị hệ thống, Trưởng phòng, Phó phòng; đặt `BT_FOLDER_ID`.
+4. Triển khai → Quản lý triển khai → Phiên bản mới. Tải `index.html` + `sw.js` mới lên GitHub.
+
+Người xem: theo cột I005 ở sheet CanBo (bỏ tick để thu hồi). Trang chủ hiện thẻ 3 điểm nhấn; bấm vào xem toàn bộ, chọn ngày trong 30 ngày.
+Bản tin mới được đọc lại sau tối đa 10 phút (bộ nhớ đệm). Lưu ý điều hành là gợi ý từ tin công khai, cần đối chiếu văn bản gốc.
 
 ## Cập nhật phiên bản
 
