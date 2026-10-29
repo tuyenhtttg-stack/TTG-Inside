@@ -1,6 +1,6 @@
 /**
  * KHÔNG GIAN SỐ NỘI BỘ (TTG Inside) – Máy chủ phân quyền
- * VietinBank Chi nhánh Tây Tiền Giang · phiên bản 1.5.0 · 28/10/2026
+ * VietinBank Chi nhánh Tây Tiền Giang · phiên bản 1.6.0 · 29/10/2026
  *
  * Script này GẮN VỚI file Google Sheet phân quyền (Tiện ích mở rộng → Apps Script), làm 2 việc:
  *   1. Menu quản trị + tự tick quyền theo vai trò ngay trong Sheet.
@@ -19,7 +19,8 @@
  *   ANTHROPIC_API_KEY  : (giai đoạn 2) khóa Claude API cho trợ lý AI; để trống = tắt AI
  *   MODEL, DAILY_LIMIT, PER_MINUTE_LIMIT : (giai đoạn 2) như hướng dẫn cũ
  *   BT_FOLDER_ID       : (v1.5.0) ID thư mục BanTin chứa file BanTin_YYYY-MM-DD.json (tự đặt khi chạy Cài đặt Bản tin sáng)
- * Manifest appsscript.json (v1.5.0) khai báo quyền tối thiểu, Drive chỉ ĐỌC (drive.readonly).
+ *   TA_SHEET_ID        : (v1.6.0) ID file cấu hình thẻ ATM KhongGianSoNoiBo_TheATM (tự tạo khi chạy Cài đặt Thẻ ATM máy thu)
+ * Manifest appsscript.json (v1.6.0) khai báo quyền tối thiểu, Drive chỉ ĐỌC (drive.readonly).
  */
 
 const TZ = 'Asia/Ho_Chi_Minh';
@@ -53,6 +54,8 @@ function onOpen() {
     .addItem('Cài đặt / cập nhật Quản lý chi phí (I003, I004)', 'caiDatChiPhi')
     .addItem('Đồng bộ danh mục sang file chi phí', 'dongBoChiPhi')
     .addItem('Cài đặt Bản tin sáng (I005)', 'caiDatBanTin')
+    .addItem('Cài đặt / cập nhật Thẻ ATM máy thu (I006, I007)', 'caiDatTheATM')
+    .addItem('Gửi ngay email nhắc hủy thẻ ATM', 'nhacHuyTheATM')
     .addItem('Thêm ứng dụng mới…', 'themUngDung')
     .addItem('Sinh thêm ID dự phòng…', 'sinhThemID')
     .addItem('Áp dụng lại quyền theo vai trò (tất cả)', 'apDungLaiVaiTro')
@@ -355,6 +358,12 @@ function doPost(e) {
       case 'cp_ai':     return json_(apiCpAi_(body));
       case 'bt_list':   return json_(apiBtList_(body));
       case 'bt_get':    return json_(apiBtGet_(body));
+      case 'ta_load':   return json_(apiTaLoad_(body));
+      case 'ta_add':    return json_(apiTaAdd_(body));
+      case 'ta_return': return json_(apiTaReturn_(body));
+      case 'ta_undo':   return json_(apiTaUndo_(body));
+      case 'ta_phieu_email': return json_(apiTaPhieuEmail_(body));
+      case 'ta_cancel': return json_(apiTaCancel_(body));
       default:       return json_({ error: 'bad_request' });
     }
   } catch (err) {
@@ -405,7 +414,7 @@ function apiOpen_(b) {
 
 function session_(u) {
   return { user: { ten: firstName_(u.hoTen), xungHo: u.gt === 'Nữ' ? 'chị' : u.gt === 'Nam' ? 'anh' : 'anh/chị', phongBan: u.pb, maPhongBan: u.maPB || '', loaiPhongBan: u.loaiPB || '', vaiTro: u.vt },
-           apps: userApps_(u), stats: countVisit_(), ai: !!PropertiesService.getScriptProperties().getProperty('ANTHROPIC_API_KEY') && userApps_(u).includes('I002'),
+           apps: taFilterApps_(u, userApps_(u)), stats: countVisit_(), ai: !!PropertiesService.getScriptProperties().getProperty('ANTHROPIC_API_KEY') && userApps_(u).includes('I002'),
            expires: endOfDayIso_() };
 }
 
@@ -1218,3 +1227,627 @@ function apiBtGet_(b) {
   const d = btDoc_(ngay, idx[ngay]);
   return d ? { ok: true, doc: d } : { error: 'not_found' };
 }
+
+
+/* =====================================================================
+   PHẦN 7 – THẺ ATM BỊ MÁY THU (I006 Quản lý, I007 Báo cáo) – từ v1.6.0
+   Dữ liệu: 3 sổ Google Sheet sẵn có (mỗi phòng nhận thẻ 1 file, sheet đầu tiên).
+   Cấu hình: file KhongGianSoNoiBo_TheATM (TA_CauHinh, TA_NoiNhan, TA_NganHang, TA_ATM) – sửa trên sheet, không sửa code.
+   ===================================================================== */
+const TA_APP = 'I006', TA_APP_BC = 'I007', TA_TEN = 'Quản lý thẻ ATM bị máy thu', TA_TEN_BC = 'Báo cáo thẻ ATM máy thu';
+const TA_FILE_NAME = 'KhongGianSoNoiBo_TheATM';
+const TA_SH = { CAUHINH: 'TA_CauHinh', NOINHAN: 'TA_NoiNhan', NGANHANG: 'TA_NganHang', ATM: 'TA_ATM', HD: 'HuongDan' };
+// Cột trong sổ (0-based): A–I theo Google Form cũ, J–S do ứng dụng quản lý
+const TC = { TS: 0, GIAO_BOI: 1, NGAY_GIAO: 2, NGAY_TRA: 3, TEN: 4, SO_GOC: 5, NH_GOC: 6, NH_KHAC: 7, GHI_CHU: 8,
+             MA: 9, SO: 10, NH: 11, TT: 12, XL_BOI: 13, XL_LUC: 14, XL_GHI_CHU: 15, CANH_BAO: 16, ATM: 17, ID_NHAP: 18 };
+const TA_NCOL = 19;
+const TA_HEAD_APP = ['Mã thẻ', 'Số thẻ (chuẩn)', 'Ngân hàng', 'Trạng thái', 'Cán bộ trả/hủy', 'Thời gian xử lý', 'Ghi chú xử lý', 'Cảnh báo dữ liệu', 'ATM thu thẻ', 'ID cán bộ nhập'];
+const TA_VT_MO = ['Quản trị hệ thống', 'Điện toán', 'Trưởng phòng', 'Phó phòng', 'GDV', 'Cán bộ DVKH'];
+const TA_VT_MO_BC = TA_VT_MO.concat(['Giám đốc', 'Phó Giám đốc']);
+const TA_CAUHINH_BAN_DAU = [
+  ['SO_NGAY_HUY', '90', 'Thẻ còn giữ từ số ngày này trở lên (tính từ ngày vào sổ) vào danh sách cần hủy; cũng là mốc gửi email nhắc hủy'],
+  ['NHAC_HUY_THU', 'Thứ Hai', 'Ngày gửi email nhắc thẻ đến hạn hủy: Thứ Hai … Thứ Bảy, Chủ nhật, Hằng ngày; để trống = tắt'],
+  ['NHAC_HUY_GIO', '8', 'Giờ gửi email nhắc (0–23). Đổi giờ xong chạy lại menu Cài đặt thẻ ATM'],
+  ['NHOM_TUOI_TON', '15, 30, 60, 90', 'Các mốc số ngày giữ thẻ để chia nhóm trong báo cáo tồn'],
+  ['SO_CHU_SO_DAU', '6', 'Số chữ số đầu của số thẻ được lưu: 6 (theo mẫu BM09-GNT) hoặc 4 (như sổ cũ)'],
+  ['MIEN_EMAIL', 'vietinbank.vn', 'Chỉ gửi email tới địa chỉ thuộc tên miền này'],
+  ['GUI_EMAIL_KHI_NHAP', 'Có', 'Có/Không: gửi email cho cán bộ phụ trách phòng nhận khi nhập thẻ'],
+  ['VAI_TRO_NHAP', 'Quản trị hệ thống, Điện toán', 'Vai trò được nhập thẻ, xem danh sách (không được trả thẻ)'],
+  ['VAI_TRO_TRA', 'Trưởng phòng, Phó phòng, GDV, Cán bộ DVKH', 'Vai trò được trả thẻ – chỉ sổ của phòng mình (phòng có trong TA_NoiNhan)'],
+  ['VAI_TRO_HUY', 'Trưởng phòng, Phó phòng', 'Vai trò được thực hiện hủy thẻ quá hạn của phòng mình'],
+  ['VAI_TRO_XEM_TAT_CA', 'Giám đốc, Phó Giám đốc, Quản trị hệ thống, Điện toán', 'Vai trò xem báo cáo của tất cả phòng nhận thẻ'],
+  ['HOAN_TAC_TRONG_NGAY', 'Có', 'Có/Không: người trả thẻ được hoàn tác trong ngày'],
+  ['DIA_DANH', 'Tiền Giang', 'Địa danh ở dòng ngày tháng trên phiếu'],
+  ['TEN_CHI_NHANH', 'Chi nhánh Tây Tiền Giang', 'Tên chi nhánh trên email, báo cáo'],
+  ['MAU_PHIEU_MA', 'BM09-GNT', 'Mã biểu mẫu in ở chân phiếu'],
+  ['MAU_PHIEU_BAN_HANH', '02', 'Lần ban hành biểu mẫu'],
+  ['MAU_PHIEU_SUA_DOI', '00', 'Lần sửa đổi biểu mẫu']
+];
+// Danh mục ngân hàng ban đầu. BIN nội địa 9704xx theo danh sách mã BIN của NHNN (31/12/2023), tên theo hiện hành; sửa/thêm trên sheet TA_NganHang.
+const TA_NGANHANG_BAN_DAU = [
+  ['VietinBank', 'Ngân hàng TMCP Công Thương Việt Nam', '970415', 'Vietinbank, CTG'],
+  ['Vietcombank', 'Ngân hàng TMCP Ngoại thương Việt Nam', '970436', 'VCB'],
+  ['Agribank', 'Ngân hàng Nông nghiệp và Phát triển Nông thôn Việt Nam', '970405', 'AgriBank, VBARD'],
+  ['BIDV', 'Ngân hàng TMCP Đầu tư và Phát triển Việt Nam', '970418', ''],
+  ['Sacombank', 'Ngân hàng TMCP Sài Gòn Thương Tín', '970403', 'STB'],
+  ['Techcombank', 'Ngân hàng TMCP Kỹ Thương Việt Nam', '970407', 'TCB'],
+  ['ACB', 'Ngân hàng TMCP Á Châu', '970416', ''],
+  ['MB', 'Ngân hàng TMCP Quân đội', '970422', 'MB Bank, MBBank'],
+  ['VPBank', 'Ngân hàng TMCP Việt Nam Thịnh Vượng', '970432', 'VP Bank'],
+  ['TPBank', 'Ngân hàng TMCP Tiên Phong', '970423', 'TP Bank, TienPhongBank'],
+  ['HDBank', 'Ngân hàng TMCP Phát triển TP. Hồ Chí Minh', '970437', 'HD Bank'],
+  ['VIB', 'Ngân hàng TMCP Quốc tế Việt Nam', '970441', ''],
+  ['SHB', 'Ngân hàng TMCP Sài Gòn – Hà Nội', '970443', ''],
+  ['Eximbank', 'Ngân hàng TMCP Xuất Nhập khẩu Việt Nam', '970431', 'EIB'],
+  ['MSB', 'Ngân hàng TMCP Hàng Hải Việt Nam', '970426', 'Maritime Bank'],
+  ['SeABank', 'Ngân hàng TMCP Đông Nam Á', '970440', ''],
+  ['OCB', 'Ngân hàng TMCP Phương Đông', '970448', ''],
+  ['Nam A Bank', 'Ngân hàng TMCP Nam Á', '970428', 'Nam A, NamABank'],
+  ['LPBank', 'Ngân hàng TMCP Lộc Phát Việt Nam', '970449', 'LienVietPostBank'],
+  ['ABBANK', 'Ngân hàng TMCP An Bình', '970425', 'ABB'],
+  ['Bac A Bank', 'Ngân hàng TMCP Bắc Á', '970409', 'BacABank'],
+  ['PVcomBank', 'Ngân hàng TMCP Đại Chúng Việt Nam', '970412', ''],
+  ['KienlongBank', 'Ngân hàng TMCP Kiên Long', '970452', ''],
+  ['Shinhan Bank', 'Ngân hàng TNHH MTV Shinhan Việt Nam', '970424', 'Shinhan'],
+  ['Vikki Bank', 'Ngân hàng TNHH MTV Số Vikki', '970406', 'Vikki, DongA Bank'],
+  ['BaoViet Bank', 'Ngân hàng TMCP Bảo Việt', '970438', 'BaoVietBank'],
+  ['SCB', 'Ngân hàng TMCP Sài Gòn', '970429', ''],
+  ['NCB', 'Ngân hàng TMCP Quốc Dân', '970419', ''],
+  ['Saigonbank', 'Ngân hàng TMCP Sài Gòn Công Thương', '970400', ''],
+  ['VietABank', 'Ngân hàng TMCP Việt Á', '970427', 'Viet A Bank'],
+  ['VietBank', 'Ngân hàng TMCP Việt Nam Thương Tín', '970433', ''],
+  ['BVBank', 'Ngân hàng TMCP Bản Việt', '970454', 'Viet Capital Bank'],
+  ['PGBank', 'Ngân hàng TMCP Thịnh vượng và Phát triển', '970430', 'PG Bank'],
+  ['MBV', 'Ngân hàng TNHH MTV Việt Nam Hiện Đại', '970414', 'OceanBank'],
+  ['VCBNeo', 'Ngân hàng TNHH MTV Ngoại thương Công nghệ số', '970444', 'CBBank'],
+  ['GPBank', 'Ngân hàng TNHH MTV Dầu khí Toàn Cầu', '970408', ''],
+  ['Co-opBank', 'Ngân hàng Hợp tác xã Việt Nam', '970446', ''],
+  ['Woori Bank', 'Ngân hàng TNHH MTV Woori Việt Nam', '970457', 'Woori'],
+  ['UOB', 'Ngân hàng TNHH MTV UOB Việt Nam', '970458', ''],
+  ['Public Bank', 'Ngân hàng TNHH MTV Public Việt Nam', '970439', ''],
+  ['HSBC', 'Ngân hàng TNHH MTV HSBC (Việt Nam)', '', ''],
+  ['Home Credit', 'Công ty Tài chính TNHH MTV Home Credit Việt Nam', '', 'Hone credit']
+];
+
+/** Menu: tạo/cập nhật file cấu hình, chuẩn bị 3 sổ, đăng ký I006/I007, cài lịch email nhắc hủy. Chạy lại an toàn. */
+function caiDatTheATM() {
+  const ui = SpreadsheetApp.getUi(), props = PropertiesService.getScriptProperties();
+  let f = null;
+  try { f = props.getProperty('TA_SHEET_ID') ? SpreadsheetApp.openById(props.getProperty('TA_SHEET_ID')) : null; } catch (e) { f = null; }
+  const isNew = !f;
+  if (isNew) { f = SpreadsheetApp.create(TA_FILE_NAME); f.setSpreadsheetTimeZone(TZ); props.setProperty('TA_SHEET_ID', f.getId()); taoFileTheATM_(f); }
+  const changes = capNhatTheATM_(f);
+  CacheService.getScriptCache().remove('ta_cfg');
+  const cfg = taConfig_(true);
+  const so = cfg.noiNhan.filter(n => n.on).map(n => { try { return n.pb + ': ' + chuanBiSoThe_(n, cfg); } catch (e) { return n.pb + ': LỖI ' + e.message; } });
+  const n6 = dangKyUngDung_(TA_APP, TA_TEN, 'Nhập thẻ ATM bị máy thu (camera), sổ thẻ theo phòng, trả thẻ và in phiếu BM09-GNT', TA_VT_MO);
+  const n7 = dangKyUngDung_(TA_APP_BC, TA_TEN_BC, 'Báo cáo thẻ tồn, thẻ đã trả, thẻ quá hạn cần hủy; hủy thẻ quá hạn', TA_VT_MO_BC);
+  const trig = caiLichNhacHuy_(cfg);
+  lamMoiBoNhoDem(true);
+  const warn = taKiemTra_(cfg);
+  ui.alert(TA_TEN,
+    (isNew ? 'Đã tạo file "' + TA_FILE_NAME + '" ở thư mục gốc Drive. Hãy kéo file vào thư mục KhongGianSoNoiBo.\n\n' : 'File cấu hình đã có, giữ nguyên dữ liệu.\n\n') +
+    (changes.length ? 'Đã cập nhật cấu hình: ' + changes.join('; ') + '.\n\n' : '') +
+    'Sổ thẻ:\n' + so.join('\n') + '\n\n' +
+    (n6 ? 'Đã đăng ký ' + TA_APP + ' – ' + TA_TEN + '.\n' : '') + (n7 ? 'Đã đăng ký ' + TA_APP_BC + ' – ' + TA_TEN_BC + '.\n' : '') +
+    trig + '\nLink file cấu hình: ' + f.getUrl() + (warn ? '\n\n' + warn : '') +
+    '\n\nTiếp theo: tắt nhận câu trả lời ở các Google Form sổ thẻ cũ; Triển khai → Quản lý triển khai → Phiên bản mới.', ui.ButtonSet.OK);
+}
+
+function taoFileTheATM_(f) {
+  const style = (s, w) => { s.setFrozenRows(1); s.getRange(1, 1, 1, s.getLastColumn()).setFontWeight('bold').setFontColor('#FFFFFF').setBackground('#005993').setWrap(true);
+    (w || []).forEach((x, i) => s.setColumnWidth(i + 1, x)); };
+  const ch = f.getSheets()[0]; ch.setName(TA_SH.CAUHINH);
+  ch.getRange(1, 1, 1, 3).setValues([['Tham số', 'Giá trị', 'Ý nghĩa']]);
+  ch.getRange(2, 2, TA_CAUHINH_BAN_DAU.length, 1).setNumberFormat('@');
+  ch.getRange(2, 1, TA_CAUHINH_BAN_DAU.length, 3).setValues(TA_CAUHINH_BAN_DAU);
+  style(ch, [190, 330, 520]);
+
+  const nn = f.insertSheet(TA_SH.NOINHAN);
+  nn.getRange(1, 1, 1, 8).setValues([['Phòng nhận thẻ', 'ID file sổ thẻ', 'Tiền tố mã thẻ', 'Tên ghi trên phiếu (Kính gửi)', 'Email nhận', 'Email CC', 'Đang dùng', 'Ghi chú']]);
+  nn.getRange(2, 1, 3, 8).setValues([
+    ['Phòng DVKH', '14GcehdRyF-CsqM3JYAzj5TdsSCgHPlbW9fhojlBgs-g', 'DV', 'Chi nhánh Tây Tiền Giang – Phòng DVKH', '', '', true, 'Nhiều email cách nhau dấu phẩy'],
+    ['PGD An Hữu', '10FMygZUyuCuPgybTA5bljB3me2OhvN--SPdasYDh8rg', 'AH', 'PGD An Hữu', '', '', true, ''],
+    ['PGD Ấp Bắc', '1jYMen_rpNnItPby2Zf9OyJqCfxnyg7jro3_EO0I-5M0', 'AB', 'PGD Ấp Bắc', '', '', true, '']]);
+  nn.getRange('B2:C').setNumberFormat('@'); nn.getRange(2, 7, 30, 1).insertCheckboxes();
+  nn.getRange(2, 7, 3, 1).setValues([[true], [true], [true]]);
+  style(nn, [130, 320, 90, 260, 260, 200, 80, 220]);
+
+  const nh = f.insertSheet(TA_SH.NGANHANG);
+  nh.getRange(1, 1, 1, 5).setValues([['Tên ngắn', 'Tên đầy đủ', 'Đầu số BIN (cách nhau dấu phẩy)', 'Tên gọi khác (cách nhau dấu phẩy)', 'Đang dùng']]);
+  nh.getRange(2, 3, TA_NGANHANG_BAN_DAU.length, 1).setNumberFormat('@');
+  nh.getRange(2, 1, TA_NGANHANG_BAN_DAU.length, 4).setValues(TA_NGANHANG_BAN_DAU);
+  nh.getRange(2, 5, 80, 1).insertCheckboxes(); nh.getRange(2, 5, TA_NGANHANG_BAN_DAU.length, 1).setValue(true);
+  style(nh, [130, 360, 220, 220, 80]);
+
+  const atm = f.insertSheet(TA_SH.ATM);
+  atm.getRange(1, 1, 1, 4).setValues([['Mã ATM', 'Địa điểm đặt ATM (in trên phiếu)', 'Phòng nhận thẻ mặc định', 'Đang dùng']]);
+  atm.getRange('A2:A').setNumberFormat('@'); atm.getRange(2, 4, 50, 1).insertCheckboxes();
+  style(atm, [110, 360, 160, 80]);
+
+  const hd = f.insertSheet(TA_SH.HD); hd.setColumnWidth(1, 900);
+  const lines = ['HƯỚNG DẪN – THẺ ATM BỊ MÁY THU (I006) VÀ BÁO CÁO (I007) – Không Gian Số Nội Bộ', '',
+    'TA_CauHinh: tham số chung (số ngày hủy, lịch email nhắc, số chữ số đầu của thẻ, vai trò, địa danh trên phiếu…). Sửa cột Giá trị; có hiệu lực sau tối đa 1 phút.',
+    'TA_NoiNhan: mỗi phòng nhận thẻ một dòng – tên phòng (trùng PhongBan), ID file sổ thẻ, tiền tố mã thẻ, tên ghi trên phiếu, email nhận/CC (chỉ @vietinbank.vn). Thêm phòng mới: tạo file sổ cùng cấu trúc rồi thêm dòng.',
+    'TA_NganHang: danh mục ngân hàng; đầu số BIN 6 số để camera tự nhận ngân hàng; tên gọi khác để chuẩn hóa tên gõ tay. Bỏ tick Đang dùng thay vì xóa.',
+    'TA_ATM: danh sách ATM của chi nhánh (địa điểm in vào mục "Giao dịch ở ATM đặt tại" trên phiếu). Có thể để trống.',
+    'Sổ thẻ: cột A–I giữ như sổ cũ; cột J–S do ứng dụng ghi. Không sửa tay cột J–Q; sửa sai sót ở A–I.',
+    'Sau khi đổi giờ gửi email nhắc: chạy lại menu Không Gian Số → Cài đặt / cập nhật Thẻ ATM máy thu.'];
+  hd.getRange(1, 1, lines.length, 1).setValues(lines.map(x => [x]));
+  hd.getRange(1, 1).setFontWeight('bold').setFontSize(13).setFontColor('#005993');
+}
+/** Bổ sung tham số mới cho file cấu hình tạo bằng bản cũ */
+function capNhatTheATM_(f) {
+  const out = [], ch = f.getSheetByName(TA_SH.CAUHINH);
+  if (ch) { const keys = ch.getDataRange().getValues().map(r => String(r[0]).trim());
+    TA_CAUHINH_BAN_DAU.forEach(r => { if (!keys.includes(r[0])) { ch.appendRow(r); out.push('thêm ' + r[0]); } }); }
+  return out;
+}
+
+/** Chuẩn bị 1 sổ: thêm cột, chuyển cột J–M (công thức tạm) thành giá trị, công thức cảnh báo mới, bổ sung dòng thiếu */
+function chuanBiSoThe_(n, cfg) {
+  const sh = SpreadsheetApp.openById(n.fileId).getSheets()[0];
+  if (sh.getMaxColumns() < TA_NCOL) sh.insertColumnsAfter(sh.getMaxColumns(), TA_NCOL - sh.getMaxColumns());
+  const last = taLastRow_(sh);
+  // J–M: nếu còn là công thức mảng thì chốt thành giá trị (để ứng dụng ghi được "Đã hủy", mã thẻ cố định)
+  const fJ = sh.getRange(1, TC.MA + 1, 1, 4).getFormulas()[0];
+  if (fJ.some(Boolean) && last > 1) {
+    const v = sh.getRange(2, TC.MA + 1, last - 1, 4).getValues();
+    sh.getRange(1, TC.MA + 1, 1, 4).clearContent();
+    sh.getRange(2, TC.MA + 1, last - 1, 4).setValues(v);
+  }
+  sh.getRange(1, TC.MA + 1, 1, 7).setValues([TA_HEAD_APP.slice(0, 7)]);
+  sh.getRange(1, TC.ATM + 1, 1, 2).setValues([TA_HEAD_APP.slice(8)]);
+  sh.getRange(1, TC.CANH_BAO + 1).setFormula(TA_Q_FORMULA);
+  sh.getRange(2, TC.SO_GOC + 1, sh.getMaxRows() - 1, 1).setNumberFormat('@');
+  sh.getRange(2, TC.MA + 1, sh.getMaxRows() - 1, 2).setNumberFormat('@');
+  sh.getRange(2, TC.ID_NHAP + 1, sh.getMaxRows() - 1, 1).setNumberFormat('@');
+  sh.getRange(2, TC.XL_LUC + 1, sh.getMaxRows() - 1, 1).setNumberFormat('dd/mm/yyyy hh:mm');
+  sh.getRange(2, TC.NGAY_TRA + 1, sh.getMaxRows() - 1, 1).setNumberFormat('dd/mm/yyyy');
+  sh.setColumnWidth(TC.ATM + 1, 180); sh.setColumnWidth(TC.ID_NHAP + 1, 110);
+  const rows = taReadRows_(sh, n, cfg, true);
+  return rows.length + ' thẻ (' + rows.filter(x => x.tt === TA_ST.GIU).length + ' đang giữ)';
+}
+// Cảnh báo dữ liệu (công thức mảng ở Q1, cú pháp tiếng Anh của Apps Script)
+const TA_Q_FORMULA = '=ARRAYFORMULA({"Cảnh báo dữ liệu";IF(A2:A="","",REGEXREPLACE(' +
+  'IF(NOT(REGEXMATCH(F2:F&"","^\\s*\\d{4,6}\\s*[xX*]{2,}\\s*\\d{4}\\s*$")),"Số thẻ không đúng dạng số đầu + xxxx + 4 số cuối; ","")&' +
+  'IF(REGEXMATCH(F2:F&"","^\\s*(9740|9794)"),"Đầu số "&LEFT(TRIM(F2:F&""),4)&" nghi gõ nhầm 9704; ","")&' +
+  'IF(NOT(ISNUMBER(C2:C)),"Ngày giao không đúng dạng ngày; ",IF(C2:C>INT(A2:A),"Ngày giao sau ngày ghi sổ; ",""))&' +
+  'IF((D2:D<>"")*NOT(ISNUMBER(D2:D)),"Ngày trả không đúng dạng ngày; ","")&' +
+  'IF(ISNUMBER(D2:D)*ISNUMBER(C2:C)*(D2:D<C2:C),"Ngày trả trước ngày giao; ","")&' +
+  'IF(REGEXMATCH(E2:E&"","\\d"),"Họ tên là mã/số, cần kiểm tra; ","")&' +
+  'IF((G2:G="Khác")*(TRIM(H2:H&"")=""),"Chọn Khác nhưng chưa ghi tên ngân hàng; ","")&' +
+  'IF((M2:M="' + 'Đang giữ' + '")*(K2:K<>"")*(COUNTIFS(K2:K,K2:K,E2:E,E2:E,M2:M,"Đang giữ")>1),"Trùng thẻ đang giữ với dòng khác; ",""),";\\s*$",""))})';
+
+/** Cài lịch chạy nhacHuyTheATM mỗi ngày theo giờ cấu hình (hàm tự kiểm tra thứ trong tuần) */
+function caiLichNhacHuy_(cfg) {
+  try {
+    ScriptApp.getProjectTriggers().filter(t => t.getHandlerFunction() === 'nhacHuyTheATM').forEach(t => ScriptApp.deleteTrigger(t));
+    if (cfg.nhacThu === null) return 'Email nhắc hủy: đang tắt (NHAC_HUY_THU để trống).\n';
+    ScriptApp.newTrigger('nhacHuyTheATM').timeBased().everyDays(1).atHour(cfg.nhacGio).inTimezone(TZ).create();
+    return 'Email nhắc hủy: ' + (cfg.nhacThu === 'all' ? 'hằng ngày' : TA_THU[cfg.nhacThu]) + ', khoảng ' + cfg.nhacGio + ' giờ.\n';
+  } catch (e) { return 'LƯU Ý: chưa cài được lịch email nhắc (' + e.message + '). Kiểm tra quyền script.scriptapp trong appsscript.json.\n'; }
+}
+const TA_THU = ['Chủ nhật', 'Thứ Hai', 'Thứ Ba', 'Thứ Tư', 'Thứ Năm', 'Thứ Sáu', 'Thứ Bảy'];
+
+/** Kiểm tra cấu hình: email, vai trò, phòng, file sổ */
+function taKiemTra_(cfg) {
+  const msg = [], roles = Object.keys(rolePerms_()), pbs = phongBanMap_();
+  [['VAI_TRO_NHAP', cfg.vtNhap], ['VAI_TRO_TRA', cfg.vtTra], ['VAI_TRO_HUY', cfg.vtHuy], ['VAI_TRO_XEM_TAT_CA', cfg.vtXem]].forEach(([k, l]) =>
+    l.filter(r => !roles.includes(r)).forEach(r => msg.push('- ' + k + ': vai trò "' + r + '" không có trong sheet VaiTro.')));
+  cfg.noiNhan.filter(n => n.on).forEach(n => {
+    if (!pbs[n.pb]) msg.push('- TA_NoiNhan: "' + n.pb + '" không có trong sheet PhongBan.');
+    if (!n.emails.length) msg.push('- ' + n.pb + ': chưa có Email nhận (thông báo nhập thẻ, nhắc hủy).');
+    n.emailBad.forEach(x => msg.push('- ' + n.pb + ': email "' + x + '" không thuộc @' + cfg.mien + ', sẽ bị bỏ qua.'));
+  });
+  return msg.length ? 'LƯU Ý cấu hình thẻ ATM:\n' + msg.join('\n') : '';
+}
+
+/* ---------- Cấu hình (bộ nhớ đệm 60 giây) ---------- */
+function taFile_() {
+  const id = PropertiesService.getScriptProperties().getProperty('TA_SHEET_ID');
+  if (!id) throw new Error('ta_not_setup');
+  return SpreadsheetApp.openById(id);
+}
+function taConfig_(fresh) {
+  const cache = CacheService.getScriptCache();
+  if (!fresh) { const hit = cache.get('ta_cfg'); if (hit) return JSON.parse(hit); }
+  const f = taFile_(), list = s => String(s || '').split(/[,;]/).map(x => x.trim()).filter(Boolean);
+  const rows = name => { const sh = f.getSheetByName(name); return sh && sh.getLastRow() > 1 ? sh.getDataRange().getValues().slice(1) : []; };
+  const kv = {}; rows(TA_SH.CAUHINH).forEach(r => { if (String(r[0]).trim()) kv[String(r[0]).trim()] = String(r[1]).trim(); });
+  const yes = v => /^(c[oó]|yes|true|1|x)$/i.test(String(v || '').trim());
+  const mien = (kv.MIEN_EMAIL || 'vietinbank.vn').replace(/^@/, '').toLowerCase();
+  const okMail = e => new RegExp('^[^@\\s]+@' + mien.replace(/\./g, '\\.') + '$', 'i').test(e);
+  const noiNhan = rows(TA_SH.NOINHAN).filter(r => String(r[0]).trim() && String(r[1]).trim()).map(r => {
+    const em = list(r[4]), cc = list(r[5]);
+    return { pb: String(r[0]).trim(), fileId: String(r[1]).trim(), prefix: String(r[2] || '').trim().toUpperCase() || 'TH', kinhGui: String(r[3] || '').trim() || String(r[0]).trim(),
+      emails: em.filter(okMail), cc: cc.filter(okMail), emailBad: em.concat(cc).filter(e => !okMail(e)), on: r[6] !== false };
+  });
+  const banks = rows(TA_SH.NGANHANG).filter(r => String(r[0]).trim() && r[4] !== false).map(r => ({
+    ten: String(r[0]).trim(), full: String(r[1] || '').trim(), bins: list(r[2]).map(x => x.replace(/\D/g, '')).filter(x => x.length >= 4), alias: list(r[3]) }));
+  const atms = rows(TA_SH.ATM).filter(r => String(r[1]).trim() && r[3] !== false).map(r => ({ ma: String(r[0]).trim(), diaDiem: String(r[1]).trim(), pb: String(r[2] || '').trim() }));
+  const thuKey = taKhongDau(kv.NHAC_HUY_THU || '').replace(/\s+/g, '');
+  const thuMap = { chunhat: 0, cn: 0, thuhai: 1, t2: 1, '2': 1, thuba: 2, t3: 2, '3': 2, thutu: 3, t4: 3, '4': 3, thunam: 4, t5: 4, '5': 4, thusau: 5, t6: 5, '6': 5, thubay: 6, t7: 6, '7': 6 };
+  const nhacThu = !thuKey ? null : /hangngay|moingay/.test(thuKey) ? 'all' : (thuKey in thuMap ? thuMap[thuKey] : 1);
+  const num = (v, d, lo, hi) => { const x = parseInt(v, 10); return isNaN(x) ? d : Math.max(lo, Math.min(hi, x)); };
+  const cfg = {
+    soNgayHuy: num(kv.SO_NGAY_HUY, 90, 1, 3650), nhacThu, nhacGio: num(kv.NHAC_HUY_GIO, 8, 0, 23),
+    nhomTon: list(kv.NHOM_TUOI_TON || '15,30,60,90').map(Number).filter(x => x > 0).sort((a, b) => a - b),
+    soDau: num(kv.SO_CHU_SO_DAU, 6, 4, 6) >= 6 ? 6 : 4, mien, guiEmailNhap: kv.GUI_EMAIL_KHI_NHAP === undefined ? true : yes(kv.GUI_EMAIL_KHI_NHAP),
+    vtNhap: list(kv.VAI_TRO_NHAP || 'Quản trị hệ thống, Điện toán'), vtTra: list(kv.VAI_TRO_TRA || 'Trưởng phòng, Phó phòng'),
+    vtHuy: list(kv.VAI_TRO_HUY || 'Trưởng phòng, Phó phòng'), vtXem: list(kv.VAI_TRO_XEM_TAT_CA),
+    hoanTac: kv.HOAN_TAC_TRONG_NGAY === undefined ? true : yes(kv.HOAN_TAC_TRONG_NGAY),
+    diaDanh: kv.DIA_DANH || '', tenCN: kv.TEN_CHI_NHANH || 'Chi nhánh Tây Tiền Giang',
+    bm: { ma: kv.MAU_PHIEU_MA || 'BM09-GNT', banHanh: kv.MAU_PHIEU_BAN_HANH || '02', suaDoi: kv.MAU_PHIEU_SUA_DOI || '00' },
+    noiNhan, banks, atms };
+  try { cache.put('ta_cfg', JSON.stringify(cfg), 60); } catch (e) {}
+  return cfg;
+}
+/** Quyền trong ứng dụng thẻ ATM */
+function taRole_(u, cfg) {
+  const nn = cfg.noiNhan.find(x => x.on && x.pb === u.pb);
+  const canEnter = cfg.vtNhap.includes(u.vt), canReturn = !!nn && cfg.vtTra.includes(u.vt), canCancel = !!nn && cfg.vtHuy.includes(u.vt);
+  const viewAll = canEnter || cfg.vtXem.includes(u.vt);
+  const scope = viewAll ? cfg.noiNhan.filter(x => x.on).map(x => x.pb) : (nn ? [u.pb] : []);
+  return { canEnter, canReturn, canCancel, viewAll, scope, myPb: nn ? u.pb : '' };
+}
+/** Ẩn I006/I007 với cán bộ không thuộc phòng nhận thẻ và không có vai trò liên quan */
+function taFilterApps_(u, apps) {
+  if (!apps.includes(TA_APP) && !apps.includes(TA_APP_BC)) return apps;
+  let r; try { r = taRole_(u, taConfig_()); } catch (e) { return apps.filter(a => a !== TA_APP && a !== TA_APP_BC); }
+  return apps.filter(a => a === TA_APP ? (r.canEnter || r.canReturn) : a === TA_APP_BC ? r.scope.length > 0 : true);
+}
+function taGuard_(b, app) {
+  const v = checkToken_(b.token); if (v.error) return v;
+  if (!userApps_(v.user).includes(app)) return { error: 'forbidden' };
+  let cfg; try { cfg = taConfig_(); } catch (e) { return { error: 'not_configured', message: 'Chưa cài đặt ứng dụng thẻ ATM.' }; }
+  const role = taRole_(v.user, cfg);
+  if (!role.scope.length || (app === TA_APP && !role.canEnter && !role.canReturn))
+    return { error: 'forbidden', message: 'Tài khoản không thuộc phòng nhận thẻ hoặc chưa có vai trò trong ứng dụng thẻ ATM.' };
+  return { user: v.user, cfg, role };
+}
+
+/* ---------- Đọc / ghi sổ ---------- */
+function taLastRow_(sh) {
+  const v = sh.getRange(1, 1, sh.getMaxRows(), 1).getValues();
+  for (let i = v.length - 1; i >= 0; i--) if (v[i][0] !== '' && v[i][0] !== null) return i + 1;
+  return 1;
+}
+function taYmd_(d) {
+  if (d instanceof Date) return Utilities.formatDate(d, TZ, 'yyyy-MM-dd');
+  const m = String(d || '').trim().match(/^(\d{1,2})\/(\d{1,2})\/(\d{2,4})/);
+  if (!m) return '';
+  const y = m[3].length === 2 ? '20' + m[3] : m[3];
+  return y + '-' + m[2].padStart(2, '0') + '-' + m[1].padStart(2, '0');
+}
+function taBankOf_(name, cfg) {
+  const k = taBankKey(name); if (!k) return '';
+  const b = cfg.banks.find(x => taBankKey(x.ten) === k || taBankKey(x.full) === k || x.alias.some(a => taBankKey(a) === k));
+  return b ? b.ten : String(name).trim();
+}
+/** Đọc sổ của 1 phòng → mảng thẻ. sync=true: bổ sung mã/số/ngân hàng/trạng thái cho dòng mới từ Google Form */
+function taReadRows_(sh, n, cfg, sync) {
+  const last = taLastRow_(sh); if (last < 2) return [];
+  const v = sh.getRange(2, 1, last - 1, TA_NCOL).getValues();
+  const today = Utilities.formatDate(new Date(), TZ, 'yyyy-MM-dd'), out = [];
+  const used = new Set(v.map(r => String(r[TC.MA]).trim()).filter(Boolean));
+  v.forEach((r, i) => {
+    if (r[TC.TS] === '' || r[TC.TS] === null) return;
+    if (!String(r[TC.MA]).trim() && sync) {
+      const ts = r[TC.TS] instanceof Date ? r[TC.TS] : new Date();
+      const pm = taParseMask(r[TC.SO_GOC]);
+      const nh = taBankOf_(String(r[TC.NH_GOC]).trim() === 'Khác' ? r[TC.NH_KHAC] : r[TC.NH_GOC], cfg);
+      const tt = String(r[TC.TT]).trim() || (r[TC.NGAY_TRA] !== '' ? TA_ST.TRA : TA_ST.GIU);
+      const fill = [taNewMa_(n.prefix, ts, used), pm ? taMask(pm.dau, pm.cuoi) : '', nh, tt];
+      sh.getRange(i + 2, TC.MA + 1, 1, 4).setValues([fill]);
+      [r[TC.MA], r[TC.SO], r[TC.NH], r[TC.TT]] = fill;
+    }
+    const vao = taYmd_(r[TC.NGAY_GIAO]) || taYmd_(r[TC.TS]), tra = taYmd_(r[TC.NGAY_TRA]);
+    const xl = String(r[TC.XL_BOI] || ''), xlId = (xl.match(/\((9\d{4})\)/) || [])[1] || '';
+    out.push({ row: i + 2, pb: n.pb, ma: String(r[TC.MA]).trim(), nhapLuc: r[TC.TS] instanceof Date ? Utilities.formatDate(r[TC.TS], TZ, 'dd/MM/yyyy HH:mm') : String(r[TC.TS]),
+      ngayVao: vao, ngayTra: tra, hoTen: String(r[TC.TEN] || '').trim(), soThe: String(r[TC.SO] || '').trim() || String(r[TC.SO_GOC] || '').trim(),
+      nganHang: String(r[TC.NH] || '').trim() || String(r[TC.NH_GOC] || '').trim(), tt: String(r[TC.TT] || '').trim() || TA_ST.GIU,
+      giaoBoi: String(r[TC.GIAO_BOI] || '').trim(), ghiChu: String(r[TC.GHI_CHU] || '').trim(), atm: String(r[TC.ATM] || '').trim(),
+      xlBoi: xl.replace(/\s*\(9\d{4}\)\s*$/, ''), xlId, xlLuc: r[TC.XL_LUC] instanceof Date ? Utilities.formatDate(r[TC.XL_LUC], TZ, 'dd/MM/yyyy HH:mm') : String(r[TC.XL_LUC] || ''),
+      xlNgay: r[TC.XL_LUC] instanceof Date ? Utilities.formatDate(r[TC.XL_LUC], TZ, 'yyyy-MM-dd') : '', xlGhiChu: String(r[TC.XL_GHI_CHU] || '').trim(),
+      canhBao: String(r[TC.CANH_BAO] || '').trim(), soNgay: taDays(vao, tra || today) });
+  });
+  return out;
+}
+/** Mã thẻ = tiền tố + thời điểm vào sổ (yyMMdd-HHmmss); trùng thì cộng thêm giây */
+function taNewMa_(prefix, ts, used) {
+  let t = ts.getTime(), ma;
+  do { ma = prefix + '-' + Utilities.formatDate(new Date(t), TZ, 'yyMMdd-HHmmss'); t += 1000; } while (used.has(ma));
+  used.add(ma); return ma;
+}
+function taSheet_(n) {
+  const sh = SpreadsheetApp.openById(n.fileId).getSheets()[0];
+  if (sh.getMaxColumns() < TA_NCOL) throw new Error('so_not_ready');
+  return sh;
+}
+/** Đọc thẻ trong phạm vi (có khóa ghi để bổ sung dòng mới an toàn) */
+function taCards_(cfg, pbs) {
+  const lock = LockService.getScriptLock(); let locked = false;
+  try { lock.waitLock(8000); locked = true; } catch (e) {}
+  try {
+    return cfg.noiNhan.filter(n => n.on && pbs.includes(n.pb)).reduce((a, n) => a.concat(taReadRows_(taSheet_(n), n, cfg, locked)), []);
+  } finally { if (locked) lock.releaseLock(); }
+}
+function taPublicCfg_(cfg) {
+  return { soNgayHuy: cfg.soNgayHuy, soDau: cfg.soDau, nhomTon: cfg.nhomTon, mien: cfg.mien, hoanTac: cfg.hoanTac, diaDanh: cfg.diaDanh, tenCN: cfg.tenCN, bm: cfg.bm,
+    banks: cfg.banks, atms: cfg.atms, phong: cfg.noiNhan.filter(n => n.on).map(n => ({ pb: n.pb, kinhGui: n.kinhGui, coEmail: n.emails.length > 0 })) };
+}
+function taOut_(x, user, cfg, today) {
+  const o = Object.assign({}, x); delete o.row; delete o.xlId;
+  o.canUndo = cfg.hoanTac && x.tt === TA_ST.TRA && x.xlId === user.id && x.xlNgay === today;
+  o.cuaToi = x.xlId === user.id;
+  return o;
+}
+
+/* ---------- API ---------- */
+/** view: 'so' (I006: đang giữ + đã trả 60 ngày), 'huy' (thẻ đã hủy), 'bc' (I007: tất cả) */
+function apiTaLoad_(b) {
+  const view = ['so', 'huy', 'bc'].includes(b.view) ? b.view : 'so';
+  const g = taGuard_(b, view === 'bc' ? TA_APP_BC : (b.app === TA_APP_BC ? TA_APP_BC : TA_APP)); if (g.error) return g;
+  const { user, cfg, role } = g, today = Utilities.formatDate(new Date(), TZ, 'yyyy-MM-dd');
+  let cards;
+  try { cards = taCards_(cfg, role.scope); } catch (e) { if (String(e.message) === 'so_not_ready') return { error: 'not_configured', message: 'Sổ thẻ chưa được chuẩn bị. Quản trị chạy menu Cài đặt thẻ ATM.' }; throw e; }
+  if (view === 'so') cards = cards.filter(x => x.tt === TA_ST.GIU || (x.tt === TA_ST.TRA && taDays(x.ngayTra || x.xlNgay, today) <= 60));
+  if (view === 'huy') cards = cards.filter(x => x.tt === TA_ST.HUY);
+  cards.sort((a, c) => (c.ngayVao + c.nhapLuc).localeCompare(a.ngayVao + a.nhapLuc));
+  return { ok: true, today, view, me: user.hoTen, role: { canEnter: role.canEnter, canReturn: role.canReturn, canCancel: role.canCancel, viewAll: role.viewAll, scope: role.scope, myPb: role.myPb },
+    cfg: taPublicCfg_(cfg), cards: cards.map(x => taOut_(x, user, cfg, today)) };
+}
+
+/** Nhập 1 lô thẻ cho 1 phòng nhận; gửi 1 email cho cán bộ phụ trách */
+function apiTaAdd_(b) {
+  const g = taGuard_(b, TA_APP); if (g.error) return g;
+  const { user, cfg, role } = g;
+  if (!role.canEnter) return { error: 'forbidden', message: 'Vai trò của tài khoản không được nhập thẻ.' };
+  const n = cfg.noiNhan.find(x => x.on && x.pb === String(b.pb || ''));
+  if (!n) return { error: 'invalid', message: 'Chọn phòng nhận thẻ.' };
+  const list = Array.isArray(b.cards) ? b.cards.slice(0, 30) : [];
+  if (!list.length) return { error: 'invalid', message: 'Chưa có thẻ nào trong lô.' };
+  const clean = [];
+  for (let i = 0; i < list.length; i++) {
+    const c = list[i] || {}, dau = String(c.dau || '').replace(/\D/g, ''), cuoi = String(c.cuoi || '').replace(/\D/g, '');
+    if (dau.length !== cfg.soDau || cuoi.length !== 4) return { error: 'invalid', message: 'Thẻ thứ ' + (i + 1) + ': cần ' + cfg.soDau + ' số đầu và 4 số cuối.' };
+    const nh = taBankOf_(c.nganHang, cfg);
+    if (!nh) return { error: 'invalid', message: 'Thẻ thứ ' + (i + 1) + ': chọn ngân hàng chủ thẻ.' };
+    const ten = taKhongDau(c.hoTen || '').toUpperCase().replace(/[^A-Z0-9 .'-]/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 60);
+    const atm = String(c.atm || '').trim().slice(0, 120), ghiChu = String(c.ghiChu || '').trim().slice(0, 200);
+    clean.push({ dau, cuoi, so: taMask(dau, cuoi), nh, ten, atm, ghiChu });
+  }
+  const lock = LockService.getScriptLock();
+  try { lock.waitLock(10000); } catch (e) { return { error: 'busy', message: 'Hệ thống đang ghi dữ liệu khác, thử lại sau vài giây.' }; }
+  let added = [];
+  try {
+    const sh = taSheet_(n), all = taReadRows_(sh, n, cfg, true), cur = all.filter(x => x.tt === TA_ST.GIU), used = new Set(all.map(x => x.ma));
+    // Trùng: cùng 4 số đầu, 4 số cuối, họ tên với thẻ đang giữ ở phòng này
+    const k = (so, ten) => { const p = taParseMask(so); return p ? p.dau.slice(0, 4) + p.cuoi + '|' + taKhongDau(ten) : ''; };
+    const curKeys = cur.reduce((o, x) => (o[k(x.soThe, x.hoTen)] = x, o), {});
+    const dups = clean.map((c, i) => ({ i, x: curKeys[k(c.so, c.ten)] })).filter(d => d.x);
+    if (dups.length && !b.xacNhanTrung)
+      return { error: 'duplicate', message: dups.map(d => 'Thẻ thứ ' + (d.i + 1) + ' trùng thẻ đang giữ ' + d.x.ma + ' (vào sổ ' + d.x.ngayVao.split('-').reverse().join('/') + ').').join(' ') + ' Nếu đúng là thẻ bị thu lần nữa, bấm "Vẫn lưu".' };
+    const now = new Date(), day = new Date(Utilities.formatDate(now, TZ, 'yyyy-MM-dd') + 'T12:00:00+07:00');
+    const row0 = taLastRow_(sh) + 1;
+    if (row0 + clean.length > sh.getMaxRows()) sh.insertRowsAfter(sh.getMaxRows(), clean.length + 20);
+    const txt = v => v === '' ? '' : "'" + v;
+    const left = [], right = [];
+    clean.forEach((c, i) => {
+      const ts = new Date(now.getTime() + i * 1000), ma = taNewMa_(n.prefix, ts, used);
+      left.push([ts, user.hoTen, day, '', c.ten, txt(c.so), c.nh, '', c.ghiChu, txt(ma), txt(c.so), c.nh, TA_ST.GIU, '', '', '']);
+      right.push([c.atm, txt(user.id)]);
+      added.push(Object.assign({ ma }, c));
+    });
+    sh.getRange(row0, 1, clean.length, 16).setValues(left);           // A–P (bỏ qua Q: công thức cảnh báo)
+    sh.getRange(row0, TC.ATM + 1, clean.length, 2).setValues(right);  // R–S
+    log_(user.id, user.hoTen, 'Nhập thẻ ATM', TA_APP, n.pb + ' · ' + added.length + ' thẻ · ' + added.map(a => a.ma).join(', '), '');
+  } finally { lock.releaseLock(); }
+  // Email cho cán bộ phụ trách phòng nhận (ngoài khóa ghi)
+  let mail = '';
+  if (cfg.guiEmailNhap) {
+    if (!n.emails.length) mail = 'Chưa gửi email: ' + n.pb + ' chưa có email nhận trong cấu hình.';
+    else {
+      try {
+        const rows = added.map((a, i) => '<tr><td>' + (i + 1) + '</td><td>' + taEsc(a.ten || '(không tên)') + '</td><td>' + taEsc(taMaskView(a.so)) + '</td><td>' + taEsc(a.nh) + '</td><td>' +
+          taEsc(a.atm) + '</td><td>' + taEsc(a.ghiChu) + '</td></tr>').join('');
+        MailApp.sendEmail({ to: n.emails.join(','), cc: n.cc.join(','), name: 'Không Gian Số Nội Bộ',
+          subject: '[Thẻ ATM máy thu] ' + n.pb + ' nhận ' + added.length + ' thẻ ngày ' + Utilities.formatDate(new Date(), TZ, 'dd/MM/yyyy'),
+          htmlBody: '<p>Kính gửi ' + taEsc(n.pb) + ',</p><p>Cán bộ ' + taEsc(user.hoTen) + ' đã bàn giao <b>' + added.length + ' thẻ ATM bị máy thu</b> vào sổ của phòng lúc ' +
+            Utilities.formatDate(new Date(), TZ, 'HH:mm dd/MM/yyyy') + ':</p><table border="1" cellpadding="5" style="border-collapse:collapse;font-family:Arial;font-size:13px">' +
+            '<tr style="background:#005993;color:#fff"><th>STT</th><th>Họ tên trên thẻ</th><th>Số thẻ</th><th>Ngân hàng</th><th>ATM thu thẻ</th><th>Ghi chú</th></tr>' + rows + '</table>' +
+            '<p>Thẻ đã có trong sổ trên Không Gian Số Nội Bộ → Thẻ ATM → Quản lý thẻ ATM bị máy thu.</p><p style="color:#888;font-size:12px">Email gửi tự động – ' + taEsc(cfg.tenCN) + '.</p>' });
+        mail = 'Đã gửi email cho ' + n.emails.join(', ') + '.';
+      } catch (e) { mail = 'Chưa gửi được email: ' + e.message; }
+    }
+  }
+  return Object.assign(apiTaLoad_({ token: b.token, view: 'so' }), { added: added.map(a => a.ma), mail });
+}
+
+function taFind_(b, g, pbOverride) {
+  const pb = pbOverride || g.role.myPb, n = g.cfg.noiNhan.find(x => x.on && x.pb === pb);
+  if (!n) return { error: 'forbidden', message: 'Tài khoản không thuộc phòng nhận thẻ.' };
+  const sh = taSheet_(n), x = taReadRows_(sh, n, g.cfg, true).find(r => r.ma === String(b.ma || ''));
+  if (!x) return { error: 'invalid', message: 'Không tìm thấy thẻ trong sổ của phòng.' };
+  return { n, sh, x };
+}
+/** Trả thẻ cho khách */
+function apiTaReturn_(b) {
+  const g = taGuard_(b, TA_APP); if (g.error) return g;
+  const { user } = g;
+  if (!g.role.canReturn) return { error: 'forbidden', message: 'Vai trò của tài khoản không được trả thẻ.' };
+  const lock = LockService.getScriptLock();
+  try { lock.waitLock(10000); } catch (e) { return { error: 'busy', message: 'Hệ thống đang bận, thử lại sau vài giây.' }; }
+  let ma;
+  try {
+    const f = taFind_(b, g); if (f.error) return f;
+    if (f.x.tt !== TA_ST.GIU) return { error: 'invalid', message: 'Thẻ này đang ở trạng thái "' + f.x.tt + '".' };
+    const now = new Date(), day = new Date(Utilities.formatDate(now, TZ, 'yyyy-MM-dd') + 'T12:00:00+07:00');
+    f.sh.getRange(f.x.row, TC.NGAY_TRA + 1).setValue(day);
+    f.sh.getRange(f.x.row, TC.TT + 1, 1, 4).setValues([[TA_ST.TRA, user.hoTen + ' (' + user.id + ')', now, String(b.ghiChu || '').trim().slice(0, 200)]]);
+    log_(user.id, user.hoTen, 'Trả thẻ ATM', TA_APP, f.x.ma + ' · ' + f.n.pb, '');
+    ma = f.x.ma;
+  } finally { lock.releaseLock(); }
+  return Object.assign(apiTaLoad_({ token: b.token, view: 'so' }), { returned: ma });
+}
+/** Hoàn tác trả thẻ (người trả, trong ngày) */
+function apiTaUndo_(b) {
+  const g = taGuard_(b, TA_APP); if (g.error) return g;
+  const { user, cfg } = g;
+  const lock = LockService.getScriptLock();
+  try { lock.waitLock(10000); } catch (e) { return { error: 'busy', message: 'Hệ thống đang bận, thử lại sau vài giây.' }; }
+  try {
+    const f = taFind_(b, g); if (f.error) return f;
+    const today = Utilities.formatDate(new Date(), TZ, 'yyyy-MM-dd');
+    if (!(cfg.hoanTac && f.x.tt === TA_ST.TRA && f.x.xlId === user.id && f.x.xlNgay === today))
+      return { error: 'forbidden', message: 'Chỉ người trả thẻ được hoàn tác, trong ngày trả.' };
+    f.sh.getRange(f.x.row, TC.NGAY_TRA + 1).setValue('');
+    f.sh.getRange(f.x.row, TC.TT + 1, 1, 4).setValues([[TA_ST.GIU, '', '', '']]);
+    log_(user.id, user.hoTen, 'Hoàn tác trả thẻ ATM', TA_APP, f.x.ma, '');
+  } finally { lock.releaseLock(); }
+  return apiTaLoad_({ token: b.token, view: 'so' });
+}
+/** Dữ liệu điền phiếu BM09 từ 1 thẻ đã trả */
+function taPhieuData_(x, n, cfg) {
+  const bank = cfg.banks.find(k => k.ten === x.nganHang), ngay = (x.xlLuc.match(/(\d{2})\/(\d{2})\/(\d{4})/) || []).slice(1);
+  return { kinhGui: n.kinhGui, hoTen: x.hoTen, soThe: x.soThe, nganHang: bank && bank.full ? bank.full + ' (' + bank.ten + ')' : x.nganHang,
+    atm: x.atm, diaDanh: cfg.diaDanh, ngay: ngay.length ? ngay : ['', '', ''], gioTra: x.xlLuc ? x.xlLuc.slice(11) + ' ' + x.xlLuc.slice(0, 10) : '', gdv: x.xlBoi, maThe: x.ma, bm: cfg.bm };
+}
+/** Gửi phiếu BM09 dạng PDF qua email (dự phòng khi máy in WiFi lỗi) */
+function apiTaPhieuEmail_(b) {
+  const g = taGuard_(b, TA_APP); if (g.error) return g;
+  const { user, cfg } = g, email = String(b.email || '').trim().toLowerCase();
+  if (!g.role.canReturn) return { error: 'forbidden', message: 'Vai trò của tài khoản không được trả thẻ.' };
+  if (!new RegExp('^[^@\\s]+@' + cfg.mien.replace(/\./g, '\\.') + '$').test(email)) return { error: 'invalid', message: 'Chỉ gửi được tới email @' + cfg.mien + '.' };
+  const f = taFind_(b, g); if (f.error) return f;
+  if (f.x.tt !== TA_ST.TRA) return { error: 'invalid', message: 'Thẻ chưa ở trạng thái đã trả.' };
+  const html = '<html><head><meta charset="utf-8"><style>@page{size:A4;margin:12mm}body{margin:0}' + TA_PHIEU_CSS + '</style></head><body>' + taPhieuHtml(taPhieuData_(f.x, f.n, cfg)) + '</body></html>';
+  const name = 'Phieu_tra_the_' + f.x.ma + '.pdf';
+  const pdf = Utilities.newBlob(html, 'text/html', 'phieu.html').getAs('application/pdf').setName(name);
+  MailApp.sendEmail({ to: email, name: 'Không Gian Số Nội Bộ', subject: '[Thẻ ATM máy thu] Phiếu trả thẻ ' + f.x.ma,
+    htmlBody: '<p>Đính kèm Giấy đề nghị trả thẻ do ATM thu (' + taEsc(cfg.bm.ma) + ') của thẻ ' + taEsc(f.x.ma) + ', in để khách hàng ký.</p><p style="color:#888;font-size:12px">Email gửi tự động – ' + taEsc(cfg.tenCN) + '.</p>',
+    attachments: [pdf] });
+  log_(user.id, user.hoTen, 'Gửi phiếu trả thẻ', TA_APP, f.x.ma + ' → ' + email, '');
+  return { ok: true, message: 'Đã gửi phiếu PDF tới ' + email + '.' };
+}
+/** Hủy các thẻ quá hạn (sau khi đã rà soát, kiểm kê) */
+function apiTaCancel_(b) {
+  const g = taGuard_(b, TA_APP_BC); if (g.error) return g;
+  const { user, cfg, role } = g;
+  if (!role.canCancel) return { error: 'forbidden', message: 'Vai trò của tài khoản không được hủy thẻ.' };
+  const mas = Array.isArray(b.mas) ? b.mas.map(String).slice(0, 300) : [], ghiChu = String(b.ghiChu || '').trim().slice(0, 200);
+  if (!mas.length) return { error: 'invalid', message: 'Chưa chọn thẻ cần hủy.' };
+  if (ghiChu.length < 5) return { error: 'invalid', message: 'Ghi số biên bản hoặc căn cứ hủy (tối thiểu 5 ký tự).' };
+  const lock = LockService.getScriptLock();
+  try { lock.waitLock(15000); } catch (e) { return { error: 'busy', message: 'Hệ thống đang bận, thử lại sau vài giây.' }; }
+  let ok = 0, skip = 0;
+  try {
+    const n = cfg.noiNhan.find(x => x.on && x.pb === role.myPb), sh = taSheet_(n), rows = taReadRows_(sh, n, cfg, true), now = new Date();
+    rows.filter(x => mas.includes(x.ma)).forEach(x => {
+      if (x.tt !== TA_ST.GIU || x.soNgay < cfg.soNgayHuy) { skip++; return; }
+      sh.getRange(x.row, TC.TT + 1, 1, 4).setValues([[TA_ST.HUY, user.hoTen + ' (' + user.id + ')', now, ghiChu]]); ok++;
+    });
+    log_(user.id, user.hoTen, 'Hủy thẻ ATM quá hạn', TA_APP_BC, role.myPb + ' · ' + ok + ' thẻ · ' + ghiChu, '');
+  } finally { lock.releaseLock(); }
+  return Object.assign(apiTaLoad_({ token: b.token, view: 'bc' }), { cancelled: ok, skipped: skip });
+}
+
+/** Lịch hằng ngày: đúng thứ cấu hình thì gửi mỗi phòng danh sách thẻ đến hạn hủy. Chạy tay từ menu để gửi ngay. */
+function nhacHuyTheATM(e) {
+  const cfg = taConfig_(true), manual = !(e && e.triggerUid);
+  const dow = +Utilities.formatDate(new Date(), TZ, 'u') % 7; // u: 1=Thứ Hai … 7=Chủ nhật
+  if (!manual && (cfg.nhacThu === null || (cfg.nhacThu !== 'all' && cfg.nhacThu !== dow))) return;
+  const report = [];
+  cfg.noiNhan.filter(n => n.on).forEach(n => {
+    try {
+      const due = taReadRows_(taSheet_(n), n, cfg, true).filter(x => x.tt === TA_ST.GIU && x.soNgay >= cfg.soNgayHuy).sort((a, b) => b.soNgay - a.soNgay);
+      if (!due.length) { report.push(n.pb + ': không có thẻ đến hạn hủy'); return; }
+      if (!n.emails.length) { report.push(n.pb + ': ' + due.length + ' thẻ đến hạn, chưa có email nhận'); return; }
+      const rows = due.map((x, i) => '<tr><td>' + (i + 1) + '</td><td>' + taEsc(x.ma) + '</td><td>' + taEsc(x.hoTen) + '</td><td>' + taEsc(taMaskView(x.soThe)) + '</td><td>' + taEsc(x.nganHang) +
+        '</td><td>' + x.ngayVao.split('-').reverse().join('/') + '</td><td style="text-align:right">' + x.soNgay + '</td></tr>').join('');
+      MailApp.sendEmail({ to: n.emails.join(','), cc: n.cc.join(','), name: 'Không Gian Số Nội Bộ',
+        subject: '[Thẻ ATM máy thu] ' + n.pb + ': ' + due.length + ' thẻ quá ' + cfg.soNgayHuy + ' ngày cần rà soát hủy',
+        htmlBody: '<p>Kính gửi ' + taEsc(n.pb) + ',</p><p>Sổ thẻ của phòng có <b>' + due.length + ' thẻ</b> khách chưa nhận lại đã giữ từ ' + cfg.soNgayHuy +
+          ' ngày trở lên. Đề nghị rà soát, kiểm kê và thực hiện hủy theo quy định tại Không Gian Số Nội Bộ → Thẻ ATM → Báo cáo thẻ ATM máy thu.</p>' +
+          '<table border="1" cellpadding="5" style="border-collapse:collapse;font-family:Arial;font-size:13px"><tr style="background:#005993;color:#fff"><th>STT</th><th>Mã thẻ</th><th>Họ tên trên thẻ</th><th>Số thẻ</th><th>Ngân hàng</th><th>Ngày vào sổ</th><th>Số ngày giữ</th></tr>' +
+          rows + '</table><p style="color:#888;font-size:12px">Email gửi tự động – ' + taEsc(cfg.tenCN) + '.</p>' });
+      report.push(n.pb + ': đã gửi ' + due.length + ' thẻ tới ' + n.emails.join(', '));
+    } catch (err) { report.push(n.pb + ': lỗi ' + err.message); }
+  });
+  log_('', 'Hệ thống', 'Nhắc hủy thẻ ATM', TA_APP_BC, report.join(' | '), '');
+  if (manual) { try { SpreadsheetApp.getUi().alert('Email nhắc hủy thẻ', report.join('\n'), SpreadsheetApp.getUi().ButtonSet.OK); } catch (err) {} }
+}
+
+/* ===== Dùng chung máy chủ (Code.gs) và trang (index.html) – Thẻ ATM bị máy thu (I006, I007) ===== */
+const TA_ST = { GIU: 'Đang giữ', TRA: 'Đã trả khách', HUY: 'Đã hủy' };
+const TA_LOGO = 'data:image/png;base64,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';
+/** Bỏ dấu tiếng Việt, chữ thường – dùng để tìm kiếm */
+function taKhongDau(s) {
+  return String(s || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/\u0111/g, 'd').replace(/\u0110/g, 'D').toLowerCase();
+}
+/** Khóa so khớp tên ngân hàng: in hoa, bỏ dấu, bỏ khoảng trắng và . - */
+function taBankKey(s) { return taKhongDau(s).toUpperCase().replace(/[\s.\-_]/g, ''); }
+/** Số thẻ che: 6 số đầu → 970415xxxxxx2187 (16 ký tự, theo BM09); 4 số đầu → 9704xxxx2187 (như sổ cũ) */
+function taMask(dau, cuoi) { dau = String(dau || ''); return dau + (dau.length >= 6 ? 'xxxxxx' : 'xxxx') + String(cuoi || ''); }
+/** Tách số thẻ che (mọi kiểu gõ cũ: xxx, XXX, ***) → {dau, cuoi} hoặc null */
+function taParseMask(s) { const m = String(s || '').match(/^\s*(\d{4,6})\s*[xX*]{2,}\s*(\d{4})\s*$/); return m ? { dau: m[1], cuoi: m[2] } : null; }
+/** Hiển thị số thẻ che có nhóm: 970415 xxxxxx 2187 */
+function taMaskView(m) { const r = String(m || '').match(/^(\d{4,6})(x+)(\d{4})$/i); return r ? r[1] + ' ' + r[2] + ' ' + r[3] : String(m || ''); }
+/** Số ngày giữa 2 ngày yyyy-MM-dd */
+function taDays(from, to) { if (!from || !to) return null; return Math.round((Date.parse(to + 'T00:00:00Z') - Date.parse(from + 'T00:00:00Z')) / 864e5); }
+function taEsc(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c])); }
+
+/** Giấy đề nghị trả thẻ do ATM thu (mẫu BM09-GNT) – HTML A4 dùng để in và xuất PDF.
+ *  d: {kinhGui, hoTen, soThe, nganHang, atm, diaDanh, ngay:[dd,mm,yyyy], gioTra, gdv, maThe, bm:{ma,banHanh,suaDoi,quyTrinh}} */
+function taPhieuHtml(d) {
+  const e = taEsc, dots = n => '<span class="dt">' + '.'.repeat(n) + '</span>';
+  const val = (v, n) => v ? '<b class="fill">' + e(v) + '</b>' : dots(n);
+  const bm = d.bm || {}, ng = d.ngay || ['', '', ''];
+  const box = '&#9744;', tick = '&#9746;';
+  return '<div class="bm09">' +
+  '<table class="hd"><tr><td><div class="bn">Ngân hàng TMCP Công thương Việt Nam</div><div class="bn-en">Vietnam Joint Stock Commercial Bank for Industry and Trade</div></td>' +
+  '<td class="lg"><img src="' + TA_LOGO + '" alt="VietinBank"></td></tr></table>' +
+  '<h1>GIẤY ĐỀ NGHỊ TRẢ THẺ DO ATM THU</h1>' +
+  '<p class="kg"><i><b>Kính gửi</b>: <b>Ngân hàng TMCP Công thương Việt Nam Chi nhánh/PGD/</b>To: VietinBank- Branch:</i> ' + val(d.kinhGui, 40) + '</p>' +
+  '<p class="nt"><i>(Đề nghị khách hàng/Please: (i) khi điền số thẻ chỉ điền 06 số đầu và 04 số cuối/ fill in card number fields <b>only</b> the first 6 digits and the last 4 digits of the card number); (ii) các trường thông tin có dấu (*) là bắt buộc/ Information fields marked with an asterisk (*) are required; (iii) các nội dung không liên quan đề nghị gạch chéo/the unrelated contents should be crossed out)</i></p>' +
+  '<div class="sec">THÔNG TIN CHỦ THẺ <i>(Cardholder information)</i></div>' +
+  '<table class="ln"><tr><td style="width:66%">Họ tên chủ thẻ *' + val(d.hoTen, 60) + '<div class="en">(Cardholder\'s name)</div></td>' +
+  '<td>Giới tính * ' + box + ' Nam &nbsp; ' + box + ' Nữ<div class="en">(Sex) &nbsp; (Male) &nbsp; (Female)</div></td></tr></table>' +
+  '<table class="ln"><tr><td style="width:40%">Số CCCD/CMND/HC*' + dots(34) + '<div class="en">(ID Number /PP Number)</div></td><td style="width:28%">Ngày cấp' + dots(26) + '<div class="en">(Date of issue)</div></td><td>Nơi cấp' + dots(28) + '<div class="en">(Place of issue)</div></td></tr></table>' +
+  '<table class="ln"><tr><td style="width:40%">Điện thoại' + dots(40) + '<div class="en">(Mobile phone)</div></td><td>Địa chỉ' + dots(70) + '<div class="en">(Address)</div></td></tr></table>' +
+  '<div class="sec">TRẢ LẠI THẺ DO ATM THU <i>(Return of card retained by ATM)</i></div>' +
+  '<div class="sub"><b><i>Khách hàng đề nghị Ngân hàng trả lại thẻ do ATM thu theo thông tin dưới đây</i></b> <i>(The customer requests the Bank to return the card retained by the ATM with the following information):</i></div>' +
+  '<div class="rw">Số thẻ<sup>*</sup> <i>(Card number)</i> ' + val(taMaskView(d.soThe), 80) + '</div>' +
+  '<div class="rw">Loại thẻ <i>(Card type)</i> ' + dots(100) + '</div>' +
+  '<div class="rw">Ngân hàng phát hành <i>(bank issue)</i>* ' + val(d.nganHang, 80) + '</div>' +
+  '<div class="rw"><b>Giao dịch ở ATM đặt tại</b> <i>(Transaction at ATM located at)</i> <b>:</b> ' + val(d.atm, 60) + '</div>' +
+  '<div class="rw"><b>vào lúc</b><i>(at)</i> ' + dots(8) + ' <b>giờ</b> <i>(hour)</i> ' + dots(8) + ' <b>ngày</b> <i>(date)</i> ' + dots(6) + ' <b>tháng</b> <i>(month)</i> ' + dots(6) + ' <b>năm</b> <i>(year)</i>' + dots(8) + '</div>' +
+  '<div class="sec">ĐỀ NGHỊ MỞ KHÓA THẺ ( Vietinbank issue only)</div>' +
+  '<div class="sub"><b><i>Khách hàng đề nghị Ngân hàng mở khóa thẻ theo thông tin dưới đây</i></b> <i>(The customer requests the Bank to open the card retained by the ATM with the following information):</i></div>' +
+  '<div class="rw">Số thẻ<sup>*</sup> <i>(Card number)</i> ' + dots(110) + '</div>' +
+  '<table class="sg"><tr><td style="width:50%"></td><td class="c"><i>' + e(d.diaDanh || '') + (d.diaDanh ? '' : dots(14)) + ', ngày <sub>date</sub> ' + e(ng[0]) + ' tháng <sub>month</sub> ' + e(ng[1]) + ' năm <sub>year</sub> ' + e(ng[2]) + '</i>' +
+  '<div><b>KHÁCH HÀNG (</b><i>Customer)</i></div><div><i>Ký, họ tên/Sign, full name</i></div><div class="sp"></div></td></tr>' +
+  '<tr><td colspan="2" class="secrow">PHẦN DÀNH CHO NGÂN HÀNG <i>(For Bank use only)</i></td></tr>' +
+  '<tr><td>Xác nhận đã xác thực KH: ' + box + '</td><td></td></tr>' +
+  '<tr><td>Đã trả thẻ cho KH: ' + tick + '<br>Đã mở khóa thẻ cho KH: ' + box + '<br>Ngày giờ thực hiện: <b class="fill">' + e(d.gioTra || '') + '</b></td><td class="mut">' + (d.maThe ? 'Mã thẻ trong sổ: ' + e(d.maThe) : '') + '</td></tr>' +
+  '<tr><td class="c"><b>Giao dịch viên</b><div><i>Teller</i></div><div class="sp2"></div><div class="fill">' + e(d.gdv || '') + '</div></td><td class="c"><b>Kiểm soát viên</b><div><i>Supervisor</i></div><div class="sp2"></div></td></tr></table>' +
+  '<table class="ft"><tr><td class="c" style="width:60%"><b>QUY TRÌNH</b></td><td class="c">Lần ban hành: ' + e(bm.banHanh || '02') + '</td><td class="c">Trang: 1/1</td></tr>' +
+  '<tr><td class="c">' + e(bm.quyTrinh || 'NGHIỆP VỤ PHÁT HÀNH, SỬ DỤNG VÀ QUẢN LÝ THẺ TRONG HỆ THỐNG NGÂN HÀNG THƯƠNG MẠI CỔ PHẦN CÔNG THƯƠNG VIỆT NAM') + '</td><td class="c">Lần sửa đổi: ' + e(bm.suaDoi || '00') + '</td><td class="c">' + e(bm.ma || 'BM09-GNT') + '</td></tr></table>' +
+  '</div>';
+}
+/** CSS của phiếu (A4) */
+const TA_PHIEU_CSS = '.bm09,.bm09 *{-webkit-print-color-adjust:exact;print-color-adjust:exact}.bm09{font-family:"Times New Roman",Times,serif;color:#000;font-size:12.5px;line-height:1.35;width:100%;max-width:190mm;margin:0 auto;background:#fff}' +
+  '.bm09 table{width:100%;border-collapse:collapse;font-size:inherit}.bm09 sub{font-size:8px}.bm09 td{vertical-align:top;padding:2px 4px}' +
+  '.bm09 .hd td{padding:0 0 4px}.bm09 .bn{color:#1F4E79;font-weight:bold;font-size:14px}.bm09 .bn-en{color:#1F4E79;font-style:italic;font-weight:bold;font-size:11px}' +
+  '.bm09 .lg{text-align:right;width:40%}.bm09 .lg img{height:34px}' +
+  '.bm09 h1{text-align:center;color:#C00000;font-size:16px;margin:10px 0 14px}' +
+  '.bm09 .kg{margin:0 0 2px}.bm09 .nt{margin:0 0 6px;font-size:11.5px}' +
+  '.bm09 .sec,.bm09 .secrow{background:#5B9BD5;color:#fff;font-weight:bold;padding:2px 4px;border:1px solid #5B9BD5}' +
+  '.bm09 .sub{background:#DEEAF6;padding:2px 4px;margin-bottom:4px}' +
+  '.bm09 .ln td{padding:3px 4px 1px}.bm09 .en{font-size:10px;font-style:italic}' +
+  '.bm09 .rw{padding:3px 4px}.bm09 .dt{color:#555;letter-spacing:-.5px;word-break:break-all}' +
+  '.bm09 .fill{font-family:Arial,Helvetica,sans-serif;font-size:13px;color:#00007A}' +
+  '.bm09 .sg{margin-top:6px;border:1px dashed #000}.bm09 .sg td{border:1px dashed #000}.bm09 .c{text-align:center}' +
+  '.bm09 .sp{height:70px}.bm09 .sp2{height:60px}.bm09 .mut{color:#555;font-size:11px}' +
+  '.bm09 .ft{margin-top:14px;font-size:10px}.bm09 .ft td{border:1px solid #000;padding:4px;vertical-align:middle}';

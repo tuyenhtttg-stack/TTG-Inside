@@ -1,11 +1,13 @@
 # Không Gian Số Nội Bộ · TTG Inside
 
 Bộ tiện ích nội bộ dành cho cán bộ **VietinBank Chi nhánh Tây Tiền Giang**, thiết kế cho điện thoại.
-Phiên bản 1.5.0 – 28/10/2026: thêm Bản tin sáng (I005).
+Phiên bản 1.6.0 – 29/10/2026: thêm Quản lý thẻ ATM bị máy thu (I006) và Báo cáo thẻ ATM máy thu (I007).
 
 | Nhóm | Tiện ích | Mô tả |
 |---|---|---|
 | Thông tin | Bản tin sáng (I005) | Bản tin 06:30 mỗi sáng: điểm nhấn, lưu ý và gợi ý điều hành, chỉ số thị trường, văn bản sắp hiệu lực, tin địa bàn, chính sách, cạnh tranh; xem lại 30 ngày |
+| Thẻ ATM | Quản lý thẻ ATM bị máy thu (I006) | Chụp thẻ để đọc tự động số thẻ, họ tên, ngân hàng (đọc ngay trên điện thoại); nhập theo lô và email phòng nhận; sổ thẻ nhóm theo ngân hàng; trả thẻ, in phiếu BM09-GNT hoặc gửi PDF qua email |
+| Thẻ ATM | Báo cáo thẻ ATM máy thu (I007) | Thẻ tồn theo thời gian giữ, theo ngân hàng, theo phòng; thẻ đã trả trong kỳ; thẻ quá hạn cần hủy: xuất danh sách rà soát, tải CSV, thực hiện hủy; tra cứu thẻ đã hủy |
 | Mã QR | Tạo QR kết nối WiFi | 4 bước: chọn điểm giao dịch → chọn mạng WiFi → quét thử → in thẻ niêm yết A6 |
 | Chi phí | Quản lý chi phí (I003) | Hạn mức phê duyệt còn lại theo thời gian thực; trưởng/phó phòng nhập khoản đã duyệt; PGĐ, Giám đốc, kế toán xem theo quyền |
 | Chi phí | Báo cáo chi phí (I004) | Tổng quan, dự báo hạn mức, theo phòng/nhóm, ma trận, xu hướng 12 tháng, kế hoạch năm, khoản lớn/lặp lại, nhận xét AI |
@@ -19,6 +21,7 @@ manifest.webmanifest    Khai báo để cài lên màn hình chính điện tho�
 sw.js                   Service worker: mở nhanh, dùng được khi mạng yếu
 lib/qrcode.js           Thư viện tạo mã QR (qrcode-generator 1.4.4, MIT)
 lib/jsQR.js             Thư viện đọc mã QR từ ảnh (jsQR 1.4.0, Apache-2.0)
+lib/tesseract/          Thư viện đọc chữ trên ảnh thẻ (Tesseract.js 5.1.1, Apache-2.0) – chỉ tải khi bấm chụp thẻ
 icons/                  Biểu tượng ứng dụng
 apps-script/Code.gs     Máy chủ phân quyền (gắn với Google Sheet) + trợ lý AI giai đoạn 2
 apps-script/appsscript.json  Manifest khai báo quyền tối thiểu (Drive chỉ đọc)
@@ -104,6 +107,24 @@ vào thư mục Drive `KhongGianSoNoiBo/BanTin`, tự xóa file quá 30 ngày �
 
 Người xem: theo cột I005 ở sheet CanBo (bỏ tick để thu hồi). Trang chủ hiện thẻ 3 điểm nhấn; bấm vào xem toàn bộ, chọn ngày trong 30 ngày.
 Bản tin mới được đọc lại sau tối đa 10 phút (bộ nhớ đệm). Lưu ý điều hành là gợi ý từ tin công khai, cần đối chiếu văn bản gốc.
+
+## Thẻ ATM bị máy thu (I006) và Báo cáo (I007) – từ v1.6.0
+
+Dữ liệu dùng tiếp 3 sổ trong thư mục SoBanGiaoThe (Phòng DVKH, PGD An Hữu, PGD Ấp Bắc); cột A–I giữ như sổ cũ, cột J–S do ứng dụng ghi.
+
+1. Apps Script: dán `apps-script/Code.gs` v1.6.0 và `apps-script/appsscript.json` (thêm quyền `script.scriptapp` để cài lịch email nhắc hủy) → Lưu.
+2. Trong file phân quyền: menu **Không Gian Số → Cài đặt / cập nhật Thẻ ATM máy thu (I006, I007)** → cấp quyền.
+   Script tạo file cấu hình `KhongGianSoNoiBo_TheATM` (kéo vào thư mục KhongGianSoNoiBo), chuẩn bị 3 sổ, đăng ký I006/I007, cài lịch email nhắc hủy.
+3. Mở file cấu hình, điền **Email nhận** (và CC) cho từng phòng ở sheet `TA_NoiNhan` (chỉ @vietinbank.vn); điền danh sách ATM ở `TA_ATM` nếu muốn in địa điểm ATM trên phiếu.
+4. Tắt nhận câu trả lời ở các Google Form sổ thẻ cũ (Form → Câu trả lời → Chấp nhận câu trả lời: tắt).
+5. Triển khai → Quản lý triển khai → Phiên bản mới. Tải toàn bộ thư mục (gồm `lib/tesseract/`) lên GitHub.
+
+Tham số đổi trên sheet `TA_CauHinh`, không sửa code: số ngày hủy (mặc định 90), thứ và giờ gửi email nhắc hủy, mốc nhóm tuổi tồn, số chữ số đầu thẻ (6 theo BM09 / 4), tên miền email, vai trò nhập/trả/hủy/xem tất cả, hoàn tác trong ngày, địa danh và mã biểu mẫu in trên phiếu.
+Danh mục ngân hàng và đầu số BIN ở `TA_NganHang` (BIN nội địa 9704xx theo danh sách mã BIN của NHNN).
+
+Quy tắc: Quản trị hệ thống, Điện toán nhập thẻ (không trả); Trưởng/Phó phòng, GDV, Cán bộ DVKH của phòng nhận thẻ trả thẻ sổ phòng mình; người trả hoàn tác trong ngày;
+thẻ giữ từ 90 ngày vào danh sách cần hủy và email nhắc; Trưởng/Phó phòng nhận thẻ thực hiện hủy sau khi rà soát (ghi số biên bản); thẻ đã hủy ẩn khỏi sổ, tra cứu lại được.
+Camera chỉ đọc ảnh trên điện thoại; ứng dụng chỉ lưu số đầu và 4 số cuối, không lưu số thẻ đầy đủ, không lưu ảnh.
 
 ## Cập nhật phiên bản
 

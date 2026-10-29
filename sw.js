@@ -1,6 +1,6 @@
 /* Service worker – Không Gian Số Nội Bộ (TTG Inside)
    Mỗi lần cập nhật file trên GitHub: tăng VERSION để máy cán bộ tải bản mới. */
-const VERSION='1.5.0';
+const VERSION='1.6.0';
 const CACHE='ttg-inside-'+VERSION;
 const ASSETS=['./','index.html','manifest.webmanifest','lib/qrcode.js','lib/jsQR.js',
   'icons/icon-192.png','icons/icon-512.png','icons/icon-maskable-512.png','icons/apple-touch-icon.png','icons/favicon.png'];

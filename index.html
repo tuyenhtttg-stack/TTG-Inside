@@ -353,6 +353,90 @@ footer .shell{display:flex;flex-direction:column;align-items:center;gap:6px;padd
 .bt-meta a{color:var(--vtb-xanh-dam);font-weight:600}
 .bt-note{font-size:12.5px;color:var(--muted);text-align:center;margin:0}
 .bt-anchor{scroll-margin-top:120px}
+/* ===== Thẻ ATM bị máy thu (I006, I007) ===== */
+.ta-top{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.ta-top h2{flex:1 1 auto;margin:0}
+.ta-dates{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.ta-dates .inp{min-width:0;font-size:15px;padding:0 8px}
+.ta-cam{display:grid;grid-template-columns:1fr auto;gap:8px}
+.ta-cam .btn{min-height:52px}
+.ta-num{display:grid;grid-template-columns:minmax(0,1.3fr) auto minmax(0,1fr);gap:8px;align-items:center}
+.ta-num .inp{text-align:center;letter-spacing:.12em;font-variant-numeric:tabular-nums}
+.ta-num span{font:700 14px var(--mono);color:var(--muted)}
+.ta-up{text-transform:uppercase}
+.ta-ocr{display:flex;flex-direction:column;gap:6px}
+.ta-ocr .prog{height:6px;border-radius:4px;background:#fff;overflow:hidden}
+.ta-ocr .prog i{display:block;height:100%;width:0;background:var(--vtb-xanh-dam);transition:width .3s}
+.ta-ocr img{max-width:100%;max-height:150px;border-radius:10px;align-self:flex-start;object-fit:contain;background:#000}
+.ta-batch{display:flex;flex-direction:column;gap:8px}
+.ta-bi{display:flex;align-items:center;gap:10px;border:1px solid var(--line);border-radius:12px;padding:10px 12px;background:var(--page)}
+.ta-bi .tx{flex:1;min-width:0;display:flex;flex-direction:column;gap:2px}
+.ta-bi b{font-size:14.5px;overflow-wrap:anywhere}
+.ta-bi small{font-size:12.5px;color:var(--muted);overflow-wrap:anywhere}
+.ta-x{flex:none;width:40px;height:40px;border-radius:10px;border:1px solid var(--line);background:var(--surface);color:var(--vtb-do);font:700 18px var(--font);cursor:pointer}
+.ta-search{position:relative}
+.ta-search .inp{padding-left:40px}
+.ta-search svg{position:absolute;left:12px;top:50%;transform:translateY(-50%);width:20px;height:20px;fill:none;stroke:var(--muted);stroke-width:2}
+.ta-grp{border:1px solid var(--line);border-radius:14px;overflow:hidden}
+.ta-grp>summary{list-style:none;display:flex;align-items:center;gap:8px;padding:12px;cursor:pointer;background:var(--page);font-weight:700;color:var(--vtb-xanh-dam)}
+.ta-grp>summary::-webkit-details-marker{display:none}
+.ta-grp>summary .badge{margin-left:auto}
+.ta-grp>summary .chev{width:18px;height:18px;fill:none;stroke:var(--muted);stroke-width:2;transform:rotate(90deg);transition:transform .2s}
+.ta-grp[open]>summary .chev{transform:rotate(-90deg)}
+.ta-grp>div{display:flex;flex-direction:column;gap:8px;padding:8px}
+.ta-it{gap:4px}
+.ta-it .cp-pb{color:var(--ink);font-size:14.5px;font-weight:700;white-space:normal}
+.ta-age{flex:none;font:700 12px var(--font);border-radius:999px;padding:3px 8px;background:var(--vtb-nen-sang);color:var(--vtb-xanh-dam)}
+.ta-age.warn{background:var(--warn-bg);color:var(--warn-ink)}
+.ta-age.late{background:#FDE7EC;color:#9B0E35}
+.ta-act{display:flex;gap:8px;flex-wrap:wrap;margin-top:4px}
+.ta-act .btn{flex:1 1 auto}
+.ta-conf{display:flex;flex-direction:column;gap:8px;border-top:1px dashed var(--line);padding-top:8px;margin-top:4px}
+.ta-conf p{margin:0;font-size:13px;color:var(--warn-ink);background:var(--warn-bg);border-radius:10px;padding:8px 10px}
+.ta-st{font-size:12px;font-weight:700;border-radius:999px;padding:3px 8px;flex:none}
+.ta-st.tra{background:var(--ok-bg);color:var(--ok)}
+.ta-st.huy{background:#EEF1F4;color:#6B7A88}
+.ta-empty{font-size:14px;color:var(--muted);text-align:center;padding:14px 0}
+.ta-ck{display:flex;align-items:flex-start;gap:10px}
+.ta-ck input{width:22px;height:22px;margin-top:2px;flex:none;accent-color:var(--vtb-xanh-dam)}
+.ta-buckets{display:flex;flex-direction:column;gap:10px}
+.ta-bk{display:grid;grid-template-columns:92px 1fr 44px;gap:8px;align-items:center;font-size:13.5px}
+.ta-bk b{text-align:right;font-variant-numeric:tabular-nums}
+.ta-bk .bar i.late{background:var(--vtb-do)}
+.ta-tbl{width:100%;border-collapse:collapse;font-size:13px}
+.ta-tbl th{text-align:left;font-size:12px;color:var(--muted);font-weight:600;padding:6px 4px;border-bottom:1px solid var(--line)}
+.ta-tbl td{padding:8px 4px;border-bottom:1px solid var(--line);vertical-align:top;overflow-wrap:anywhere}
+.ta-tbl td.n{text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap}
+.ta-wrap{overflow-x:auto;margin:0 -4px}
+/* Lớp phủ xem/in phiếu */
+.ta-ov{position:fixed;inset:0;z-index:50;background:#5b6b78;display:flex;flex-direction:column}
+.ta-ov[hidden]{display:none!important}
+.ta-ovbar{display:flex;align-items:center;gap:8px;background:var(--surface);padding:calc(10px + env(safe-area-inset-top,0px)) 12px 10px;border-bottom:1px solid var(--line)}
+.ta-ovbar b{flex:1;min-width:0;font-size:15px;color:var(--vtb-xanh-dam);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.ta-ovact{display:flex;flex-direction:column;gap:8px;background:var(--surface);padding:10px 12px;border-bottom:1px solid var(--line)}
+.ta-ovact .row{display:flex;gap:8px}
+.ta-ovact .row .btn{flex:1}
+.ta-mail{display:flex;gap:8px;align-items:center}
+.ta-mail .inp{min-height:44px;font-size:15px}
+.ta-mail span{font-size:13px;color:var(--muted);flex:none}
+.ta-ovbody{flex:1;overflow:auto;padding:12px;-webkit-overflow-scrolling:touch}
+.ta-paper{background:#fff;margin:0 auto;box-shadow:0 4px 18px rgba(0,0,0,.25);transform-origin:top left}
+.ta-paper .pg{width:718px;padding:28px 24px;box-sizing:border-box}
+.ta-rpt{font-family:"Times New Roman",Times,serif;color:#000;font-size:12.5px}
+.ta-rpt table{width:100%;border-collapse:collapse;font-size:inherit}
+.ta-rpt .t td{border:1px solid #000;padding:4px;vertical-align:top}
+.ta-rpt .t th{border:1px solid #000;padding:4px;background:#DEEAF6;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+.ta-rpt h1{text-align:center;font-size:15px;margin:12px 0 4px}
+.ta-rpt .c{text-align:center}.ta-rpt .r{text-align:right}
+@media print{
+  body.ta-printing>*:not(#taPrintRoot){display:none!important}
+  body.ta-printing #taPrintRoot{display:block!important;position:static}
+  body.ta-printing{background:#fff!important}
+  #taPrintRoot .ta-paper{transform:none!important;box-shadow:none;width:auto!important;height:auto!important;margin:0}
+  #taPrintRoot .pg{width:auto;padding:0}
+  @page{size:A4;margin:12mm}
+}
+#taPrintRoot{display:none}
 :root{padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
 </style>
 </head>
@@ -576,6 +660,124 @@ footer .shell{display:flex;flex-direction:column;align-items:center;gap:6px;padd
  </div>
 </section>
 
+<!-- ============ THẺ ATM BỊ MÁY THU (I006) ============ -->
+<section class="view" id="v-the-atm" hidden>
+ <div class="stack">
+  <div class="card">
+    <div class="ta-top">
+      <h2>Thẻ ATM bị máy thu</h2>
+      <button class="btn sm ghost" id="taReload"><svg viewBox="0 0 24 24"><path d="M20 11a8 8 0 1 0-2.3 5.7M20 4v7h-7"/></svg>Làm mới</button>
+    </div>
+    <span class="scope" id="taScope"></span>
+    <span class="upd" id="taUpd" role="status">Đang tải…</span>
+    <div class="callout warn" id="taErr" hidden></div>
+  </div>
+
+  <div class="card" id="taEnter" hidden>
+    <h2>Nhập thẻ máy thu</h2>
+    <div class="field"><span class="lbl">Phòng nhận thẻ <i style="color:var(--vtb-do);font-style:normal">*</i></span><div class="seg" id="taPb" role="tablist"></div></div>
+    <p class="hint" style="margin:0">Ngày bàn giao (vào sổ): <b id="taToday"></b></p>
+    <div class="ta-cam">
+      <button class="btn" type="button" id="taCamBtn"><svg class="i" viewBox="0 0 24 24" style="stroke:#fff"><path d="M4 8h3l2-3h6l2 3h3v11H4z"/><circle cx="12" cy="13" r="3.5"/></svg>Chụp thẻ để đọc tự động</button>
+      <button class="btn ghost" type="button" id="taPickBtn" aria-label="Chọn ảnh có sẵn"><svg class="i" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="2"/><circle cx="9" cy="10" r="2"/><path d="M21 17l-5-5-9 8"/></svg></button>
+    </div>
+    <input type="file" accept="image/*" capture="environment" id="taCamFile" hidden>
+    <input type="file" accept="image/*" id="taPickFile" hidden>
+    <div class="preview-box ta-ocr" id="taOcr" hidden></div>
+    <form class="stack" id="taForm" novalidate style="gap:12px">
+      <div class="field"><label for="taDau">Số thẻ <i>*</i> <span id="taNumHint" style="font-weight:400"></span></label>
+        <div class="ta-num"><input class="inp" id="taDau" inputmode="numeric" autocomplete="off" maxlength="6" placeholder="6 số đầu"><span id="taMid">xxxxxx</span><input class="inp" id="taCuoi" inputmode="numeric" autocomplete="off" maxlength="4" placeholder="4 số cuối"></div></div>
+      <div class="field"><label for="taTen">Họ tên trên thẻ</label><input class="inp ta-up" id="taTen" autocomplete="off" maxlength="60" placeholder="Thẻ không in tên thì để trống"></div>
+      <div class="field"><label for="taNh">Ngân hàng chủ thẻ <i>*</i></label><select class="inp" id="taNh"></select>
+        <input class="inp" id="taNhKhac" maxlength="60" placeholder="Tên ngân hàng" hidden></div>
+      <div class="field" id="taAtmF" hidden><label for="taAtm">ATM thu thẻ</label><select class="inp" id="taAtm"></select></div>
+      <div class="field"><label for="taGhiChu">Ghi chú</label><input class="inp" id="taGhiChu" maxlength="200" placeholder="VD: gửi bảo vệ Nguyễn Văn A trên xe điều hàng"></div>
+      <span class="hint bad" id="taFormErr" role="alert" hidden></span>
+      <button class="btn ghost" type="submit" id="taAddBtn">+ Thêm vào lô</button>
+    </form>
+    <div class="ta-batch" id="taBatch" hidden></div>
+    <span class="hint bad" id="taSaveErr" role="alert" hidden></span>
+    <button class="btn" id="taSave" hidden>Lưu vào sổ và gửi email</button>
+  </div>
+
+  <div class="card" id="taSoCard">
+    <h2 id="taSoTitle">Sổ thẻ</h2>
+    <div class="chips" id="taPbChips" hidden></div>
+    <div class="ta-search"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="M20 20l-4-4"/></svg>
+      <input class="inp" id="taQ" type="search" autocomplete="off" placeholder="Tìm theo tên (không cần dấu) hoặc 4 số cuối"></div>
+    <div class="sum-line" id="taSum"></div>
+    <div class="stack" id="taSo" style="gap:10px"></div>
+  </div>
+
+  <div class="card" id="taRetCard" hidden>
+    <h2>Đã trả gần đây</h2>
+    <div class="cp-list" id="taRet"></div>
+  </div>
+
+  <div class="card">
+    <h2>Tra cứu thẻ đã hủy</h2>
+    <p class="lead" style="margin:0">Thẻ đã hủy không hiện trong sổ. Tìm lại khi khách hàng hỏi.</p>
+    <button class="btn ghost" id="taHuyBtn">Mở tra cứu thẻ đã hủy</button>
+    <div class="stack" id="taHuyBox" hidden style="gap:10px">
+      <div class="ta-search"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="M20 20l-4-4"/></svg>
+        <input class="inp" id="taHuyQ" type="search" autocomplete="off" placeholder="Tên hoặc 4 số cuối"></div>
+      <div class="cp-list" id="taHuyList"></div>
+    </div>
+  </div>
+ </div>
+</section>
+
+<!-- ============ BÁO CÁO THẺ ATM MÁY THU (I007) ============ -->
+<section class="view" id="v-the-baocao" hidden>
+ <div class="stack">
+  <div class="card">
+    <div class="ta-top">
+      <h2>Báo cáo thẻ ATM máy thu</h2>
+      <button class="btn sm ghost" id="tbReload"><svg viewBox="0 0 24 24"><path d="M20 11a8 8 0 1 0-2.3 5.7M20 4v7h-7"/></svg>Làm mới</button>
+    </div>
+    <div class="field" id="tbPbF" hidden><label for="tbPb">Phòng nhận thẻ</label><select class="inp" id="tbPb"></select></div>
+    <div class="ta-dates">
+      <div class="field"><label for="tbFrom">Từ ngày</label><input class="inp" type="date" id="tbFrom"></div>
+      <div class="field"><label for="tbTo">Đến ngày</label><input class="inp" type="date" id="tbTo"></div>
+    </div>
+    <span class="scope" id="tbScope"></span>
+    <span class="upd" id="tbUpd" role="status">Đang tải…</span>
+    <div class="callout warn" id="tbErr" hidden></div>
+  </div>
+  <div class="kpis" id="tbKpis"></div>
+  <div class="card"><h2>Thẻ tồn theo thời gian giữ</h2><div class="ta-buckets" id="tbBuckets"></div></div>
+  <div class="card"><h2>Thẻ tồn theo ngân hàng</h2><table class="tbl" id="tbBanks"></table></div>
+  <div class="card" id="tbPbCard" hidden><h2>Theo phòng nhận thẻ</h2><div class="ta-wrap"><table class="ta-tbl" id="tbPbTbl"></table></div></div>
+  <div class="card" id="tbDueCard">
+    <h2 id="tbDueTitle">Thẻ quá hạn cần hủy</h2>
+    <p class="lead" style="margin:0" id="tbDueLead"></p>
+    <div class="row" style="display:flex;gap:8px;flex-wrap:wrap">
+      <button class="btn ghost sm" id="tbDuePrint" style="flex:1">Xuất danh sách rà soát</button>
+      <button class="btn ghost sm" id="tbDueCsv" style="flex:1">Tải Excel (CSV)</button>
+    </div>
+    <label class="ta-ck" id="tbDueAllL"><input type="checkbox" id="tbDueAll" checked><span class="hint">Chọn tất cả</span></label>
+    <div class="cp-list" id="tbDue"></div>
+    <div class="ta-conf" id="tbCancelBox" hidden>
+      <p>Chỉ thực hiện hủy sau khi đã rà soát, kiểm kê thực tế. Thẻ đã hủy sẽ không hiện trong sổ.</p>
+      <div class="field"><label for="tbCancelNote">Số biên bản / căn cứ hủy <i>*</i></label><input class="inp" id="tbCancelNote" maxlength="200" placeholder="VD: Biên bản hủy thẻ số 05/2026/BB-DVKH ngày 30/10/2026"></div>
+      <span class="hint bad" id="tbCancelErr" role="alert" hidden></span>
+      <button class="btn" id="tbCancelBtn" style="background:var(--vtb-do);border-color:var(--vtb-do)">Thực hiện hủy thẻ đã chọn</button>
+    </div>
+  </div>
+  <div class="card">
+    <h2>Thẻ đã trả trong kỳ</h2>
+    <button class="btn ghost sm" id="tbRetCsv" style="align-self:flex-start">Tải Excel (CSV)</button>
+    <div class="cp-list" id="tbRet"></div>
+  </div>
+  <div class="card">
+    <h2>Tra cứu thẻ đã hủy</h2>
+    <div class="ta-search"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="M20 20l-4-4"/></svg>
+      <input class="inp" id="tbHuyQ" type="search" autocomplete="off" placeholder="Tên hoặc 4 số cuối"></div>
+    <div class="cp-list" id="tbHuy"></div>
+  </div>
+ </div>
+</section>
+
 <!-- ============ BẢN TIN SÁNG (I005) ============ -->
 <section class="view" id="v-bantin" hidden>
  <div class="stack">
@@ -686,7 +888,7 @@ footer .shell{display:flex;flex-direction:column;align-items:center;gap:6px;padd
 /* =====================================================================
    CẤU HÌNH — chỉnh tại đây khi triển khai
    ===================================================================== */
-const APP_VERSION='1.5.0 · 28/10/2026';
+const APP_VERSION='1.6.0 · 29/10/2026';
 // Tên bộ công cụ (song ngữ)
 const SUITE={vi:'Không Gian Số Nội Bộ',en:'TTG Inside'};
 
@@ -703,6 +905,8 @@ const ICONS={
   text:'<svg class="i" viewBox="0 0 24 24"><path d="M5 6h14M5 10h14M5 14h9M5 18h6"/></svg>',
   chart:'<svg class="i" viewBox="0 0 24 24"><path d="M4 20h16"/><rect x="6" y="11" width="3" height="7" rx="1"/><rect x="11" y="7" width="3" height="11" rx="1"/><rect x="16" y="13" width="3" height="5" rx="1"/><path d="M5 8l5-4 4 3 5-4"/></svg>',
   news:'<svg class="i" viewBox="0 0 24 24"><rect x="3" y="4" width="15" height="16" rx="2"/><path d="M18 8h3v10a2 2 0 0 1-2 2h-1M7 8h7M7 12h7M7 16h4"/></svg>',
+  card:'<svg class="i" viewBox="0 0 24 24"><rect x="2.5" y="5" width="19" height="14" rx="2"/><path d="M2.5 9.5h19M6 15h4"/><path d="M15 15h3"/></svg>',
+  cardchart:'<svg class="i" viewBox="0 0 24 24"><rect x="2.5" y="4" width="13" height="9" rx="1.5"/><path d="M2.5 7.5h13"/><path d="M8 20h13M11 20v-4M15 20v-6M19 20v-8"/></svg>',
   ledger:'<svg class="i" viewBox="0 0 24 24"><rect x="4" y="3" width="16" height="18" rx="2"/><path d="M8 8h8M8 12h5M8 16h3"/><path d="M15.5 14.5l1.5 1.5 3-3"/></svg>'
 };
 const TOOLKIT=[
@@ -712,6 +916,10 @@ const TOOLKIT=[
   {id:'qr',vi:'Mã QR',en:'QR Codes',tools:[
     {id:'qr-wifi',app:'I001',title:'Tạo QR kết nối WiFi',desc:'Từng bước tạo thẻ QR để khách quét là vào WiFi, không cần nhập mật khẩu.',icon:'wifi'},
     {id:'qr-tuychon',app:'I002',title:'Tạo QR theo yêu cầu',desc:'Mã cho link, số điện thoại, tin nhắn, email, danh thiếp, văn bản.',icon:'qrchat'}
+  ]}
+  ,{id:'the',vi:'Thẻ ATM',en:'ATM Cards',tools:[
+    {id:'the-atm',app:'I006',title:'Quản lý thẻ ATM bị máy thu',desc:'Chụp thẻ để nhập tự động, sổ thẻ theo phòng, trả thẻ và in phiếu BM09.',icon:'card'},
+    {id:'the-baocao',app:'I007',title:'Báo cáo thẻ ATM máy thu',desc:'Thẻ tồn, đã trả, quá hạn cần hủy; rà soát và hủy thẻ.',icon:'cardchart'}
   ]}
   ,{id:'cp',vi:'Chi phí',en:'Expenses',tools:[
     {id:'cp-nhatky',app:'I003',title:'Quản lý chi phí',desc:'Hạn mức phê duyệt còn lại theo thời gian thực, nhập và tra cứu các khoản đã duyệt.',icon:'ledger'},
@@ -853,6 +1061,7 @@ $('#loginForm').addEventListener('submit',async e=>{
 });
 function logout(reason){
   saveSess(null);Object.assign(BT,{ngay:[],docs:{},latest:null,cur:null,at:0});
+  if(typeof TA!=='undefined'){Object.assign(TA,{d:null,batch:[],huy:null,q:'',pbFilter:''});TB.d=null;TB.to='';}
   showLogin({expired:'Phiên đăng nhập đã hết hạn. Nhập lại mã ID.',revoked:'Tài khoản đã bị khóa hoặc thay đổi. Liên hệ cán bộ quản trị.'}[reason]||'');
 }
 $('#logoutBtn').onclick=()=>{logout();toast('Đã đăng xuất')};
@@ -972,6 +1181,484 @@ async function btDemo(action,data){
   await new Promise(x=>setTimeout(x,250));
   if(action==='bt_list')return{ok:true,ngay:[BT_SAMPLE.ngay],latest:BT_SAMPLE};
   return data.ngay===BT_SAMPLE.ngay?{ok:true,doc:BT_SAMPLE}:{error:'not_found'};
+}
+
+/* ===== Dùng chung máy chủ (Code.gs) và trang (index.html) – Thẻ ATM bị máy thu (I006, I007) ===== */
+const TA_ST = { GIU: 'Đang giữ', TRA: 'Đã trả khách', HUY: 'Đã hủy' };
+const TA_LOGO = 'data:image/png;base64,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';
+/** Bỏ dấu tiếng Việt, chữ thường – dùng để tìm kiếm */
+function taKhongDau(s) {
+  return String(s || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/\u0111/g, 'd').replace(/\u0110/g, 'D').toLowerCase();
+}
+/** Khóa so khớp tên ngân hàng: in hoa, bỏ dấu, bỏ khoảng trắng và . - */
+function taBankKey(s) { return taKhongDau(s).toUpperCase().replace(/[\s.\-_]/g, ''); }
+/** Số thẻ che: 6 số đầu → 970415xxxxxx2187 (16 ký tự, theo BM09); 4 số đầu → 9704xxxx2187 (như sổ cũ) */
+function taMask(dau, cuoi) { dau = String(dau || ''); return dau + (dau.length >= 6 ? 'xxxxxx' : 'xxxx') + String(cuoi || ''); }
+/** Tách số thẻ che (mọi kiểu gõ cũ: xxx, XXX, ***) → {dau, cuoi} hoặc null */
+function taParseMask(s) { const m = String(s || '').match(/^\s*(\d{4,6})\s*[xX*]{2,}\s*(\d{4})\s*$/); return m ? { dau: m[1], cuoi: m[2] } : null; }
+/** Hiển thị số thẻ che có nhóm: 970415 xxxxxx 2187 */
+function taMaskView(m) { const r = String(m || '').match(/^(\d{4,6})(x+)(\d{4})$/i); return r ? r[1] + ' ' + r[2] + ' ' + r[3] : String(m || ''); }
+/** Số ngày giữa 2 ngày yyyy-MM-dd */
+function taDays(from, to) { if (!from || !to) return null; return Math.round((Date.parse(to + 'T00:00:00Z') - Date.parse(from + 'T00:00:00Z')) / 864e5); }
+function taEsc(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c])); }
+
+/** Giấy đề nghị trả thẻ do ATM thu (mẫu BM09-GNT) – HTML A4 dùng để in và xuất PDF.
+ *  d: {kinhGui, hoTen, soThe, nganHang, atm, diaDanh, ngay:[dd,mm,yyyy], gioTra, gdv, maThe, bm:{ma,banHanh,suaDoi,quyTrinh}} */
+function taPhieuHtml(d) {
+  const e = taEsc, dots = n => '<span class="dt">' + '.'.repeat(n) + '</span>';
+  const val = (v, n) => v ? '<b class="fill">' + e(v) + '</b>' : dots(n);
+  const bm = d.bm || {}, ng = d.ngay || ['', '', ''];
+  const box = '&#9744;', tick = '&#9746;';
+  return '<div class="bm09">' +
+  '<table class="hd"><tr><td><div class="bn">Ngân hàng TMCP Công thương Việt Nam</div><div class="bn-en">Vietnam Joint Stock Commercial Bank for Industry and Trade</div></td>' +
+  '<td class="lg"><img src="' + TA_LOGO + '" alt="VietinBank"></td></tr></table>' +
+  '<h1>GIẤY ĐỀ NGHỊ TRẢ THẺ DO ATM THU</h1>' +
+  '<p class="kg"><i><b>Kính gửi</b>: <b>Ngân hàng TMCP Công thương Việt Nam Chi nhánh/PGD/</b>To: VietinBank- Branch:</i> ' + val(d.kinhGui, 40) + '</p>' +
+  '<p class="nt"><i>(Đề nghị khách hàng/Please: (i) khi điền số thẻ chỉ điền 06 số đầu và 04 số cuối/ fill in card number fields <b>only</b> the first 6 digits and the last 4 digits of the card number); (ii) các trường thông tin có dấu (*) là bắt buộc/ Information fields marked with an asterisk (*) are required; (iii) các nội dung không liên quan đề nghị gạch chéo/the unrelated contents should be crossed out)</i></p>' +
+  '<div class="sec">THÔNG TIN CHỦ THẺ <i>(Cardholder information)</i></div>' +
+  '<table class="ln"><tr><td style="width:66%">Họ tên chủ thẻ *' + val(d.hoTen, 60) + '<div class="en">(Cardholder\'s name)</div></td>' +
+  '<td>Giới tính * ' + box + ' Nam &nbsp; ' + box + ' Nữ<div class="en">(Sex) &nbsp; (Male) &nbsp; (Female)</div></td></tr></table>' +
+  '<table class="ln"><tr><td style="width:40%">Số CCCD/CMND/HC*' + dots(34) + '<div class="en">(ID Number /PP Number)</div></td><td style="width:28%">Ngày cấp' + dots(26) + '<div class="en">(Date of issue)</div></td><td>Nơi cấp' + dots(28) + '<div class="en">(Place of issue)</div></td></tr></table>' +
+  '<table class="ln"><tr><td style="width:40%">Điện thoại' + dots(40) + '<div class="en">(Mobile phone)</div></td><td>Địa chỉ' + dots(70) + '<div class="en">(Address)</div></td></tr></table>' +
+  '<div class="sec">TRẢ LẠI THẺ DO ATM THU <i>(Return of card retained by ATM)</i></div>' +
+  '<div class="sub"><b><i>Khách hàng đề nghị Ngân hàng trả lại thẻ do ATM thu theo thông tin dưới đây</i></b> <i>(The customer requests the Bank to return the card retained by the ATM with the following information):</i></div>' +
+  '<div class="rw">Số thẻ<sup>*</sup> <i>(Card number)</i> ' + val(taMaskView(d.soThe), 80) + '</div>' +
+  '<div class="rw">Loại thẻ <i>(Card type)</i> ' + dots(100) + '</div>' +
+  '<div class="rw">Ngân hàng phát hành <i>(bank issue)</i>* ' + val(d.nganHang, 80) + '</div>' +
+  '<div class="rw"><b>Giao dịch ở ATM đặt tại</b> <i>(Transaction at ATM located at)</i> <b>:</b> ' + val(d.atm, 60) + '</div>' +
+  '<div class="rw"><b>vào lúc</b><i>(at)</i> ' + dots(8) + ' <b>giờ</b> <i>(hour)</i> ' + dots(8) + ' <b>ngày</b> <i>(date)</i> ' + dots(6) + ' <b>tháng</b> <i>(month)</i> ' + dots(6) + ' <b>năm</b> <i>(year)</i>' + dots(8) + '</div>' +
+  '<div class="sec">ĐỀ NGHỊ MỞ KHÓA THẺ ( Vietinbank issue only)</div>' +
+  '<div class="sub"><b><i>Khách hàng đề nghị Ngân hàng mở khóa thẻ theo thông tin dưới đây</i></b> <i>(The customer requests the Bank to open the card retained by the ATM with the following information):</i></div>' +
+  '<div class="rw">Số thẻ<sup>*</sup> <i>(Card number)</i> ' + dots(110) + '</div>' +
+  '<table class="sg"><tr><td style="width:50%"></td><td class="c"><i>' + e(d.diaDanh || '') + (d.diaDanh ? '' : dots(14)) + ', ngày <sub>date</sub> ' + e(ng[0]) + ' tháng <sub>month</sub> ' + e(ng[1]) + ' năm <sub>year</sub> ' + e(ng[2]) + '</i>' +
+  '<div><b>KHÁCH HÀNG (</b><i>Customer)</i></div><div><i>Ký, họ tên/Sign, full name</i></div><div class="sp"></div></td></tr>' +
+  '<tr><td colspan="2" class="secrow">PHẦN DÀNH CHO NGÂN HÀNG <i>(For Bank use only)</i></td></tr>' +
+  '<tr><td>Xác nhận đã xác thực KH: ' + box + '</td><td></td></tr>' +
+  '<tr><td>Đã trả thẻ cho KH: ' + tick + '<br>Đã mở khóa thẻ cho KH: ' + box + '<br>Ngày giờ thực hiện: <b class="fill">' + e(d.gioTra || '') + '</b></td><td class="mut">' + (d.maThe ? 'Mã thẻ trong sổ: ' + e(d.maThe) : '') + '</td></tr>' +
+  '<tr><td class="c"><b>Giao dịch viên</b><div><i>Teller</i></div><div class="sp2"></div><div class="fill">' + e(d.gdv || '') + '</div></td><td class="c"><b>Kiểm soát viên</b><div><i>Supervisor</i></div><div class="sp2"></div></td></tr></table>' +
+  '<table class="ft"><tr><td class="c" style="width:60%"><b>QUY TRÌNH</b></td><td class="c">Lần ban hành: ' + e(bm.banHanh || '02') + '</td><td class="c">Trang: 1/1</td></tr>' +
+  '<tr><td class="c">' + e(bm.quyTrinh || 'NGHIỆP VỤ PHÁT HÀNH, SỬ DỤNG VÀ QUẢN LÝ THẺ TRONG HỆ THỐNG NGÂN HÀNG THƯƠNG MẠI CỔ PHẦN CÔNG THƯƠNG VIỆT NAM') + '</td><td class="c">Lần sửa đổi: ' + e(bm.suaDoi || '00') + '</td><td class="c">' + e(bm.ma || 'BM09-GNT') + '</td></tr></table>' +
+  '</div>';
+}
+/** CSS của phiếu (A4) */
+const TA_PHIEU_CSS = '.bm09,.bm09 *{-webkit-print-color-adjust:exact;print-color-adjust:exact}.bm09{font-family:"Times New Roman",Times,serif;color:#000;font-size:12.5px;line-height:1.35;width:100%;max-width:190mm;margin:0 auto;background:#fff}' +
+  '.bm09 table{width:100%;border-collapse:collapse;font-size:inherit}.bm09 sub{font-size:8px}.bm09 td{vertical-align:top;padding:2px 4px}' +
+  '.bm09 .hd td{padding:0 0 4px}.bm09 .bn{color:#1F4E79;font-weight:bold;font-size:14px}.bm09 .bn-en{color:#1F4E79;font-style:italic;font-weight:bold;font-size:11px}' +
+  '.bm09 .lg{text-align:right;width:40%}.bm09 .lg img{height:34px}' +
+  '.bm09 h1{text-align:center;color:#C00000;font-size:16px;margin:10px 0 14px}' +
+  '.bm09 .kg{margin:0 0 2px}.bm09 .nt{margin:0 0 6px;font-size:11.5px}' +
+  '.bm09 .sec,.bm09 .secrow{background:#5B9BD5;color:#fff;font-weight:bold;padding:2px 4px;border:1px solid #5B9BD5}' +
+  '.bm09 .sub{background:#DEEAF6;padding:2px 4px;margin-bottom:4px}' +
+  '.bm09 .ln td{padding:3px 4px 1px}.bm09 .en{font-size:10px;font-style:italic}' +
+  '.bm09 .rw{padding:3px 4px}.bm09 .dt{color:#555;letter-spacing:-.5px;word-break:break-all}' +
+  '.bm09 .fill{font-family:Arial,Helvetica,sans-serif;font-size:13px;color:#00007A}' +
+  '.bm09 .sg{margin-top:6px;border:1px dashed #000}.bm09 .sg td{border:1px dashed #000}.bm09 .c{text-align:center}' +
+  '.bm09 .sp{height:70px}.bm09 .sp2{height:60px}.bm09 .mut{color:#555;font-size:11px}' +
+  '.bm09 .ft{margin-top:14px;font-size:10px}.bm09 .ft td{border:1px solid #000;padding:4px;vertical-align:middle}';
+
+/* =====================================================================
+   THẺ ATM BỊ MÁY THU (I006) VÀ BÁO CÁO (I007)
+   Máy chủ: ta_load, ta_add, ta_return, ta_undo, ta_phieu_email, ta_cancel. Hàm dùng chung (taMask, taPhieuHtml…) ở cuối file.
+   ===================================================================== */
+// Thư viện đọc chữ trên ảnh (Tesseract.js, chạy hoàn toàn trên điện thoại). Bản GitHub dùng thư mục lib/tesseract/.
+const TA_TESS=/*TA_TESS*/{js:'lib/tesseract/tesseract.min.js',worker:'lib/tesseract/worker.min.js',core:'lib/tesseract/core',lang:'lib/tesseract/lang'};
+const TA={d:null,pb:'',batch:[],q:'',pbFilter:'',busy:false,huy:null,bc:null};
+const taDmy=s=>/^\d{4}-\d{2}-\d{2}$/.test(s||'')?s.slice(8,10)+'/'+s.slice(5,7)+'/'+s.slice(0,4):(s||'');
+const taApi=(action,data={})=>DEMO?taDemo(action,data):api(action,{token:S?.token,...data});
+function taErrShow(el,r){if(r&&(r.error==='expired'||r.error==='revoked')){logout(r.error);return}
+  const m=r?.message||(r?.error==='network'?'Không kết nối được máy chủ. Kiểm tra mạng rồi thử lại.':r?.error==='forbidden'?'Tài khoản không có quyền thao tác này.':'Máy chủ đang bận, thử lại sau ít phút.');
+  el.textContent=m;el.hidden=false}
+const taBankList=()=>TA.d?.cfg.banks||[];
+const taAge=(x,cfg)=>{const n=x.soNgay??0,h=cfg.soNgayHuy;return `<span class="ta-age${n>=h?' late':n>=h-15?' warn':''}">${n} ngày</span>`};
+const taMatch=(x,q)=>{if(!q)return true;const k=taKhongDau(q).trim();if(/^\d{1,4}$/.test(k))return String(x.soThe).endsWith(k)||String(x.soThe).slice(-4).includes(k);
+  const qw=k.split(/\s+/).filter(Boolean),nw=taKhongDau(x.hoTen).split(/\s+/);
+  return qw.every(q=>nw.some(w=>w.startsWith(q)))||taKhongDau(x.ma).includes(k)};
+
+/* ---------- Tải dữ liệu I006 ---------- */
+async function taLoad(){
+  $('#taErr').hidden=true;$('#taUpd').textContent='Đang tải…';
+  const r=await taApi('ta_load',{view:'so'});
+  if(!r.ok){$('#taUpd').textContent='';taErrShow($('#taErr'),r);return}
+  taApply(r);
+}
+function taApply(r){
+  TA.d=r;const ro=r.role;
+  $('#taUpd').textContent='Cập nhật lúc '+new Intl.DateTimeFormat('vi-VN',{timeZone:'Asia/Ho_Chi_Minh',hour:'2-digit',minute:'2-digit',second:'2-digit'}).format(new Date())+(DEMO?' · dữ liệu xem thử':'');
+  $('#taScope').textContent=ro.viewAll?'Tất cả phòng nhận thẻ':ro.myPb;
+  $('#taEnter').hidden=!ro.canEnter;
+  if(ro.canEnter)taRenderForm();
+  $('#taSoTitle').textContent=ro.canReturn?'Sổ thẻ '+ro.myPb:'Thẻ đã nhập';
+  const pbs=ro.scope;$('#taPbChips').hidden=pbs.length<2;
+  if(pbs.length>1){if(TA.pbFilter&&!pbs.includes(TA.pbFilter))TA.pbFilter='';
+    $('#taPbChips').innerHTML=['',...pbs].map(p=>`<button class="chip" aria-pressed="${TA.pbFilter===p}" data-p="${esc(p)}">${p?esc(p):'Tất cả'}</button>`).join('');
+    $('#taPbChips').querySelectorAll('button').forEach(b=>b.onclick=()=>{TA.pbFilter=b.dataset.p;taApply(TA.d)})}
+  taRenderSo();
+}
+
+/* ---------- Form nhập thẻ ---------- */
+function taRenderForm(){
+  const c=TA.d.cfg,pbs=c.phong.map(p=>p.pb);
+  if(!pbs.includes(TA.pb))TA.pb=store.get('ta.pb')&&pbs.includes(store.get('ta.pb'))?store.get('ta.pb'):pbs[0]||'';
+  $('#taPb').innerHTML=c.phong.map(p=>`<button type="button" role="tab" aria-selected="${p.pb===TA.pb}" data-p="${esc(p.pb)}">${esc(p.pb.replace(/^Phòng /,''))}</button>`).join('');
+  $('#taPb').querySelectorAll('button').forEach(b=>b.onclick=()=>{if(TA.batch.length&&b.dataset.p!==TA.pb&&!confirm('Lô đang có '+TA.batch.length+' thẻ cho '+TA.pb+'. Đổi phòng sẽ bỏ lô này?'))return;
+    if(b.dataset.p!==TA.pb)TA.batch=[];TA.pb=b.dataset.p;store.set('ta.pb',TA.pb);taRenderForm()});
+  $('#taToday').textContent=taDmy(TA.d.today);
+  $('#taDau').maxLength=c.soDau;$('#taDau').placeholder=c.soDau+' số đầu';$('#taMid').textContent=c.soDau>=6?'xxxxxx':'xxxx';
+  const keep=$('#taNh').value;
+  $('#taNh').innerHTML='<option value="">— Chọn ngân hàng —</option>'+c.banks.map(b=>`<option>${esc(b.ten)}</option>`).join('')+'<option value="__khac">Khác…</option>';
+  if(keep)$('#taNh').value=keep;
+  $('#taAtmF').hidden=!c.atms.length;
+  $('#taAtm').innerHTML='<option value="">— Không rõ —</option>'+c.atms.filter(a=>!a.pb||a.pb===TA.pb).concat(c.atms.filter(a=>a.pb&&a.pb!==TA.pb)).map(a=>`<option value="${esc(a.diaDiem)}">${esc((a.ma?a.ma+' · ':'')+a.diaDiem)}</option>`).join('');
+  taRenderBatch();
+}
+$('#taNh').onchange=()=>{$('#taNhKhac').hidden=$('#taNh').value!=='__khac';if(!$('#taNhKhac').hidden)$('#taNhKhac').focus()};
+$('#taDau').addEventListener('input',e=>{e.target.value=e.target.value.replace(/\D/g,'');const b=taBinBank(e.target.value);if(b&&!$('#taNh').value){$('#taNh').value=b;$('#taNhKhac').hidden=true}
+  if(e.target.value.length===TA.d?.cfg.soDau)$('#taCuoi').focus()});
+$('#taCuoi').addEventListener('input',e=>{e.target.value=e.target.value.replace(/\D/g,'')});
+$('#taTen').addEventListener('input',e=>{const p=e.target.selectionStart;e.target.value=taKhongDau(e.target.value).toUpperCase();try{e.target.setSelectionRange(p,p)}catch(_){}});
+/** Ngân hàng theo đầu số BIN (6 số; thẻ nội địa 9704xx) */
+function taBinBank(num){num=String(num||'');if(num.length<6)return '';
+  const b=taBankList().find(k=>k.bins.some(x=>x.length>=6&&num.startsWith(x)));return b?b.ten:''}
+function taFormErr(m){$('#taFormErr').textContent=m||'';$('#taFormErr').hidden=!m}
+$('#taForm').addEventListener('submit',e=>{
+  e.preventDefault();const c=TA.d.cfg,dau=$('#taDau').value,cuoi=$('#taCuoi').value;
+  if(dau.length!==c.soDau||cuoi.length!==4){taFormErr(`Nhập đủ ${c.soDau} số đầu và 4 số cuối của thẻ.`);return}
+  let nh=$('#taNh').value;if(nh==='__khac')nh=$('#taNhKhac').value.trim();
+  if(!nh){taFormErr('Chọn ngân hàng chủ thẻ.');return}
+  const ten=$('#taTen').value.trim().replace(/\s+/g,' ');
+  if(TA.batch.some(b=>b.dau===dau&&b.cuoi===cuoi&&b.hoTen===ten)){taFormErr('Thẻ này đã có trong lô.');return}
+  TA.batch.push({dau,cuoi,hoTen:ten,nganHang:nh,atm:$('#taAtm').value,ghiChu:$('#taGhiChu').value.trim()});
+  taFormErr('');['#taDau','#taCuoi','#taTen','#taNhKhac'].forEach(s=>$(s).value='');$('#taNh').value='';$('#taNhKhac').hidden=true;$('#taOcr').hidden=true;
+  vibrate();taRenderBatch();toast('Đã thêm thẻ vào lô ('+TA.batch.length+')');
+});
+function taRenderBatch(){
+  const n=TA.batch.length;$('#taBatch').hidden=!n;$('#taSave').hidden=!n;$('#taSaveErr').hidden=true;
+  $('#taSave').textContent=`Lưu ${n} thẻ vào sổ ${TA.pb}`+((TA.d?.cfg.phong.find(p=>p.pb===TA.pb)||{}).coEmail?' và gửi email':'');
+  $('#taBatch').innerHTML=`<div class="sum-line"><span>Lô chờ lưu · ${esc(TA.pb)}</span><b>${n} thẻ</b></div>`+TA.batch.map((b,i)=>`<div class="ta-bi"><div class="tx"><b>${esc(b.hoTen||'(Thẻ không in tên)')}</b>
+    <small>${esc(taMaskView(taMask(b.dau,b.cuoi)))} · ${esc(b.nganHang)}${b.atm?' · '+esc(b.atm):''}${b.ghiChu?' · '+esc(b.ghiChu):''}</small></div><button class="ta-x" data-i="${i}" aria-label="Bỏ thẻ khỏi lô">×</button></div>`).join('');
+  $('#taBatch').querySelectorAll('.ta-x').forEach(x=>x.onclick=()=>{TA.batch.splice(+x.dataset.i,1);taRenderBatch()});
+}
+$('#taSave').onclick=()=>taSave(false);
+async function taSave(confirmDup){
+  if(TA.busy||!TA.batch.length)return;TA.busy=true;const btn=$('#taSave');btn.disabled=true;btn.textContent='Đang lưu…';$('#taSaveErr').hidden=true;
+  const r=await taApi('ta_add',{pb:TA.pb,cards:TA.batch,xacNhanTrung:!!confirmDup});TA.busy=false;btn.disabled=false;
+  if(r.ok){const n=TA.batch.length;TA.batch=[];taApply(r);vibrate();toast(`Đã lưu ${n} thẻ vào sổ ${TA.pb}. ${r.mail||''}`);return}
+  taRenderBatch();taErrShow($('#taSaveErr'),r);
+  if(r.error==='duplicate'){const b=document.createElement('button');b.className='btn ghost sm';b.textContent='Vẫn lưu';b.style.marginTop='6px';b.onclick=()=>taSave(true);$('#taSaveErr').append(document.createElement('br'),b)}
+}
+
+/* ---------- Camera: chụp thẻ, đọc số thẻ, họ tên, ngân hàng ngay trên máy ---------- */
+$('#taCamBtn').onclick=()=>$('#taCamFile').click();$('#taPickBtn').onclick=()=>$('#taPickFile').click();
+['#taCamFile','#taPickFile'].forEach(s=>$(s).addEventListener('change',e=>{const f=e.target.files&&e.target.files[0];e.target.value='';if(f)taOcrRun(f)}));
+let taWorker=null;
+function taLoadScript(src){return new Promise((ok,no)=>{if(window.Tesseract)return ok();const s=document.createElement('script');s.src=src;s.onload=ok;s.onerror=()=>no(new Error('load'));document.head.append(s)})}
+async function taGetWorker(onp){
+  if(taWorker)return taWorker;
+  await taLoadScript(TA_TESS.js);
+  const abs=u=>new URL(u,location.href).href;
+  taWorker=await Tesseract.createWorker('eng',1,{workerPath:abs(TA_TESS.worker),corePath:abs(TA_TESS.core),langPath:abs(TA_TESS.lang),
+    logger:m=>{if(m.status&&typeof m.progress==='number')onp(m)}});
+  return taWorker;
+}
+function taOcrBox(html){$('#taOcr').hidden=false;$('#taOcr').innerHTML=html}
+/** Ảnh → 2 bản đen trắng tăng tương phản (thường và đảo màu) */
+function taPrep(img){
+  const W=Math.min(1600,img.naturalWidth||img.width),H=Math.round((img.naturalHeight||img.height)*W/(img.naturalWidth||img.width));
+  const mk=inv=>{const c=document.createElement('canvas');c.width=W;c.height=H;const x=c.getContext('2d');x.drawImage(img,0,0,W,H);
+    const d=x.getImageData(0,0,W,H),p=d.data,hist=new Uint32Array(256);
+    for(let i=0;i<p.length;i+=4){const g=(p[i]*.299+p[i+1]*.587+p[i+2]*.114)|0;p[i]=g;hist[g]++}
+    let lo=0,hi=255,acc=0,tot=W*H;for(;lo<255&&(acc+=hist[lo])<tot*.02;lo++);acc=0;for(;hi>0&&(acc+=hist[hi])<tot*.02;hi--);
+    const k=255/Math.max(1,hi-lo);
+    for(let i=0;i<p.length;i+=4){let v=Math.max(0,Math.min(255,(p[i]-lo)*k));if(inv)v=255-v;p[i]=p[i+1]=p[i+2]=v}
+    x.putImageData(d,0,0);return c};
+  return [mk(false),mk(true)];
+}
+const taLuhn=s=>{let sum=0,alt=false;for(let i=s.length-1;i>=0;i--){let n=+s[i];if(alt){n*=2;if(n>9)n-=9}sum+=n;alt=!alt}return sum%10===0};
+const TA_STOP=['VIETINBANK','NAPAS','VISA','DEBIT','CREDIT','VALID','THRU','GOOD','MONTH','YEAR','CARD','BANK','PLATINUM','GOLD','CLASSIC','MASTERCARD','UNIONPAY',
+  'CONTACTLESS','PARTNER','INTERNATIONAL','MEMBER','SINCE','EXPIRES','SIGNATURE','AUTHORIZED','CUSTOMER','SERVICE','HOTLINE','WWW','PREMIUM','BUSINESS','PLUS','PAYWAVE','CHIP','NGAN','HANG','THE','ATM'];
+/** Phân tích chữ đọc được → {dau, cuoi, ten, bank, luhn} (không giữ lại số thẻ đầy đủ) */
+function taParseOcr(texts,soDau){
+  const lines=texts.join('\n').split(/\n+/).map(l=>l.trim()).filter(Boolean);
+  let best=null;
+  lines.forEach(l=>{
+    if((l.match(/\d/g)||[]).length<8)return;
+    const fx=l.replace(/[OoQD]/g,'0').replace(/[Il|!]/g,'1').replace(/[Ss$]/g,'5').replace(/B/g,'8').replace(/Z/g,'2');
+    const d=fx.replace(/\D/g,'');
+    const cands=[];if(d.length>=13&&d.length<=19)cands.push(d);
+    if(d.length>19)for(let i=0;i+16<=d.length;i++){cands.push(d.slice(i,i+16));if(i+19<=d.length)cands.push(d.slice(i,i+19))}
+    cands.forEach(c=>{const sc=(taLuhn(c)?3:0)+(/^(9704|4|5|3|6)/.test(c)?1:0)+([16,19].includes(c.length)?1:0);if(!best||sc>best.sc)best={c,sc}});
+  });
+  const compact=taBankKey(texts.join(' '));let bank='';
+  if(best)bank=taBinBank(best.c);
+  if(!bank){let len=0;taBankList().forEach(b=>[b.ten,...b.alias].forEach(a=>{const k=taBankKey(a);if(k.length>=4&&compact.includes(k)&&k.length>len){len=k.length;bank=b.ten}}))}
+  const bankKeys=taBankList().flatMap(b=>[b.ten,...b.alias]).map(taBankKey).filter(k=>k.length>=3);
+  let ten='';
+  lines.forEach(l=>{const u=taKhongDau(l).toUpperCase().replace(/[^A-Z .'-]/g,' ').replace(/\s+/g,' ').trim();
+    const w=u.split(' ').filter(x=>x.length>0);if(w.length<2||w.length>6||u.length<6||u.length>30)return;
+    if(/[^A-Z .'-]/.test(l.replace(/\s/g,'').replace(/[a-z]/g,'')))return;               // dòng lẫn số → không phải họ tên
+    if(w.some(x=>TA_STOP.includes(x.replace(/[^A-Z]/g,'')))||bankKeys.some(k=>u.replace(/\s/g,'').includes(k)))return;
+    if(w.filter(x=>x.replace(/[^A-Z]/g,'').length>=2).length<2)return;
+    if(u.replace(/[^A-Z]/g,'').length>ten.replace(/[^A-Z]/g,'').length)ten=u});
+  const r={dau:best?best.c.slice(0,soDau):'',cuoi:best?best.c.slice(-4):'',ten,bank,luhn:!!(best&&best.sc>=3)};
+  best=null;return r;
+}
+async function taOcrRun(file){
+  const url=URL.createObjectURL(file),img=new Image();img.src=url;
+  try{await img.decode()}catch(e){taOcrBox('<span>Không mở được ảnh. Chụp lại.</span>');return}
+  taOcrBox(`<img src="${url}" alt="Ảnh thẻ vừa chụp"><span id="taOcrMsg">Đang chuẩn bị bộ đọc chữ… (lần đầu tải khoảng 3–4 MB)</span><div class="prog"><i id="taOcrBar"></i></div>`);
+  const msg=t=>{const m=$('#taOcrMsg');if(m)m.textContent=t},bar=p=>{const b=$('#taOcrBar');if(b)b.style.width=Math.round(p*100)+'%'};
+  let stage=0;
+  try{
+    const w=await taGetWorker(m=>{if(m.status==='recognizing text')bar((stage+m.progress)/3);else{msg('Đang tải bộ đọc chữ… '+Math.round(m.progress*100)+'%');bar(m.progress*.3)}});
+    const [a,b]=taPrep(img),texts=[];
+    msg('Đang đọc thẻ…');stage=0;texts.push((await w.recognize(a)).data.text);
+    stage=1;texts.push((await w.recognize(b)).data.text);
+    let r=taParseOcr(texts,TA.d.cfg.soDau);
+    if(!r.luhn){stage=2;await w.setParameters({tessedit_char_whitelist:'0123456789 '});
+      const t2=[(await w.recognize(a)).data.text,(await w.recognize(b)).data.text];await w.setParameters({tessedit_char_whitelist:''});
+      const r2=taParseOcr(t2,TA.d.cfg.soDau);if(r2.dau&&(r2.luhn||!r.dau)){r.dau=r2.dau;r.cuoi=r2.cuoi;r.luhn=r2.luhn;if(!r.bank)r.bank=taBinBank(r2.dau)}}
+    texts.length=0;bar(1);
+    if(r.dau){$('#taDau').value=r.dau;$('#taCuoi').value=r.cuoi}
+    if(r.ten&&!$('#taTen').value)$('#taTen').value=r.ten;
+    if(r.bank){$('#taNh').value=r.bank;$('#taNhKhac').hidden=true}
+    const got=[r.dau?'số thẻ'+(r.luhn?'':' (cần kiểm tra)'):'',r.ten?'họ tên':'',r.bank?'ngân hàng':''].filter(Boolean);
+    msg(got.length?'Đã đọc: '+got.join(', ')+'. Đối chiếu với thẻ rồi bấm "Thêm vào lô".':'Chưa đọc được. Chụp lại gần hơn, đủ sáng, không lóa; hoặc nhập tay.');
+    if(!r.dau)$('#taDau').focus();
+  }catch(e){console.error(e);msg('Không dùng được bộ đọc chữ (cần mạng lần đầu). Nhập tay các ô bên dưới.')}
+  finally{setTimeout(()=>URL.revokeObjectURL(url),60000)}
+}
+
+/* ---------- Sổ thẻ ---------- */
+$('#taQ').addEventListener('input',e=>{TA.q=e.target.value;taRenderSo()});
+function taRenderSo(){
+  const d=TA.d;if(!d)return;const c=d.cfg,ro=d.role;
+  const inPb=x=>!TA.pbFilter||x.pb===TA.pbFilter;
+  const giu=d.cards.filter(x=>x.tt===TA_ST.GIU&&inPb(x)),list=giu.filter(x=>taMatch(x,TA.q));
+  const late=giu.filter(x=>x.soNgay>=c.soNgayHuy).length;
+  $('#taSum').innerHTML=`<span>Đang giữ <b>${giu.length}</b> thẻ${TA.q?' · khớp '+list.length:''}</span><span>Quá ${c.soNgayHuy} ngày: <b style="color:${late?'var(--vtb-do)':'inherit'}">${late}</b></span>`;
+  const groups={};list.forEach(x=>(groups[x.nganHang||'Khác']=groups[x.nganHang||'Khác']||[]).push(x));
+  const names=Object.keys(groups).sort((a,b)=>groups[b].length-groups[a].length||a.localeCompare(b,'vi'));
+  const open=TA.q||names.length<=3;
+  $('#taSo').innerHTML=names.length?names.map(n=>`<details class="ta-grp"${open?' open':''}><summary>${esc(n)}<span class="badge">${groups[n].length}</span>${CHEV}</summary><div>${groups[n].map(x=>taItem(x,ro,c)).join('')}</div></details>`).join('')
+    :`<div class="ta-empty">${TA.q?'Không tìm thấy thẻ phù hợp.':'Sổ đang không giữ thẻ nào.'}</div>`;
+  taBindItems($('#taSo'));
+  const sk=x=>(x.xlNgay||x.ngayTra||'')+(x.xlLuc||'').slice(11);
+  const ret=d.cards.filter(x=>x.tt===TA_ST.TRA&&inPb(x)&&(x.cuaToi||ro.viewAll||x.pb===ro.myPb)).sort((a,b)=>sk(b).localeCompare(sk(a))).slice(0,20);
+  $('#taRetCard').hidden=!ret.length;
+  $('#taRet').innerHTML=ret.map(x=>`<div class="cp-it ta-it" data-ma="${esc(x.ma)}"><div class="cp-r1"><span class="cp-date">${esc(taDmy(x.ngayTra).slice(0,5))}</span><span class="cp-pb">${esc(x.hoTen||'(Thẻ không in tên)')}</span><span class="ta-st tra">Đã trả</span></div>
+    <div class="cp-meta">${esc(taMaskView(x.soThe))} · ${esc(x.nganHang)} · trả bởi ${esc(x.xlBoi)} lúc ${esc(x.xlLuc)}</div>
+    ${ro.canReturn&&x.pb===ro.myPb?`<div class="ta-act"><button class="btn ghost sm" data-act="phieu">In lại phiếu</button>${x.canUndo?'<button class="btn ghost sm" data-act="undo">Hoàn tác</button>':''}</div>`:''}</div>`).join('');
+  taBindItems($('#taRet'));
+}
+function taItem(x,ro,c){
+  return `<div class="cp-it ta-it" data-ma="${esc(x.ma)}"><div class="cp-r1"><span class="cp-date">${esc(taDmy(x.ngayVao).slice(0,5))}</span><span class="cp-pb">${esc(x.hoTen||'(Thẻ không in tên)')}</span>${taAge(x,c)}</div>
+    <div class="cp-meta">${esc(taMaskView(x.soThe))}${ro.scope.length>1?' · '+esc(x.pb):''}${x.atm?' · '+esc(x.atm):''}${x.ghiChu?' · '+esc(x.ghiChu):''}</div>
+    ${x.canhBao?`<div class="cp-meta" style="color:var(--warn-ink)">⚠ ${esc(x.canhBao)}</div>`:''}
+    ${ro.canReturn&&x.pb===ro.myPb?'<div class="ta-act"><button class="btn sm" data-act="tra">Trả thẻ cho khách</button></div>':''}</div>`;
+}
+function taBindItems(root){
+  root.querySelectorAll('[data-act]').forEach(b=>b.onclick=()=>{const it=b.closest('[data-ma]'),ma=it.dataset.ma,x=TA.d.cards.find(c=>c.ma===ma);if(!x)return;
+    if(b.dataset.act==='tra')taAskReturn(it,x);else if(b.dataset.act==='phieu')taShowPhieu(x);else if(b.dataset.act==='undo')taUndo(x)});
+}
+function taAskReturn(it,x){
+  if(it.querySelector('.ta-conf'))return;
+  const box=document.createElement('div');box.className='ta-conf';
+  box.innerHTML=`<p>Đối chiếu giấy tờ tùy thân của khách với họ tên trên thẻ trước khi trả.</p>
+    <input class="inp" maxlength="200" placeholder="Ghi chú (không bắt buộc)" style="min-height:44px;font-size:15px">
+    <span class="hint bad" hidden></span><div class="row" style="display:flex;gap:8px"><button class="btn ghost sm" data-x="no">Thôi</button><button class="btn sm" data-x="ok" style="flex:1">Xác nhận đã trả thẻ</button></div>`;
+  it.append(box);box.querySelector('[data-x=no]').onclick=()=>box.remove();
+  box.querySelector('[data-x=ok]').onclick=async e=>{const btn=e.target;btn.disabled=true;btn.textContent='Đang lưu…';
+    const r=await taApi('ta_return',{ma:x.ma,ghiChu:box.querySelector('input').value});
+    if(!r.ok){btn.disabled=false;btn.textContent='Xác nhận đã trả thẻ';taErrShow(box.querySelector('.hint'),r);return}
+    taApply(r);vibrate();const y=r.cards.find(c=>c.ma===x.ma);if(y)taShowPhieu(y)};
+}
+async function taUndo(x){
+  if(!confirm('Hoàn tác trả thẻ của '+(x.hoTen||x.ma)+'? Thẻ quay lại trạng thái đang giữ.'))return;
+  const r=await taApi('ta_undo',{ma:x.ma});if(r.ok){taApply(r);toast('Đã hoàn tác')}else taErrShow($('#taErr'),r);
+}
+
+/* ---------- Phiếu BM09 và in ---------- */
+function taPhieuData(x,cfg){
+  const bank=cfg.banks.find(k=>k.ten===x.nganHang),m=(x.xlLuc||'').match(/(\d{2})\/(\d{2})\/(\d{4})/);
+  return{kinhGui:(cfg.phong.find(p=>p.pb===x.pb)||{}).kinhGui||x.pb,hoTen:x.hoTen,soThe:x.soThe,nganHang:bank&&bank.full?bank.full+' ('+bank.ten+')':x.nganHang,
+    atm:x.atm,diaDanh:cfg.diaDanh,ngay:m?m.slice(1):['','',''],gioTra:x.xlLuc?x.xlLuc.slice(11)+' '+x.xlLuc.slice(0,10):'',gdv:x.xlBoi,maThe:x.ma,bm:cfg.bm};
+}
+let taOv=null;
+function taOverlay(){
+  if(taOv)return taOv;
+  const st=document.createElement('style');st.textContent=TA_PHIEU_CSS;document.head.append(st);
+  taOv=document.createElement('div');taOv.className='ta-ov';taOv.hidden=true;taOv.setAttribute('role','dialog');taOv.setAttribute('aria-modal','true');
+  taOv.innerHTML=`<div class="ta-ovbar"><button class="btn ghost sm" id="taOvClose">Đóng</button><b id="taOvTitle"></b></div>
+    <div class="ta-ovact"><div class="row"><button class="btn" id="taOvPrint">In / Lưu PDF</button><button class="btn ghost" id="taOvMailBtn">Gửi email</button></div>
+      <div class="ta-mail" id="taOvMail" hidden><input class="inp" id="taOvMailIn" inputmode="email" autocomplete="email" placeholder="ten.canbo"><span id="taOvDom"></span><button class="btn sm" id="taOvSend">Gửi</button></div>
+      <span class="hint" id="taOvMsg" hidden></span></div>
+    <div class="ta-ovbody"><div class="ta-paper" id="taOvPaper"><div class="pg" id="taOvPage"></div></div></div>`;
+  document.body.append(taOv);
+  const root=document.createElement('div');root.id='taPrintRoot';document.body.append(root);
+  $('#taOvClose').onclick=()=>{taOv.hidden=true;document.body.style.overflow=''};
+  $('#taOvPrint').onclick=()=>{root.innerHTML='<div class="ta-paper"><div class="pg">'+$('#taOvPage').innerHTML+'</div></div>';document.body.classList.add('ta-printing');
+    const done=()=>{document.body.classList.remove('ta-printing');root.innerHTML='';removeEventListener('afterprint',done)};addEventListener('afterprint',done);
+    setTimeout(()=>{window.print();setTimeout(()=>{if(!matchMedia('print').matches)done()},1500)},50)};
+  $('#taOvMailBtn').onclick=()=>{$('#taOvMail').hidden=!$('#taOvMail').hidden;if(!$('#taOvMail').hidden){const v=store.get('ta.mail');if(v)$('#taOvMailIn').value=v;$('#taOvMailIn').focus()}};
+  $('#taOvSend').onclick=async()=>{const u=$('#taOvMailIn').value.trim().replace(/@.*$/,'');if(!u)return;const email=u+'@'+TA.d.cfg.mien,b=$('#taOvSend');b.disabled=true;b.textContent='…';
+    const r=await taApi('ta_phieu_email',{ma:taOv.dataset.ma,email});b.disabled=false;b.textContent='Gửi';const m=$('#taOvMsg');m.hidden=false;
+    if(r.ok){store.set('ta.mail',u);m.className='hint';m.textContent=r.message}else{m.className='hint bad';taErrShow(m,r)}};
+  addEventListener('resize',taFit);return taOv;
+}
+function taFit(){if(!taOv||taOv.hidden)return;const p=$('#taOvPaper'),pg=$('#taOvPage'),w=taOv.querySelector('.ta-ovbody').clientWidth-24,s=Math.min(1,w/718);
+  p.style.transform=`scale(${s})`;p.style.width='718px';p.style.height=pg.offsetHeight+'px';p.parentElement.style.height=(pg.offsetHeight*s+24)+'px';p.style.marginLeft=Math.max(0,(w-718*s)/2)+'px'}
+function taShowPaper(title,html,opts={}){
+  taOverlay();$('#taOvTitle').textContent=title;$('#taOvPage').innerHTML=html;
+  $('#taOvMailBtn').hidden=!opts.ma;$('#taOvMail').hidden=true;$('#taOvMsg').hidden=true;taOv.dataset.ma=opts.ma||'';$('#taOvDom').textContent='@'+(TA.d?.cfg.mien||'vietinbank.vn');
+  taOv.hidden=false;document.body.style.overflow='hidden';requestAnimationFrame(taFit);
+}
+function taShowPhieu(x){taShowPaper('Phiếu trả thẻ · '+(x.hoTen||x.ma),taPhieuHtml(taPhieuData(x,TA.d.cfg)),{ma:x.ma})}
+
+/* ---------- Tra cứu thẻ đã hủy (I006) ---------- */
+$('#taHuyBtn').onclick=async()=>{const box=$('#taHuyBox');box.hidden=!box.hidden;$('#taHuyBtn').textContent=box.hidden?'Mở tra cứu thẻ đã hủy':'Đóng tra cứu';
+  if(!box.hidden&&!TA.huy){$('#taHuyList').innerHTML='<div class="ta-empty">Đang tải…</div>';const r=await taApi('ta_load',{view:'huy'});
+    if(!r.ok){$('#taHuyList').innerHTML='';taErrShow($('#taErr'),r);return}TA.huy=r.cards;taRenderHuy($('#taHuyList'),TA.huy,$('#taHuyQ').value)}};
+$('#taHuyQ').addEventListener('input',e=>TA.huy&&taRenderHuy($('#taHuyList'),TA.huy,e.target.value));
+function taRenderHuy(el,cards,q){const l=cards.filter(x=>taMatch(x,q));
+  el.innerHTML=l.length?l.slice(0,50).map(x=>`<div class="cp-it ta-it"><div class="cp-r1"><span class="cp-date">${esc(taDmy(x.ngayVao).slice(0,5))}</span><span class="cp-pb">${esc(x.hoTen||'(Thẻ không in tên)')}</span><span class="ta-st huy">Đã hủy</span></div>
+    <div class="cp-meta">${esc(taMaskView(x.soThe))} · ${esc(x.nganHang)} · ${esc(x.pb)} · vào sổ ${esc(taDmy(x.ngayVao))}</div><div class="cp-meta">Hủy ${esc(x.xlLuc)} bởi ${esc(x.xlBoi)} · ${esc(x.xlGhiChu)}</div></div>`).join('')
+    :`<div class="ta-empty">${cards.length?'Không tìm thấy thẻ đã hủy phù hợp.':'Chưa có thẻ nào bị hủy.'}</div>`}
+$('#taReload').onclick=()=>{TA.huy=null;taLoad()};
+window.addEventListener('ttg:view',e=>{if(e.detail==='the-atm')taLoad()});
+
+/* ---------- Báo cáo (I007) ---------- */
+const TB={d:null,pb:'',from:'',to:'',sel:new Set()};
+async function tbLoad(){
+  $('#tbErr').hidden=true;$('#tbUpd').textContent='Đang tải…';
+  const r=await taApi('ta_load',{view:'bc'});
+  if(!r.ok){$('#tbUpd').textContent='';taErrShow($('#tbErr'),r);return}
+  TB.d=r;if(!TA.d)TA.d=r;
+  if(!TB.to){TB.to=r.today;TB.from=r.today.slice(0,8)+'01';$('#tbFrom').value=TB.from;$('#tbTo').value=TB.to}
+  $('#tbUpd').textContent='Cập nhật lúc '+new Intl.DateTimeFormat('vi-VN',{timeZone:'Asia/Ho_Chi_Minh',hour:'2-digit',minute:'2-digit'}).format(new Date())+(DEMO?' · dữ liệu xem thử':'');
+  const sc=r.role.scope;$('#tbPbF').hidden=sc.length<2;
+  if(sc.length>1){$('#tbPb').innerHTML='<option value="">Tất cả phòng nhận thẻ</option>'+sc.map(p=>`<option>${esc(p)}</option>`).join('');$('#tbPb').value=TB.pb}
+  else TB.pb=sc[0]||'';
+  TB.sel=new Set();tbRender();
+}
+$('#tbPb').onchange=e=>{TB.pb=e.target.value;TB.sel=new Set();tbRender()};
+$('#tbFrom').onchange=e=>{TB.from=e.target.value;tbRender()};$('#tbTo').onchange=e=>{TB.to=e.target.value;tbRender()};
+$('#tbReload').onclick=tbLoad;
+function tbRender(){
+  const d=TB.d;if(!d)return;const c=d.cfg,ro=d.role,today=d.today,from=TB.from||'0000',to=TB.to||today;
+  const all=d.cards.filter(x=>!TB.pb||x.pb===TB.pb),giu=all.filter(x=>x.tt===TA_ST.GIU);
+  const inK=s=>s&&s>=from&&s<=to;
+  const ret=all.filter(x=>x.tt===TA_ST.TRA&&inK(x.ngayTra)).sort((a,b)=>b.ngayTra.localeCompare(a.ngayTra));
+  const vao=all.filter(x=>inK(x.ngayVao)),huy=all.filter(x=>x.tt===TA_ST.HUY&&inK(x.xlNgay||''));
+  const due=giu.filter(x=>x.soNgay>=c.soNgayHuy).sort((a,b)=>b.soNgay-a.soNgay);
+  const avg=ret.length?Math.round(ret.reduce((s,x)=>s+(x.soNgay||0),0)/ret.length*10)/10:null;
+  $('#tbScope').textContent=TB.pb||'Tất cả phòng nhận thẻ';
+  const kpi=(l,v,s)=>`<div class="kpi"><span>${l}</span><b>${v}</b>${s?`<small>${s}</small>`:''}</div>`;
+  $('#tbKpis').innerHTML=kpi('Đang giữ',fmtN(giu.length),'thẻ khách chưa nhận')+kpi('Quá hạn cần hủy',fmtN(due.length),'≥ '+c.soNgayHuy+' ngày')+
+    kpi('Nhận vào sổ',fmtN(vao.length),'trong kỳ')+kpi('Đã trả khách',fmtN(ret.length),'trong kỳ')+kpi('Thời gian trả TB',avg===null?'—':String(avg).replace('.',',')+' ngày','từ lúc vào sổ')+kpi('Đã hủy',fmtN(huy.length),'trong kỳ');
+  // Nhóm tuổi tồn
+  const cuts=[...c.nhomTon.filter(v=>v<c.soNgayHuy),c.soNgayHuy].filter((v,i,a)=>a.indexOf(v)===i).sort((a,b)=>a-b);
+  const bks=cuts.map((v,i)=>({l:(i?cuts[i-1]:0)+'–'+(v-1)+' ngày',n:giu.filter(x=>x.soNgay>=(i?cuts[i-1]:0)&&x.soNgay<v).length,late:false}));
+  bks.push({l:'≥ '+c.soNgayHuy+' ngày',n:due.length,late:true});
+  const mx=Math.max(1,...bks.map(b=>b.n));
+  $('#tbBuckets').innerHTML=bks.map(b=>`<div class="ta-bk"><span>${b.l}</span><div class="bar"><i class="${b.late?'late':''}" style="width:${b.n/mx*100}%"></i></div><b>${b.n}</b></div>`).join('');
+  // Theo ngân hàng
+  const byB={};giu.forEach(x=>byB[x.nganHang||'Khác']=(byB[x.nganHang||'Khác']||0)+1);const bl=Object.entries(byB).sort((a,b)=>b[1]-a[1]),bm=Math.max(1,...bl.map(x=>x[1]));
+  $('#tbBanks').innerHTML=bl.length?bl.map(([k,v])=>`<tr><td>${esc(k)}<div class="mini"><i style="width:${v/bm*100}%"></i></div></td><td>${v}</td></tr>`).join(''):'<tr><td class="ta-empty">Không có thẻ tồn.</td><td></td></tr>';
+  // Theo phòng
+  $('#tbPbCard').hidden=!!TB.pb||ro.scope.length<2;
+  if(!TB.pb&&ro.scope.length>1)$('#tbPbTbl').innerHTML='<tr><th>Phòng</th><th class="n">Đang giữ</th><th class="n">Quá hạn</th><th class="n">Nhận</th><th class="n">Đã trả</th></tr>'+ro.scope.map(p=>{
+    const f=x=>x.pb===p;return `<tr><td>${esc(p)}</td><td class="n">${giu.filter(f).length}</td><td class="n">${due.filter(f).length}</td><td class="n">${vao.filter(f).length}</td><td class="n">${ret.filter(f).length}</td></tr>`}).join('');
+  // Quá hạn cần hủy
+  TB.due=due;if(!TB.sel.size)due.forEach(x=>TB.sel.add(x.ma));
+  $('#tbDueTitle').textContent=`Thẻ quá hạn cần hủy (${due.length})`;
+  $('#tbDueLead').textContent=due.length?`Thẻ khách chưa nhận đã giữ từ ${c.soNgayHuy} ngày trở lên. Xuất danh sách để rà soát, kiểm kê trước khi hủy.`:`Không có thẻ giữ quá ${c.soNgayHuy} ngày.`;
+  ['#tbDuePrint','#tbDueCsv'].forEach(s=>$(s).disabled=!due.length);
+  const canCancel=ro.canCancel&&(TB.pb===ro.myPb||ro.scope.length===1);
+  $('#tbDueAllL').hidden=!canCancel||!due.length;$('#tbCancelBox').hidden=!canCancel||!due.length;
+  $('#tbDue').innerHTML=due.map(x=>`<div class="cp-it ta-it"><label class="ta-ck">${canCancel?`<input type="checkbox" data-ma="${esc(x.ma)}"${TB.sel.has(x.ma)?' checked':''}>`:''}<span style="flex:1;min-width:0">
+    <span class="cp-r1"><span class="cp-pb">${esc(x.hoTen||'(Thẻ không in tên)')}</span>${taAge(x,c)}</span>
+    <span class="cp-meta" style="display:block">${esc(taMaskView(x.soThe))} · ${esc(x.nganHang)} · vào sổ ${esc(taDmy(x.ngayVao))}${TB.pb?'':' · '+esc(x.pb)}</span></span></label></div>`).join('');
+  $('#tbDue').querySelectorAll('input[type=checkbox]').forEach(k=>k.onchange=()=>{k.checked?TB.sel.add(k.dataset.ma):TB.sel.delete(k.dataset.ma);tbSelUpd()});
+  tbSelUpd();
+  // Đã trả trong kỳ
+  $('#tbRet').innerHTML=ret.length?ret.map(x=>`<div class="cp-it ta-it"><div class="cp-r1"><span class="cp-date">${esc(taDmy(x.ngayTra).slice(0,5))}</span><span class="cp-pb">${esc(x.hoTen||'(Thẻ không in tên)')}</span><span class="ta-age">${x.soNgay??0} ngày</span></div>
+    <div class="cp-meta">${esc(taMaskView(x.soThe))} · ${esc(x.nganHang)}${TB.pb?'':' · '+esc(x.pb)} · trả bởi ${esc(x.xlBoi||'')}</div></div>`).join(''):'<div class="ta-empty">Không có thẻ trả trong kỳ.</div>';
+  TB.ret=ret;tbHuy();
+}
+function tbSelUpd(){const n=TB.due.filter(x=>TB.sel.has(x.ma)).length;$('#tbCancelBtn').textContent=`Thực hiện hủy ${n} thẻ đã chọn`;$('#tbCancelBtn').disabled=!n;$('#tbDueAll').checked=n===TB.due.length}
+$('#tbDueAll').onchange=e=>{TB.sel=new Set(e.target.checked?TB.due.map(x=>x.ma):[]);tbRender()};
+$('#tbHuyQ').addEventListener('input',tbHuy);
+function tbHuy(){const d=TB.d;if(!d)return;taRenderHuy($('#tbHuy'),d.cards.filter(x=>x.tt===TA_ST.HUY&&(!TB.pb||x.pb===TB.pb)),$('#tbHuyQ').value)}
+/** Danh sách rà soát thẻ quá hạn (mẫu mặc định – thay bằng mẫu chính thức khi có) */
+function tbDueHtml(list){
+  const c=TB.d.cfg,t=TB.d.today,pb=TB.pb||'Tất cả phòng nhận thẻ';
+  return `<div class="ta-rpt"><table><tr><td style="width:55%"><b>NGÂN HÀNG TMCP CÔNG THƯƠNG VIỆT NAM</b><br><b>${esc(c.tenCN.toUpperCase())}</b><br>${esc(pb)}</td>
+    <td class="c"><b>CỘNG HÒA XÃ HỘI CHỦ NGHĨA VIỆT NAM</b><br><b><u>Độc lập – Tự do – Hạnh phúc</u></b><br><i>${esc(c.diaDanh)}, ngày ${t.slice(8)} tháng ${t.slice(5,7)} năm ${t.slice(0,4)}</i></td></tr></table>
+    <h1>DANH SÁCH THẺ ATM BỊ MÁY THU QUÁ HẠN ĐỀ NGHỊ HỦY</h1><p class="c" style="margin:0 0 10px"><i>(Thẻ khách hàng chưa nhận lại, giữ từ ${c.soNgayHuy} ngày trở lên tính đến ngày ${taDmy(t)})</i></p>
+    <table class="t"><tr><th>STT</th><th>Mã thẻ</th><th>Họ tên trên thẻ</th><th>Số thẻ</th><th>Ngân hàng phát hành</th><th>Ngày vào sổ</th><th>Số ngày giữ</th><th>Kiểm kê thực tế</th></tr>
+    ${list.map((x,i)=>`<tr><td class="c">${i+1}</td><td>${esc(x.ma)}</td><td>${esc(x.hoTen||'')}</td><td>${esc(taMaskView(x.soThe))}</td><td>${esc(x.nganHang)}</td><td class="c">${esc(taDmy(x.ngayVao))}</td><td class="r">${x.soNgay}</td><td></td></tr>`).join('')}
+    <tr><td colspan="6" class="r"><b>Tổng cộng</b></td><td class="r"><b>${list.length}</b></td><td></td></tr></table>
+    <table style="margin-top:18px"><tr><td class="c" style="width:33%"><b>Người lập</b><br><i>(Ký, ghi rõ họ tên)</i></td><td class="c" style="width:33%"><b>Kiểm soát</b><br><i>(Ký, ghi rõ họ tên)</i></td><td class="c"><b>Lãnh đạo phòng</b><br><i>(Ký, ghi rõ họ tên)</i></td></tr><tr><td style="height:80px"></td><td></td><td></td></tr></table></div>`;
+}
+$('#tbDuePrint').onclick=()=>{const l=TB.due.filter(x=>TB.sel.has(x.ma)||!$('#tbCancelBox').offsetParent);taShowPaper('Danh sách thẻ quá hạn cần hủy',tbDueHtml(l.length?l:TB.due))};
+function taCsv(name,head,rows){
+  const q=v=>{v=String(v??'');return /[",;\n]/.test(v)?'"'+v.replace(/"/g,'""')+'"':v};
+  const blob=new Blob(['﻿'+[head,...rows].map(r=>r.map(q).join(',')).join('\r\n')],{type:'text/csv;charset=utf-8'});
+  const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=name;document.body.append(a);a.click();setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove()},2000);
+}
+$('#tbDueCsv').onclick=()=>taCsv(`The_qua_han_${TB.d.today}.csv`,['STT','Mã thẻ','Phòng','Họ tên trên thẻ','Số thẻ','Ngân hàng','Ngày vào sổ','Số ngày giữ'],
+  TB.due.map((x,i)=>[i+1,x.ma,x.pb,x.hoTen,taMaskView(x.soThe),x.nganHang,taDmy(x.ngayVao),x.soNgay]));
+$('#tbRetCsv').onclick=()=>taCsv(`The_da_tra_${TB.from}_${TB.to}.csv`,['STT','Mã thẻ','Phòng','Họ tên trên thẻ','Số thẻ','Ngân hàng','Ngày vào sổ','Ngày trả','Số ngày giữ','Người trả'],
+  (TB.ret||[]).map((x,i)=>[i+1,x.ma,x.pb,x.hoTen,taMaskView(x.soThe),x.nganHang,taDmy(x.ngayVao),taDmy(x.ngayTra),x.soNgay,x.xlBoi]));
+$('#tbCancelBtn').onclick=async()=>{
+  const mas=TB.due.filter(x=>TB.sel.has(x.ma)).map(x=>x.ma),note=$('#tbCancelNote').value.trim(),err=$('#tbCancelErr');err.hidden=true;
+  if(note.length<5){err.textContent='Ghi số biên bản hoặc căn cứ hủy.';err.hidden=false;$('#tbCancelNote').focus();return}
+  if(!confirm(`Hủy ${mas.length} thẻ đã chọn? Thao tác không hoàn tác được; thẻ đã hủy chỉ còn trong mục tra cứu.`))return;
+  const b=$('#tbCancelBtn');b.disabled=true;b.textContent='Đang hủy…';
+  const r=await taApi('ta_cancel',{mas,ghiChu:note});b.disabled=false;
+  if(!r.ok){tbSelUpd();taErrShow(err,r);return}
+  $('#tbCancelNote').value='';TB.d=r;TB.sel=new Set();tbRender();toast(`Đã hủy ${r.cancelled} thẻ`+(r.skipped?` (bỏ qua ${r.skipped} thẻ không đủ điều kiện)`:''));
+};
+window.addEventListener('ttg:view',e=>{if(e.detail==='the-baocao')tbLoad()});
+
+/* ---------- Xem thử (không có máy chủ): dữ liệu hư cấu ---------- */
+let TA_DEMO=null;
+function taDemoInit(){
+  const today=VN_DAY().replace(/(\d{4})(\d{2})(\d{2})/,'$1-$2-$3'),day=k=>{const d=new Date(Date.parse(today+'T00:00:00Z')-k*864e5);return d.toISOString().slice(0,10)};
+  const banks=[['VietinBank','Ngân hàng TMCP Công Thương Việt Nam','970415'],['Vietcombank','Ngân hàng TMCP Ngoại thương Việt Nam','970436'],['Agribank','Ngân hàng Nông nghiệp và Phát triển Nông thôn Việt Nam','970405'],
+    ['BIDV','Ngân hàng TMCP Đầu tư và Phát triển Việt Nam','970418'],['Sacombank','Ngân hàng TMCP Sài Gòn Thương Tín','970403'],['ACB','Ngân hàng TMCP Á Châu','970416'],['MB','Ngân hàng TMCP Quân đội','970422'],
+    ['Techcombank','Ngân hàng TMCP Kỹ Thương Việt Nam','970407']].map(b=>({ten:b[0],full:b[1],bins:[b[2]],alias:[]}));
+  const names=['NGUYEN VAN AN','TRAN THI BINH','LE HOANG CUONG','PHAM THI DUNG','VO MINH EM','HUYNH THI GIANG','DANG VAN HOA','BUI THI KIM','DO VAN LONG','NGO THI MAI','DUONG VAN NAM','LY THI OANH',''];
+  const pbs=['Phòng DVKH','PGD An Hữu','PGD Ấp Bắc'],pre={'Phòng DVKH':'DV','PGD An Hữu':'AH','PGD Ấp Bắc':'AB'};
+  const cards=[];
+  [[2,0],[5,1],[9,2],[14,0],[21,3],[33,1],[47,4],[62,0],[75,5],[93,2],[104,0],[118,6],[1,7],[3,0],[12,1],[40,2],[8,0],[96,3]].forEach(([k,b],i)=>{
+    const pb=pbs[i%3===2?1:i%5===4?2:0],bk=banks[b],vao=day(k),ret=i%4===1&&k>5;
+    const x={pb,ma:pre[pb]+'-'+vao.slice(2).replace(/-/g,'')+'-0'+(900+i),ngayVao:vao,nhapLuc:taDmy(vao)+' 09:'+String(10+i).padStart(2,'0'),hoTen:names[i%names.length],
+      soThe:taMask(bk.bins[0],String(1000+i*137).slice(-4)),nganHang:bk.ten,tt:ret?TA_ST.TRA:TA_ST.GIU,ngayTra:ret?day(k-3):'',giaoBoi:'Cán bộ điện toán',ghiChu:i===4?'Gửi bảo vệ trên xe điều hàng':'',atm:i%3===0?'ATM Trụ sở Chi nhánh':'',
+      xlBoi:ret?'Giao dịch viên A':'',xlLuc:ret?taDmy(day(k-3))+' 10:15':'',xlNgay:ret?day(k-3):'',xlGhiChu:'',canhBao:''};
+    x.soNgay=taDays(x.ngayVao,x.ngayTra||today);cards.push(x)});
+  cards.push(Object.assign({},cards[9],{ma:'DV-'+day(130).slice(2).replace(/-/g,'')+'-0999',hoTen:'TRUONG VAN PHUC',tt:TA_ST.HUY,ngayVao:day(130),soNgay:130,xlBoi:'Trưởng phòng DVKH',xlLuc:taDmy(day(30))+' 16:00',xlNgay:day(30),xlGhiChu:'Biên bản hủy thẻ số 03/2026'}));
+  TA_DEMO={today,cards,cfg:{soNgayHuy:90,soDau:6,nhomTon:[15,30,60,90],mien:'vietinbank.vn',hoanTac:true,diaDanh:'Tiền Giang',tenCN:'Chi nhánh Tây Tiền Giang',bm:{ma:'BM09-GNT',banHanh:'02',suaDoi:'00'},
+    banks,atms:[{ma:'TTG01',diaDiem:'ATM Trụ sở Chi nhánh',pb:'Phòng DVKH'},{ma:'TTG05',diaDiem:'ATM PGD An Hữu',pb:'PGD An Hữu'}],
+    phong:pbs.map(p=>({pb:p,kinhGui:p==='Phòng DVKH'?'Chi nhánh Tây Tiền Giang – Phòng DVKH':p,coEmail:true}))}};
+}
+async function taDemo(action,d){
+  await new Promise(x=>setTimeout(x,300));if(!TA_DEMO)taDemoInit();const D=TA_DEMO,me='Tuyến (xem thử)',now=D.today;
+  const role={canEnter:true,canReturn:true,canCancel:true,viewAll:true,scope:D.cfg.phong.map(p=>p.pb),myPb:'Phòng DVKH'};
+  const out=view=>({ok:true,today:D.today,view,me,role,cfg:D.cfg,cards:D.cards.filter(x=>view==='bc'||(view==='huy'?x.tt===TA_ST.HUY:x.tt!==TA_ST.HUY)).map(x=>Object.assign({},x,{cuaToi:x.xlBoi===me,canUndo:x.tt===TA_ST.TRA&&x.xlBoi===me&&x.xlNgay===now}))
+    .sort((a,b)=>(b.ngayVao+b.nhapLuc).localeCompare(a.ngayVao+a.nhapLuc))});
+  const find=ma=>D.cards.find(x=>x.ma===ma),hm=()=>new Intl.DateTimeFormat('en-GB',{timeZone:'Asia/Ho_Chi_Minh',hour:'2-digit',minute:'2-digit',hour12:false}).format(new Date());
+  if(action==='ta_load')return out(d.view||'so');
+  if(action==='ta_add'){const pre={'Phòng DVKH':'DV','PGD An Hữu':'AH','PGD Ấp Bắc':'AB'}[d.pb];
+    d.cards.forEach((c,i)=>{const bk=D.cfg.banks.find(b=>b.ten===c.nganHang);D.cards.push({pb:d.pb,ma:pre+'-'+now.slice(2).replace(/-/g,'')+'-'+hm().replace(':','')+String(i).padStart(2,'0'),ngayVao:now,nhapLuc:taDmy(now)+' '+hm(),
+      hoTen:c.hoTen,soThe:taMask(c.dau,c.cuoi),nganHang:bk?bk.ten:c.nganHang,tt:TA_ST.GIU,ngayTra:'',giaoBoi:me,ghiChu:c.ghiChu,atm:c.atm,xlBoi:'',xlLuc:'',xlNgay:'',xlGhiChu:'',canhBao:'',soNgay:0})});
+    return Object.assign(out('so'),{mail:'(Xem thử: không gửi email thật.)'})}
+  if(action==='ta_return'){const x=find(d.ma);Object.assign(x,{tt:TA_ST.TRA,ngayTra:now,xlBoi:me,xlLuc:taDmy(now)+' '+hm(),xlNgay:now,xlGhiChu:d.ghiChu||''});return Object.assign(out('so'),{returned:d.ma})}
+  if(action==='ta_undo'){const x=find(d.ma);Object.assign(x,{tt:TA_ST.GIU,ngayTra:'',xlBoi:'',xlLuc:'',xlNgay:'',xlGhiChu:'',soNgay:taDays(x.ngayVao,now)});return out('so')}
+  if(action==='ta_phieu_email')return{ok:true,message:'Xem thử: bản thật sẽ gửi file PDF tới '+d.email+'.'};
+  if(action==='ta_cancel'){let n=0;d.mas.forEach(ma=>{const x=find(ma);if(x&&x.tt===TA_ST.GIU&&x.soNgay>=D.cfg.soNgayHuy){Object.assign(x,{tt:TA_ST.HUY,xlBoi:me,xlLuc:taDmy(now)+' '+hm(),xlNgay:now,xlGhiChu:d.ghiChu});n++}});
+    return Object.assign(out('bc'),{cancelled:n,skipped:d.mas.length-n})}
+  return{error:'bad_request'};
 }
 
 // Khởi động
