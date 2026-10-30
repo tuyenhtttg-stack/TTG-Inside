@@ -1,7 +1,7 @@
 # Không Gian Số Nội Bộ · TTG Inside
 
 Bộ tiện ích nội bộ dành cho cán bộ **VietinBank Chi nhánh Tây Tiền Giang**, thiết kế cho điện thoại.
-Phiên bản 1.6.1 – 30/10/2026: chụp thẻ ATM đọc bằng AI (Claude); gửi phiếu trả thẻ qua email dạng PDF hoặc Word.
+Phiên bản 1.7.0 – 30/10/2026: Thẻ ATM máy thu mở rộng 6 sổ (thêm PGD Cái Bè, Long Định, Hưng Long), phân quyền nhập/trả/hủy/báo cáo theo từng sổ.
 
 | Nhóm | Tiện ích | Mô tả |
 |---|---|---|
@@ -124,6 +124,21 @@ Danh mục ngân hàng và đầu số BIN ở `TA_NganHang` (BIN nội địa 9
 
 Quy tắc: Quản trị hệ thống, Điện toán nhập thẻ (không trả); Trưởng/Phó phòng, GDV, Cán bộ DVKH của phòng nhận thẻ trả thẻ sổ phòng mình; người trả hoàn tác trong ngày;
 thẻ giữ từ 90 ngày vào danh sách cần hủy và email nhắc; Trưởng/Phó phòng nhận thẻ thực hiện hủy sau khi rà soát (ghi số biên bản); thẻ đã hủy ẩn khỏi sổ, tra cứu lại được.
+
+### Từ v1.7.0 – 6 sổ, phân quyền theo sổ
+
+Sổ: Phòng DVKH, PGD An Hữu, PGD Ấp Bắc, PGD Cái Bè, PGD Long Định, PGD Hưng Long. Sổ mới có thêm cột T "Nguồn thẻ".
+Phân quyền từng sổ ở `TA_NoiNhan` cột I–L: **Nhận bàn giao từ chi nhánh** (ô tích), **Vai trò nhập tại phòng**, **Vai trò trả thẻ**, **ID PGĐ phụ trách**.
+
+| Việc | Ai làm |
+|---|---|
+| Nhập bàn giao (có email) | `VAI_TRO_NHAP` (QT, Điện toán) vào các sổ có tích "Nhận bàn giao" |
+| Nhập tại phòng (không email) | Vai trò ở cột J, chỉ sổ của phòng mình |
+| Trả thẻ | Vai trò ở cột K (trống thì dùng `VAI_TRO_TRA`), chỉ sổ phòng mình |
+| Hủy thẻ | `VAI_TRO_HUY` (Phó phòng), chỉ sổ phòng mình |
+| Báo cáo | `VAI_TRO_XEM_TAT_CA`: tất cả sổ; `VAI_TRO_BAO_CAO`: sổ phòng mình; `VAI_TRO_PGD`: các sổ có ID mình ở cột L |
+
+Cập nhật từ v1.6.x: dán Code.gs → chạy lại menu **Cài đặt / cập nhật Thẻ ATM máy thu** (tự thêm 3 sổ, cột I–L, tham số vai trò) → Triển khai phiên bản mới → tải `index.html`, `sw.js` lên GitHub.
 Đọc ảnh thẻ (v1.6.1): mặc định gửi ảnh qua Apps Script tới Claude (tham số `DOC_THE_BANG` = AI, mô hình `MODEL_DOC_THE`, cần `ANTHROPIC_API_KEY`); đặt `DOC_THE_BANG` = Máy để đọc trên điện thoại.
 Ảnh không được lưu ở đâu; ứng dụng chỉ lưu số đầu và 4 số cuối, không lưu số thẻ đầy đủ. Lượt AI tính chung giới hạn `DAILY_LIMIT`/`PER_MINUTE_LIMIT`.
 

@@ -676,7 +676,7 @@ footer .shell{display:flex;flex-direction:column;align-items:center;gap:6px;padd
   <div class="card" id="taEnter" hidden>
     <h2>Nhập thẻ máy thu</h2>
     <div class="field"><span class="lbl">Phòng nhận thẻ <i style="color:var(--vtb-do);font-style:normal">*</i></span><div class="seg" id="taPb" role="tablist"></div></div>
-    <p class="hint" style="margin:0">Ngày bàn giao (vào sổ): <b id="taToday"></b></p>
+    <p class="hint" style="margin:0">Ngày vào sổ: <b id="taToday"></b></p>
     <div class="ta-cam">
       <button class="btn" type="button" id="taCamBtn"><svg class="i" viewBox="0 0 24 24" style="stroke:#fff"><path d="M4 8h3l2-3h6l2 3h3v11H4z"/><circle cx="12" cy="13" r="3.5"/></svg>Chụp thẻ để đọc tự động</button>
       <button class="btn ghost" type="button" id="taPickBtn" aria-label="Chọn ảnh có sẵn"><svg class="i" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="2"/><circle cx="9" cy="10" r="2"/><path d="M21 17l-5-5-9 8"/></svg></button>
@@ -889,7 +889,7 @@ footer .shell{display:flex;flex-direction:column;align-items:center;gap:6px;padd
 /* =====================================================================
    CẤU HÌNH — chỉnh tại đây khi triển khai
    ===================================================================== */
-const APP_VERSION='1.6.1 · 30/10/2026';
+const APP_VERSION='1.7.0 · 30/10/2026';
 // Tên bộ công cụ (song ngữ)
 const SUITE={vi:'Không Gian Số Nội Bộ',en:'TTG Inside'};
 
@@ -1298,9 +1298,11 @@ function taApply(r){
 
 /* ---------- Form nhập thẻ ---------- */
 function taRenderForm(){
-  const c=TA.d.cfg,pbs=c.phong.map(p=>p.pb);
-  if(!pbs.includes(TA.pb))TA.pb=store.get('ta.pb')&&pbs.includes(store.get('ta.pb'))?store.get('ta.pb'):pbs[0]||'';
-  $('#taPb').innerHTML=c.phong.map(p=>`<button type="button" role="tab" aria-selected="${p.pb===TA.pb}" data-p="${esc(p.pb)}">${esc(p.pb.replace(/^Phòng /,''))}</button>`).join('');
+  const c=TA.d.cfg,ro=TA.d.role,np=ro.nhapPbs||c.phong.map(p=>p.pb),ph=c.phong.filter(p=>np.includes(p.pb)),pbs=ph.map(p=>p.pb);
+  /* v1.7.0: chỉ hiện các sổ tài khoản được nhập; mặc định sổ của phòng mình */
+  if(!pbs.includes(TA.pb))TA.pb=store.get('ta.pb')&&pbs.includes(store.get('ta.pb'))?store.get('ta.pb'):pbs.includes(ro.myPb)?ro.myPb:pbs[0]||'';
+  $('#taPb').closest('.field').hidden=pbs.length<2;
+  $('#taPb').innerHTML=ph.map(p=>`<button type="button" role="tab" aria-selected="${p.pb===TA.pb}" data-p="${esc(p.pb)}">${esc(p.pb.replace(/^Phòng /,''))}</button>`).join('');
   $('#taPb').querySelectorAll('button').forEach(b=>b.onclick=()=>{if(TA.batch.length&&b.dataset.p!==TA.pb&&!confirm('Lô đang có '+TA.batch.length+' thẻ cho '+TA.pb+'. Đổi phòng sẽ bỏ lô này?'))return;
     if(b.dataset.p!==TA.pb)TA.batch=[];TA.pb=b.dataset.p;store.set('ta.pb',TA.pb);taRenderForm()});
   $('#taToday').textContent=taDmy(TA.d.today);taCamHint();
@@ -1332,9 +1334,13 @@ $('#taForm').addEventListener('submit',e=>{
   taFormErr('');['#taDau','#taCuoi','#taTen','#taNhKhac'].forEach(s=>$(s).value='');$('#taNh').value='';$('#taNhKhac').hidden=true;$('#taOcr').hidden=true;
   vibrate();taRenderBatch();toast('Đã thêm thẻ vào lô ('+TA.batch.length+')');
 });
+/** Chỉ gửi email khi bàn giao từ chi nhánh (QT/ĐT) và sổ có email nhận; nhập tại phòng không gửi */
+function taSendMail(pb){const d=TA.d;return !!d&&(d.role.bgPbs||[]).includes(pb)&&!!(d.cfg.phong.find(p=>p.pb===pb)||{}).coEmail}
+/** Hiện nguồn thẻ với sổ có cả 2 nguồn (VD: PGD An Hữu) */
+function taNguonTag(x){const p=(TA.d?.cfg.phong||[]).find(p=>p.pb===x.pb);return p&&p.banGiao&&p.tuNhap&&x.nguon?(/^Bàn giao/.test(x.nguon)?'Bàn giao':'Tại phòng'):''}
 function taRenderBatch(){
   const n=TA.batch.length;$('#taBatch').hidden=!n;$('#taSave').hidden=!n;$('#taSaveErr').hidden=true;
-  $('#taSave').textContent=`Lưu ${n} thẻ vào sổ ${TA.pb}`+((TA.d?.cfg.phong.find(p=>p.pb===TA.pb)||{}).coEmail?' và gửi email':'');
+  $('#taSave').textContent=`Lưu ${n} thẻ vào sổ ${TA.pb}`+(taSendMail(TA.pb)?' và gửi email':'');
   $('#taBatch').innerHTML=`<div class="sum-line"><span>Lô chờ lưu · ${esc(TA.pb)}</span><b>${n} thẻ</b></div>`+TA.batch.map((b,i)=>`<div class="ta-bi"><div class="tx"><b>${esc(b.hoTen||'(Thẻ không in tên)')}</b>
     <small>${esc(taMaskView(taMask(b.dau,b.cuoi)))} · ${esc(b.nganHang)}${b.atm?' · '+esc(b.atm):''}${b.ghiChu?' · '+esc(b.ghiChu):''}</small></div><button class="ta-x" data-i="${i}" aria-label="Bỏ thẻ khỏi lô">×</button></div>`).join('');
   $('#taBatch').querySelectorAll('.ta-x').forEach(x=>x.onclick=()=>{TA.batch.splice(+x.dataset.i,1);taRenderBatch()});
@@ -1483,7 +1489,7 @@ function taRenderSo(){
 }
 function taItem(x,ro,c){
   return `<div class="cp-it ta-it" data-ma="${esc(x.ma)}"><div class="cp-r1"><span class="cp-date">${esc(taDmy(x.ngayVao).slice(0,5))}</span><span class="cp-pb">${esc(x.hoTen||'(Thẻ không in tên)')}</span>${taAge(x,c)}</div>
-    <div class="cp-meta">${esc(taMaskView(x.soThe))}${ro.scope.length>1?' · '+esc(x.pb):''}${x.atm?' · '+esc(x.atm):''}${x.ghiChu?' · '+esc(x.ghiChu):''}</div>
+    <div class="cp-meta">${esc(taMaskView(x.soThe))}${ro.scope.length>1?' · '+esc(x.pb):''}${taNguonTag(x)?' · '+taNguonTag(x):''}${x.atm?' · '+esc(x.atm):''}${x.ghiChu?' · '+esc(x.ghiChu):''}</div>
     ${x.canhBao?`<div class="cp-meta" style="color:var(--warn-ink)">⚠ ${esc(x.canhBao)}</div>`:''}
     ${ro.canReturn&&x.pb===ro.myPb?'<div class="ta-act"><button class="btn sm" data-act="tra">Trả thẻ cho khách</button></div>':''}</div>`;
 }
@@ -1641,10 +1647,10 @@ function taCsv(name,head,rows){
   const blob=new Blob(['﻿'+[head,...rows].map(r=>r.map(q).join(',')).join('\r\n')],{type:'text/csv;charset=utf-8'});
   const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=name;document.body.append(a);a.click();setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove()},2000);
 }
-$('#tbDueCsv').onclick=()=>taCsv(`The_qua_han_${TB.d.today}.csv`,['STT','Mã thẻ','Phòng','Họ tên trên thẻ','Số thẻ','Ngân hàng','Ngày vào sổ','Số ngày giữ'],
-  TB.due.map((x,i)=>[i+1,x.ma,x.pb,x.hoTen,taMaskView(x.soThe),x.nganHang,taDmy(x.ngayVao),x.soNgay]));
-$('#tbRetCsv').onclick=()=>taCsv(`The_da_tra_${TB.from}_${TB.to}.csv`,['STT','Mã thẻ','Phòng','Họ tên trên thẻ','Số thẻ','Ngân hàng','Ngày vào sổ','Ngày trả','Số ngày giữ','Người trả'],
-  (TB.ret||[]).map((x,i)=>[i+1,x.ma,x.pb,x.hoTen,taMaskView(x.soThe),x.nganHang,taDmy(x.ngayVao),taDmy(x.ngayTra),x.soNgay,x.xlBoi]));
+$('#tbDueCsv').onclick=()=>taCsv(`The_qua_han_${TB.d.today}.csv`,['STT','Mã thẻ','Phòng','Họ tên trên thẻ','Số thẻ','Ngân hàng','Ngày vào sổ','Số ngày giữ','Nguồn thẻ'],
+  TB.due.map((x,i)=>[i+1,x.ma,x.pb,x.hoTen,taMaskView(x.soThe),x.nganHang,taDmy(x.ngayVao),x.soNgay,x.nguon||'']));
+$('#tbRetCsv').onclick=()=>taCsv(`The_da_tra_${TB.from}_${TB.to}.csv`,['STT','Mã thẻ','Phòng','Họ tên trên thẻ','Số thẻ','Ngân hàng','Ngày vào sổ','Ngày trả','Số ngày giữ','Người trả','Nguồn thẻ'],
+  (TB.ret||[]).map((x,i)=>[i+1,x.ma,x.pb,x.hoTen,taMaskView(x.soThe),x.nganHang,taDmy(x.ngayVao),taDmy(x.ngayTra),x.soNgay,x.xlBoi,x.nguon||'']));
 $('#tbCancelBtn').onclick=async()=>{
   const mas=TB.due.filter(x=>TB.sel.has(x.ma)).map(x=>x.ma),note=$('#tbCancelNote').value.trim(),err=$('#tbCancelErr');err.hidden=true;
   if(note.length<5){err.textContent='Ghi số biên bản hoặc căn cứ hủy.';err.hidden=false;$('#tbCancelNote').focus();return}
@@ -1658,36 +1664,38 @@ window.addEventListener('ttg:view',e=>{if(e.detail==='the-baocao')tbLoad()});
 
 /* ---------- Xem thử (không có máy chủ): dữ liệu hư cấu ---------- */
 let TA_DEMO=null;
+const TA_DEMO_PB=['Phòng DVKH','PGD An Hữu','PGD Ấp Bắc','PGD Cái Bè','PGD Long Định','PGD Hưng Long'],
+  TA_DEMO_PRE={'Phòng DVKH':'DV','PGD An Hữu':'AH','PGD Ấp Bắc':'AB','PGD Cái Bè':'CB','PGD Long Định':'LD','PGD Hưng Long':'HL'};
 function taDemoInit(){
   const today=VN_DAY().replace(/(\d{4})(\d{2})(\d{2})/,'$1-$2-$3'),day=k=>{const d=new Date(Date.parse(today+'T00:00:00Z')-k*864e5);return d.toISOString().slice(0,10)};
   const banks=[['VietinBank','Ngân hàng TMCP Công Thương Việt Nam','970415'],['Vietcombank','Ngân hàng TMCP Ngoại thương Việt Nam','970436'],['Agribank','Ngân hàng Nông nghiệp và Phát triển Nông thôn Việt Nam','970405'],
     ['BIDV','Ngân hàng TMCP Đầu tư và Phát triển Việt Nam','970418'],['Sacombank','Ngân hàng TMCP Sài Gòn Thương Tín','970403'],['ACB','Ngân hàng TMCP Á Châu','970416'],['MB','Ngân hàng TMCP Quân đội','970422'],
     ['Techcombank','Ngân hàng TMCP Kỹ Thương Việt Nam','970407']].map(b=>({ten:b[0],full:b[1],bins:[b[2]],alias:[]}));
   const names=['NGUYEN VAN AN','TRAN THI BINH','LE HOANG CUONG','PHAM THI DUNG','VO MINH EM','HUYNH THI GIANG','DANG VAN HOA','BUI THI KIM','DO VAN LONG','NGO THI MAI','DUONG VAN NAM','LY THI OANH',''];
-  const pbs=['Phòng DVKH','PGD An Hữu','PGD Ấp Bắc'],pre={'Phòng DVKH':'DV','PGD An Hữu':'AH','PGD Ấp Bắc':'AB'};
+  const pbs=TA_DEMO_PB,pre=TA_DEMO_PRE,bg=['Phòng DVKH','PGD An Hữu','PGD Ấp Bắc'];
   const cards=[];
   [[2,0],[5,1],[9,2],[14,0],[21,3],[33,1],[47,4],[62,0],[75,5],[93,2],[104,0],[118,6],[1,7],[3,0],[12,1],[40,2],[8,0],[96,3]].forEach(([k,b],i)=>{
-    const pb=pbs[i%3===2?1:i%5===4?2:0],bk=banks[b],vao=day(k),ret=i%4===1&&k>5;
+    const pb=pbs[i%3===2?1:i%5===4?2:i%7===3?3:i%7===5?4:i%6===1?5:0],bk=banks[b],vao=day(k),ret=i%4===1&&k>5;
     const x={pb,ma:pre[pb]+'-'+vao.slice(2).replace(/-/g,'')+'-0'+(900+i),ngayVao:vao,nhapLuc:taDmy(vao)+' 09:'+String(10+i).padStart(2,'0'),hoTen:names[i%names.length],
-      soThe:taMask(bk.bins[0],String(1000+i*137).slice(-4)),nganHang:bk.ten,tt:ret?TA_ST.TRA:TA_ST.GIU,ngayTra:ret?day(k-3):'',giaoBoi:'Cán bộ điện toán',ghiChu:i===4?'Gửi bảo vệ trên xe điều hàng':'',atm:i%3===0?'ATM Trụ sở Chi nhánh':'',
+      soThe:taMask(bk.bins[0],String(1000+i*137).slice(-4)),nganHang:bk.ten,tt:ret?TA_ST.TRA:TA_ST.GIU,ngayTra:ret?day(k-3):'',giaoBoi:bg.includes(pb)?'Cán bộ điện toán':'GDV '+pb,nguon:bg.includes(pb)&&!(pb==='PGD An Hữu'&&i%2)?'Bàn giao từ chi nhánh':'Nhập tại phòng',ghiChu:i===4?'Gửi bảo vệ trên xe điều hàng':'',atm:i%3===0?(pb==='Phòng DVKH'?'ATM Trụ sở Chi nhánh':'ATM '+pb):'',
       xlBoi:ret?'Giao dịch viên A':'',xlLuc:ret?taDmy(day(k-3))+' 10:15':'',xlNgay:ret?day(k-3):'',xlGhiChu:'',canhBao:''};
     x.soNgay=taDays(x.ngayVao,x.ngayTra||today);cards.push(x)});
   cards.push(Object.assign({},cards[9],{ma:'DV-'+day(130).slice(2).replace(/-/g,'')+'-0999',hoTen:'TRUONG VAN PHUC',tt:TA_ST.HUY,ngayVao:day(130),soNgay:130,xlBoi:'Trưởng phòng DVKH',xlLuc:taDmy(day(30))+' 16:00',xlNgay:day(30),xlGhiChu:'Biên bản hủy thẻ số 03/2026'}));
   TA_DEMO={today,cards,cfg:{soNgayHuy:90,soDau:6,nhomTon:[15,30,60,90],mien:'vietinbank.vn',hoanTac:true,diaDanh:'Tiền Giang',tenCN:'Chi nhánh Tây Tiền Giang',bm:{ma:'BM09-GNT',banHanh:'02',suaDoi:'00'},
-    banks,atms:[{ma:'TTG01',diaDiem:'ATM Trụ sở Chi nhánh',pb:'Phòng DVKH'},{ma:'TTG05',diaDiem:'ATM PGD An Hữu',pb:'PGD An Hữu'}],
-    phong:pbs.map(p=>({pb:p,kinhGui:p==='Phòng DVKH'?'Chi nhánh Tây Tiền Giang – Phòng DVKH':p,coEmail:true}))}};
+    banks,atms:[{ma:'TTG01',diaDiem:'ATM Trụ sở Chi nhánh',pb:'Phòng DVKH'},{ma:'TTG05',diaDiem:'ATM PGD An Hữu',pb:'PGD An Hữu'},{ma:'TTG02',diaDiem:'ATM PGD Cái Bè',pb:'PGD Cái Bè'},{ma:'TTG03',diaDiem:'ATM PGD Long Định',pb:'PGD Long Định'},{ma:'TTG04',diaDiem:'ATM PGD Hưng Long',pb:'PGD Hưng Long'}],
+    phong:pbs.map(p=>({pb:p,kinhGui:p==='Phòng DVKH'?'Chi nhánh Tây Tiền Giang – Phòng DVKH':p,coEmail:bg.includes(p),banGiao:bg.includes(p),tuNhap:p!=='PGD Ấp Bắc'}))}};
 }
 async function taDemo(action,d){
   await new Promise(x=>setTimeout(x,300));if(!TA_DEMO)taDemoInit();const D=TA_DEMO,me='Tuyến (xem thử)',now=D.today;
-  const role={canEnter:true,canReturn:true,canCancel:true,viewAll:true,scope:D.cfg.phong.map(p=>p.pb),myPb:'Phòng DVKH'};
+  const all=D.cfg.phong.map(p=>p.pb),role={canEnter:true,nhapPbs:all,bgPbs:['Phòng DVKH','PGD An Hữu','PGD Ấp Bắc'],canReturn:true,canCancel:true,viewAll:true,scope:all,myPb:'Phòng DVKH'};
   const out=view=>({ok:true,today:D.today,view,me,role,cfg:D.cfg,cards:D.cards.filter(x=>view==='bc'||(view==='huy'?x.tt===TA_ST.HUY:x.tt!==TA_ST.HUY)).map(x=>Object.assign({},x,{cuaToi:x.xlBoi===me,canUndo:x.tt===TA_ST.TRA&&x.xlBoi===me&&x.xlNgay===now}))
     .sort((a,b)=>(b.ngayVao+b.nhapLuc).localeCompare(a.ngayVao+a.nhapLuc))});
   const find=ma=>D.cards.find(x=>x.ma===ma),hm=()=>new Intl.DateTimeFormat('en-GB',{timeZone:'Asia/Ho_Chi_Minh',hour:'2-digit',minute:'2-digit',hour12:false}).format(new Date());
   if(action==='ta_load')return out(d.view||'so');
-  if(action==='ta_add'){const pre={'Phòng DVKH':'DV','PGD An Hữu':'AH','PGD Ấp Bắc':'AB'}[d.pb];
+  if(action==='ta_add'){const pre=TA_DEMO_PRE[d.pb],bgx=role.bgPbs.includes(d.pb);
     d.cards.forEach((c,i)=>{const bk=D.cfg.banks.find(b=>b.ten===c.nganHang);D.cards.push({pb:d.pb,ma:pre+'-'+now.slice(2).replace(/-/g,'')+'-'+hm().replace(':','')+String(i).padStart(2,'0'),ngayVao:now,nhapLuc:taDmy(now)+' '+hm(),
-      hoTen:c.hoTen,soThe:taMask(c.dau,c.cuoi),nganHang:bk?bk.ten:c.nganHang,tt:TA_ST.GIU,ngayTra:'',giaoBoi:me,ghiChu:c.ghiChu,atm:c.atm,xlBoi:'',xlLuc:'',xlNgay:'',xlGhiChu:'',canhBao:'',soNgay:0})});
-    return Object.assign(out('so'),{mail:'(Xem thử: không gửi email thật.)'})}
+      hoTen:c.hoTen,soThe:taMask(c.dau,c.cuoi),nganHang:bk?bk.ten:c.nganHang,tt:TA_ST.GIU,ngayTra:'',giaoBoi:me,nguon:bgx?'Bàn giao từ chi nhánh':'Nhập tại phòng',ghiChu:c.ghiChu,atm:c.atm,xlBoi:'',xlLuc:'',xlNgay:'',xlGhiChu:'',canhBao:'',soNgay:0})});
+    return Object.assign(out('so'),{mail:bgx?'(Xem thử: không gửi email thật.)':''})}
   if(action==='ta_return'){const x=find(d.ma);Object.assign(x,{tt:TA_ST.TRA,ngayTra:now,xlBoi:me,xlLuc:taDmy(now)+' '+hm(),xlNgay:now,xlGhiChu:d.ghiChu||''});return Object.assign(out('so'),{returned:d.ma})}
   if(action==='ta_undo'){const x=find(d.ma);Object.assign(x,{tt:TA_ST.GIU,ngayTra:'',xlBoi:'',xlLuc:'',xlNgay:'',xlGhiChu:'',soNgay:taDays(x.ngayVao,now)});return out('so')}
   if(action==='ta_phieu_email')return{ok:true,message:'Xem thử: bản thật sẽ gửi file '+(d.loai==='docx'?'Word':'PDF')+' tới '+d.email+'.'};

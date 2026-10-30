@@ -1,6 +1,6 @@
 /**
  * KHÔNG GIAN SỐ NỘI BỘ (TTG Inside) – Máy chủ phân quyền
- * VietinBank Chi nhánh Tây Tiền Giang · phiên bản 1.6.1 · 30/10/2026
+ * VietinBank Chi nhánh Tây Tiền Giang · phiên bản 1.7.0 · 30/10/2026
  *
  * Script này GẮN VỚI file Google Sheet phân quyền (Tiện ích mở rộng → Apps Script), làm 2 việc:
  *   1. Menu quản trị + tự tick quyền theo vai trò ngay trong Sheet.
@@ -57,6 +57,7 @@ function onOpen() {
     .addItem('Cài đặt Bản tin sáng (I005)', 'caiDatBanTin')
     .addItem('Cài đặt / cập nhật Thẻ ATM máy thu (I006, I007)', 'caiDatTheATM')
     .addItem('Gửi ngay email nhắc hủy thẻ ATM', 'nhacHuyTheATM')
+    .addItem('Kiểm tra kết nối AI (Claude)', 'kiemTraAI')
     .addItem('Thêm ứng dụng mới…', 'themUngDung')
     .addItem('Sinh thêm ID dự phòng…', 'sinhThemID')
     .addItem('Áp dụng lại quyền theo vai trò (tất cả)', 'apDungLaiVaiTro')
@@ -568,6 +569,56 @@ function aiHeaders_(key) {
   if (ws) h['anthropic-workspace-id'] = ws;
   return h;
 }
+/** Gọi Claude Messages API. Trả {text} hoặc {error, message (tiếng Việt, nêu nguyên nhân), detail}.
+ *  Tự thử lại 1 lần khi quá tải (529/500) hoặc khi mô hình không nhận tham số temperature. */
+function aiFetch_(key, payload) {
+  let p = Object.assign({}, payload), last = null;
+  for (let attempt = 0; attempt < 3; attempt++) {
+    let res;
+    try {
+      res = UrlFetchApp.fetch('https://api.anthropic.com/v1/messages', { method: 'post', contentType: 'application/json', muteHttpExceptions: true,
+        headers: aiHeaders_(key), payload: JSON.stringify(p) });
+    } catch (e) { last = { code: 0, type: 'network', msg: String(e.message || e) }; Utilities.sleep(800); continue; }
+    const code = res.getResponseCode(), body = res.getContentText();
+    if (code === 200) {
+      const j = JSON.parse(body);
+      return { text: (j.content || []).filter(c => c.type === 'text').map(c => c.text).join('') };
+    }
+    let type = '', msg = '';
+    try { const j = JSON.parse(body); type = (j.error && j.error.type) || ''; msg = (j.error && j.error.message) || ''; } catch (e) { msg = body.slice(0, 200); }
+    last = { code, type, msg };
+    console.error('Claude API ' + code + ' ' + type + ': ' + msg);
+    if (code === 400 && /temperature/i.test(msg) && 'temperature' in p) { p = Object.assign({}, p); delete p.temperature; continue; }
+    if ((code === 529 || code === 500 || code === 503) && attempt < 2) { Utilities.sleep(1500); continue; }
+    break;
+  }
+  return Object.assign(aiErrMsg_(last), { detail: 'HTTP ' + last.code + ' ' + last.type + ': ' + String(last.msg).slice(0, 300) });
+}
+function aiErrMsg_(e) {
+  const m = String(e.msg || ''), c = e.code;
+  if (c === 401) return { error: 'ai_key', message: 'Khóa ANTHROPIC_API_KEY không đúng hoặc đã bị tắt. Kiểm tra lại khóa trong Thuộc tính tập lệnh.' };
+  if (c === 403) return { error: 'ai_key', message: 'Khóa API không có quyền dùng dịch vụ này (403). Kiểm tra workspace/quyền của khóa trên Claude Console.' };
+  if (/credit balance|billing|purchase credits/i.test(m)) return { error: 'ai_billing', message: 'Tài khoản Claude API chưa nạp tiền hoặc đã hết số dư (Billing trên Claude Console).' };
+  if (/workspace/i.test(m)) return { error: 'ai_key', message: 'Khóa API chưa gắn workspace: tạo khóa gắn workspace, hoặc thêm thuộc tính ANTHROPIC_WORKSPACE_ID.' };
+  if (c === 404 || /model/i.test(m)) return { error: 'ai_model', message: 'Mô hình AI không dùng được (' + m.slice(0, 120) + '). Sửa tên mô hình (MODEL_DOC_THE / MODEL_BAO_CAO).' };
+  if (c === 429) return { error: 'rate_limited', message: 'Đã vượt giới hạn lượt gọi của tài khoản Claude API, thử lại sau ít phút.' };
+  if (c === 529 || c === 500 || c === 503) return { error: 'rate_limited', message: 'Dịch vụ AI đang quá tải, thử lại sau ít phút.' };
+  if (c === 413 || /too large|image/i.test(m)) return { error: 'upstream_error', message: 'Ảnh không gửi được cho AI (' + m.slice(0, 120) + '). Chụp lại.' };
+  if (c === 0) return { error: 'upstream_error', message: 'Máy chủ Google không kết nối được tới Claude API (' + m.slice(0, 120) + ').' };
+  return { error: 'upstream_error', message: 'Dịch vụ AI báo lỗi ' + c + (m ? ': ' + m.slice(0, 160) : '') + '.' };
+}
+/** Menu: kiểm tra khóa API, số dư, tên mô hình bằng 1 câu hỏi ngắn */
+function kiemTraAI() {
+  const ui = SpreadsheetApp.getUi(), props = PropertiesService.getScriptProperties(), key = props.getProperty('ANTHROPIC_API_KEY');
+  if (!key) { ui.alert('Kiểm tra kết nối AI', 'Chưa có thuộc tính ANTHROPIC_API_KEY.', ui.ButtonSet.OK); return; }
+  let models = [props.getProperty('MODEL_BAO_CAO') || DEFAULT_MODEL_BC, props.getProperty('MODEL') || DEFAULT_MODEL];
+  try { models.unshift(taConfig_(true).modelDocThe); } catch (e) {}
+  models = models.filter((x, i, a) => a.indexOf(x) === i);
+  const lines = ['Khóa: ' + key.slice(0, 10) + '…' + key.slice(-4) + (props.getProperty('ANTHROPIC_WORKSPACE_ID') ? ' · workspace ' + props.getProperty('ANTHROPIC_WORKSPACE_ID') : '')];
+  models.forEach(m => { const r = aiFetch_(key, { model: m, max_tokens: 20, messages: [{ role: 'user', content: 'Trả lời đúng một từ: OK' }] });
+    lines.push(m + ': ' + (r.error ? 'LỖI – ' + r.message + '\n   (' + r.detail + ')' : 'chạy tốt (' + r.text.trim().slice(0, 20) + ')')); });
+  ui.alert('Kiểm tra kết nối AI', lines.join('\n'), ui.ButtonSet.OK);
+}
 function aiLimit_(props) {
   const lock = LockService.getScriptLock(); lock.waitLock(5000);
   try {
@@ -1068,16 +1119,10 @@ function apiCpAi_(b) {
   const cacheKey = 'cp_ai_' + Utilities.base64EncodeWebSafe(Utilities.computeDigest(Utilities.DigestAlgorithm.MD5, JSON.stringify([d.scope, d.cube, d.hanMuc, d.keHoach, d.today])));
   const hit = CacheService.getScriptCache().get(cacheKey); if (hit) return { ok: true, text: hit, cached: true };
   const lim = aiLimit_(props); if (lim) return lim;
-  const res = UrlFetchApp.fetch('https://api.anthropic.com/v1/messages', {
-    method: 'post', contentType: 'application/json', muteHttpExceptions: true,
-    headers: aiHeaders_(key),
-    payload: JSON.stringify({ model: props.getProperty('MODEL_BAO_CAO') || DEFAULT_MODEL_BC, max_tokens: 1800, system: CP_AI_PROMPT,
-      messages: [{ role: 'user', content: cpSummary(d) }] })
-  });
-  const code = res.getResponseCode();
-  if (code === 429 || code === 529) return { error: 'rate_limited', message: 'Dịch vụ AI đang quá tải, thử lại sau ít phút.' };
-  if (code !== 200) { console.error('Claude API ' + code + ': ' + res.getContentText().slice(0, 300)); return { error: 'upstream_error', message: 'Dịch vụ AI tạm thời lỗi, thử lại sau.' }; }
-  const text = (JSON.parse(res.getContentText()).content || []).filter(c => c.type === 'text').map(c => c.text).join('').trim();
+  const r = aiFetch_(key, { model: props.getProperty('MODEL_BAO_CAO') || DEFAULT_MODEL_BC, max_tokens: 1800, system: CP_AI_PROMPT,
+      messages: [{ role: 'user', content: cpSummary(d) }] });
+  if (r.error) return { error: r.error, message: r.message };
+  const text = r.text.trim();
   if (!text) return { error: 'upstream_error', message: 'AI không trả về nội dung.' };
   try { CacheService.getScriptCache().put(cacheKey, text, 1800); } catch (e) {}
   log_(g.user.id, g.user.hoTen, 'Phân tích AI', CP_APP_BC, d.scope.label + ' · tháng ' + month, '');
@@ -1247,9 +1292,22 @@ const TA_FILE_NAME = 'KhongGianSoNoiBo_TheATM';
 const TA_SH = { CAUHINH: 'TA_CauHinh', NOINHAN: 'TA_NoiNhan', NGANHANG: 'TA_NganHang', ATM: 'TA_ATM', HD: 'HuongDan' };
 // Cột trong sổ (0-based): A–I theo Google Form cũ, J–S do ứng dụng quản lý
 const TC = { TS: 0, GIAO_BOI: 1, NGAY_GIAO: 2, NGAY_TRA: 3, TEN: 4, SO_GOC: 5, NH_GOC: 6, NH_KHAC: 7, GHI_CHU: 8,
-             MA: 9, SO: 10, NH: 11, TT: 12, XL_BOI: 13, XL_LUC: 14, XL_GHI_CHU: 15, CANH_BAO: 16, ATM: 17, ID_NHAP: 18 };
-const TA_NCOL = 19;
-const TA_HEAD_APP = ['Mã thẻ', 'Số thẻ (chuẩn)', 'Ngân hàng', 'Trạng thái', 'Cán bộ trả/hủy', 'Thời gian xử lý', 'Ghi chú xử lý', 'Cảnh báo dữ liệu', 'ATM thu thẻ', 'ID cán bộ nhập'];
+             MA: 9, SO: 10, NH: 11, TT: 12, XL_BOI: 13, XL_LUC: 14, XL_GHI_CHU: 15, CANH_BAO: 16, ATM: 17, ID_NHAP: 18, NGUON: 19 };
+const TA_NCOL = 20;
+const TA_HEAD_APP = ['Mã thẻ', 'Số thẻ (chuẩn)', 'Ngân hàng', 'Trạng thái', 'Cán bộ trả/hủy', 'Thời gian xử lý', 'Ghi chú xử lý', 'Cảnh báo dữ liệu', 'ATM thu thẻ', 'ID cán bộ nhập', 'Nguồn thẻ'];
+const TA_NGUON = { BG: 'Bàn giao từ chi nhánh', TAI: 'Nhập tại phòng' };
+const TA_HEAD_PGD = ['Dấu thời gian', 'Cán bộ nhập thẻ', 'Ngày nhận thẻ (vào sổ)', 'Ngày trả thẻ cho khách', 'Họ tên in trên thẻ', 'Số thẻ (số đầu + xxxx + 4 số cuối)', 'Ngân hàng chủ thẻ', 'Ngân hàng khác', 'Ghi chú'];
+// Sổ thẻ của các phòng: [phòng, ID file, tiền tố, Kính gửi, nhận bàn giao từ chi nhánh, vai trò nhập tại phòng, vai trò trả thẻ, PGĐ phụ trách (họ tên)]
+const TA_NOINHAN_BAN_DAU = [
+  ['Phòng DVKH', '14GcehdRyF-CsqM3JYAzj5TdsSCgHPlbW9fhojlBgs-g', 'DV', 'Chi nhánh Tây Tiền Giang – Phòng DVKH', true, 'Phó phòng', 'Trưởng phòng, Phó phòng, GDV, Cán bộ DVKH', 'Phạm Minh Linh'],
+  ['PGD An Hữu', '10FMygZUyuCuPgybTA5bljB3me2OhvN--SPdasYDh8rg', 'AH', 'PGD An Hữu', true, 'GDV, Phó phòng', 'GDV, Phó phòng', 'Phạm Minh Linh'],
+  ['PGD Ấp Bắc', '1jYMen_rpNnItPby2Zf9OyJqCfxnyg7jro3_EO0I-5M0', 'AB', 'PGD Ấp Bắc', true, '', 'Trưởng phòng, Phó phòng, GDV, Cán bộ DVKH', 'Nguyễn Kim Phương'],
+  ['PGD Cái Bè', '1flCSdDuJxXP4FQdeML7_PK63Ha86ZAyTNouY7M3yEi0', 'CB', 'PGD Cái Bè', false, 'GDV, Phó phòng', 'GDV, Phó phòng', 'Nguyễn Kim Phương'],
+  ['PGD Long Định', '1gVwrIqyPISz58k0bMbpFE4hH3fu596xFB6rJqJM5qAc', 'LD', 'PGD Long Định', false, 'GDV, Phó phòng', 'GDV, Phó phòng', 'Phạm Minh Linh'],
+  ['PGD Hưng Long', '19Z8ubcvv94wIRktNbFR9gyS1ZTHYuz5kHGip2Lq35ZU', 'HL', 'PGD Hưng Long', false, 'GDV, Phó phòng', 'GDV, Phó phòng', 'Nguyễn Kim Phương']
+];
+const TA_NOINHAN_HEAD = ['Phòng nhận thẻ', 'ID file sổ thẻ', 'Tiền tố mã thẻ', 'Tên ghi trên phiếu (Kính gửi)', 'Email nhận', 'Email CC', 'Đang dùng', 'Ghi chú',
+  'Nhận bàn giao từ chi nhánh', 'Vai trò nhập tại phòng', 'Vai trò trả thẻ', 'ID PGĐ phụ trách'];
 const TA_VT_MO = ['Quản trị hệ thống', 'Điện toán', 'Trưởng phòng', 'Phó phòng', 'GDV', 'Cán bộ DVKH'];
 const TA_VT_MO_BC = TA_VT_MO.concat(['Giám đốc', 'Phó Giám đốc']);
 const TA_CAUHINH_BAN_DAU = [
@@ -1260,10 +1318,12 @@ const TA_CAUHINH_BAN_DAU = [
   ['SO_CHU_SO_DAU', '6', 'Số chữ số đầu của số thẻ được lưu: 6 (theo mẫu BM09-GNT) hoặc 4 (như sổ cũ)'],
   ['MIEN_EMAIL', 'vietinbank.vn', 'Chỉ gửi email tới địa chỉ thuộc tên miền này'],
   ['GUI_EMAIL_KHI_NHAP', 'Có', 'Có/Không: gửi email cho cán bộ phụ trách phòng nhận khi nhập thẻ'],
-  ['VAI_TRO_NHAP', 'Quản trị hệ thống, Điện toán', 'Vai trò được nhập thẻ, xem danh sách (không được trả thẻ)'],
-  ['VAI_TRO_TRA', 'Trưởng phòng, Phó phòng, GDV, Cán bộ DVKH', 'Vai trò được trả thẻ – chỉ sổ của phòng mình (phòng có trong TA_NoiNhan)'],
-  ['VAI_TRO_HUY', 'Trưởng phòng, Phó phòng', 'Vai trò được thực hiện hủy thẻ quá hạn của phòng mình'],
-  ['VAI_TRO_XEM_TAT_CA', 'Giám đốc, Phó Giám đốc, Quản trị hệ thống, Điện toán', 'Vai trò xem báo cáo của tất cả phòng nhận thẻ'],
+  ['VAI_TRO_NHAP', 'Quản trị hệ thống, Điện toán', 'Vai trò nhập thẻ bàn giao (thẻ do ATM trụ sở thu) vào sổ các phòng có tick "Nhận bàn giao từ chi nhánh"; có gửi email; không trả thẻ'],
+  ['VAI_TRO_TRA', 'Trưởng phòng, Phó phòng, GDV, Cán bộ DVKH', 'Vai trò trả thẻ dùng khi cột "Vai trò trả thẻ" ở TA_NoiNhan để trống – chỉ sổ của phòng mình'],
+  ['VAI_TRO_HUY', 'Phó phòng', 'Vai trò được thực hiện hủy thẻ quá hạn – chỉ sổ của phòng mình'],
+  ['VAI_TRO_XEM_TAT_CA', 'Giám đốc, Quản trị hệ thống, Điện toán', 'Vai trò xem báo cáo của tất cả các sổ thẻ'],
+  ['VAI_TRO_BAO_CAO', 'Trưởng phòng, Phó phòng, GDV, Cán bộ DVKH', 'Vai trò xem báo cáo sổ thẻ của phòng mình'],
+  ['VAI_TRO_PGD', 'Phó Giám đốc', 'Vai trò xem báo cáo các sổ có ID mình ở cột "ID PGĐ phụ trách" (TA_NoiNhan)'],
   ['HOAN_TAC_TRONG_NGAY', 'Có', 'Có/Không: người trả thẻ được hoàn tác trong ngày'],
   ['DIA_DANH', 'Tiền Giang', 'Địa danh ở dòng ngày tháng trên phiếu'],
   ['TEN_CHI_NHANH', 'Chi nhánh Tây Tiền Giang', 'Tên chi nhánh trên email, báo cáo'],
@@ -1319,7 +1379,7 @@ const TA_NGANHANG_BAN_DAU = [
   ['Home Credit', 'Công ty Tài chính TNHH MTV Home Credit Việt Nam', '', 'Hone credit']
 ];
 
-/** Menu: tạo/cập nhật file cấu hình, chuẩn bị 3 sổ, đăng ký I006/I007, cài lịch email nhắc hủy. Chạy lại an toàn. */
+/** Menu: tạo/cập nhật file cấu hình, chuẩn bị các sổ thẻ, đăng ký I006/I007, cài lịch email nhắc hủy. Chạy lại an toàn. */
 function caiDatTheATM() {
   const ui = SpreadsheetApp.getUi(), props = PropertiesService.getScriptProperties();
   let f = null;
@@ -1354,14 +1414,9 @@ function taoFileTheATM_(f) {
   style(ch, [190, 330, 520]);
 
   const nn = f.insertSheet(TA_SH.NOINHAN);
-  nn.getRange(1, 1, 1, 8).setValues([['Phòng nhận thẻ', 'ID file sổ thẻ', 'Tiền tố mã thẻ', 'Tên ghi trên phiếu (Kính gửi)', 'Email nhận', 'Email CC', 'Đang dùng', 'Ghi chú']]);
-  nn.getRange(2, 1, 3, 8).setValues([
-    ['Phòng DVKH', '14GcehdRyF-CsqM3JYAzj5TdsSCgHPlbW9fhojlBgs-g', 'DV', 'Chi nhánh Tây Tiền Giang – Phòng DVKH', '', '', true, 'Nhiều email cách nhau dấu phẩy'],
-    ['PGD An Hữu', '10FMygZUyuCuPgybTA5bljB3me2OhvN--SPdasYDh8rg', 'AH', 'PGD An Hữu', '', '', true, ''],
-    ['PGD Ấp Bắc', '1jYMen_rpNnItPby2Zf9OyJqCfxnyg7jro3_EO0I-5M0', 'AB', 'PGD Ấp Bắc', '', '', true, '']]);
+  nn.getRange(1, 1, 1, 8).setValues([TA_NOINHAN_HEAD.slice(0, 8)]);
   nn.getRange('B2:C').setNumberFormat('@'); nn.getRange(2, 7, 30, 1).insertCheckboxes();
-  nn.getRange(2, 7, 3, 1).setValues([[true], [true], [true]]);
-  style(nn, [130, 320, 90, 260, 260, 200, 80, 220]);
+  style(nn, [130, 320, 90, 260, 260, 200, 80, 220]);   // cột I–L và các dòng phòng do capNhatTheATM_ bổ sung
 
   const nh = f.insertSheet(TA_SH.NGANHANG);
   nh.getRange(1, 1, 1, 5).setValues([['Tên ngắn', 'Tên đầy đủ', 'Đầu số BIN (cách nhau dấu phẩy)', 'Tên gọi khác (cách nhau dấu phẩy)', 'Đang dùng']]);
@@ -1389,8 +1444,40 @@ function taoFileTheATM_(f) {
 /** Bổ sung tham số mới cho file cấu hình tạo bằng bản cũ */
 function capNhatTheATM_(f) {
   const out = [], ch = f.getSheetByName(TA_SH.CAUHINH);
-  if (ch) { const keys = ch.getDataRange().getValues().map(r => String(r[0]).trim());
-    TA_CAUHINH_BAN_DAU.forEach(r => { if (!keys.includes(r[0])) { ch.appendRow(r); out.push('thêm ' + r[0]); } }); }
+  if (ch) {
+    const v = ch.getDataRange().getValues(), keys = v.map(r => String(r[0]).trim());
+    TA_CAUHINH_BAN_DAU.forEach(r => { if (!keys.includes(r[0])) { ch.appendRow(r); out.push('thêm ' + r[0]); } });
+    // v1.7.0: hủy chỉ Phó phòng; PGĐ xem theo phân công (không còn xem tất cả) – chỉ đổi khi còn giá trị mặc định cũ
+    const upd = (k, oldV, row) => { const i = keys.indexOf(k); if (i > 0 && String(v[i][1]).trim() === oldV) { ch.getRange(i + 1, 2, 1, 2).setValues([[row[1], row[2]]]); out.push(k + ' = ' + row[1]); } };
+    const def = k => TA_CAUHINH_BAN_DAU.find(r => r[0] === k);
+    upd('VAI_TRO_HUY', 'Trưởng phòng, Phó phòng', def('VAI_TRO_HUY'));
+    upd('VAI_TRO_XEM_TAT_CA', 'Giám đốc, Phó Giám đốc, Quản trị hệ thống, Điện toán', def('VAI_TRO_XEM_TAT_CA'));
+    upd('VAI_TRO_NHAP', 'Quản trị hệ thống, Điện toán', def('VAI_TRO_NHAP'));
+  }
+  const nn = f.getSheetByName(TA_SH.NOINHAN);
+  if (nn) {
+    if (nn.getMaxColumns() < 12) nn.insertColumnsAfter(nn.getMaxColumns(), 12 - nn.getMaxColumns());
+    const hd = nn.getRange(1, 1, 1, 12).getValues()[0];
+    if (!String(hd[8]).trim()) {
+      nn.getRange(1, 9, 1, 4).setValues([TA_NOINHAN_HEAD.slice(8)]).setFontWeight('bold').setFontColor('#FFFFFF').setBackground('#005993').setWrap(true);
+      [110, 170, 260, 150].forEach((w, i) => nn.setColumnWidth(9 + i, w));
+      out.push('TA_NoiNhan thêm cột I–L (nhận bàn giao, vai trò nhập tại phòng, vai trò trả, PGĐ phụ trách)');
+    }
+    nn.getRange(2, 9, 40, 1).insertCheckboxes(); nn.getRange(2, 12, 40, 1).setNumberFormat('@');
+    const users = Object.values(loadData_().users), idOf = name => (users.find(u => u.hoTen === name) || {}).id || '';
+    const last = Math.max(firstEmptyRow_(nn, 1) - 1, 1), rows = last > 1 ? nn.getRange(2, 1, last - 1, 12).getValues() : [];
+    TA_NOINHAN_BAN_DAU.forEach(d => {
+      const i = rows.findIndex(r => String(r[0]).trim() === d[0]);
+      if (i < 0) {
+        const r = firstEmptyRow_(nn, 1);
+        nn.getRange(r, 1, 1, 12).setValues([[d[0], d[1], d[2], d[3], '', '', true, '', d[4], d[5], d[6], idOf(d[7])]]);
+        out.push('thêm sổ ' + d[0]);
+      } else if (!String(rows[i][9]).trim() && !String(rows[i][10]).trim() && !String(rows[i][11]).trim() && rows[i][8] !== true) {
+        nn.getRange(i + 2, 9, 1, 4).setValues([[d[4], d[5], d[6], idOf(d[7])]]);
+        out.push('điền phân quyền sổ ' + d[0]);
+      }
+    });
+  }
   return out;
 }
 
@@ -1407,14 +1494,21 @@ function chuanBiSoThe_(n, cfg) {
     sh.getRange(2, TC.MA + 1, last - 1, 4).setValues(v);
   }
   sh.getRange(1, TC.MA + 1, 1, 7).setValues([TA_HEAD_APP.slice(0, 7)]);
-  sh.getRange(1, TC.ATM + 1, 1, 2).setValues([TA_HEAD_APP.slice(8)]);
+  sh.getRange(1, TC.ATM + 1, 1, 3).setValues([TA_HEAD_APP.slice(8)]);
+  if (!String(sh.getRange(1, 1).getValue()).trim()) sh.getRange(1, 1, 1, 9).setValues([TA_HEAD_PGD]);
+  if (last > 1) {   // dòng cũ chưa ghi nguồn: sổ nhận bàn giao → "Bàn giao từ chi nhánh"
+    const g = sh.getRange(2, TC.NGUON + 1, last - 1, 1), gv = g.getValues(), a = sh.getRange(2, 1, last - 1, 1).getValues();
+    let k = 0; const nv = gv.map((r, i) => { if (!String(r[0]).trim() && a[i][0] !== '') { k++; return [n.banGiao ? TA_NGUON.BG : TA_NGUON.TAI]; } return r; });
+    if (k) g.setValues(nv);
+  }
   sh.getRange(1, TC.CANH_BAO + 1).setFormula(TA_Q_FORMULA);
   sh.getRange(2, TC.SO_GOC + 1, sh.getMaxRows() - 1, 1).setNumberFormat('@');
   sh.getRange(2, TC.MA + 1, sh.getMaxRows() - 1, 2).setNumberFormat('@');
   sh.getRange(2, TC.ID_NHAP + 1, sh.getMaxRows() - 1, 1).setNumberFormat('@');
   sh.getRange(2, TC.XL_LUC + 1, sh.getMaxRows() - 1, 1).setNumberFormat('dd/mm/yyyy hh:mm');
   sh.getRange(2, TC.NGAY_TRA + 1, sh.getMaxRows() - 1, 1).setNumberFormat('dd/mm/yyyy');
-  sh.setColumnWidth(TC.ATM + 1, 180); sh.setColumnWidth(TC.ID_NHAP + 1, 110);
+  sh.setColumnWidth(TC.ATM + 1, 180); sh.setColumnWidth(TC.ID_NHAP + 1, 110); sh.setColumnWidth(TC.NGUON + 1, 160);
+  sh.getRange(1, 1, 1, TA_NCOL).setFontWeight('bold').setWrap(true); sh.setFrozenRows(1);
   const rows = taReadRows_(sh, n, cfg, true);
   return rows.length + ' thẻ (' + rows.filter(x => x.tt === TA_ST.GIU).length + ' đang giữ)';
 }
@@ -1443,11 +1537,13 @@ const TA_THU = ['Chủ nhật', 'Thứ Hai', 'Thứ Ba', 'Thứ Tư', 'Thứ Nă
 /** Kiểm tra cấu hình: email, vai trò, phòng, file sổ */
 function taKiemTra_(cfg) {
   const msg = [], roles = Object.keys(rolePerms_()), pbs = phongBanMap_();
-  [['VAI_TRO_NHAP', cfg.vtNhap], ['VAI_TRO_TRA', cfg.vtTra], ['VAI_TRO_HUY', cfg.vtHuy], ['VAI_TRO_XEM_TAT_CA', cfg.vtXem]].forEach(([k, l]) =>
+  [['VAI_TRO_NHAP', cfg.vtNhap], ['VAI_TRO_TRA', cfg.vtTra], ['VAI_TRO_HUY', cfg.vtHuy], ['VAI_TRO_XEM_TAT_CA', cfg.vtXem], ['VAI_TRO_BAO_CAO', cfg.vtBaoCao], ['VAI_TRO_PGD', cfg.vtPgd]]
+    .concat(cfg.noiNhan.filter(n => n.on).flatMap(n => [[n.pb + ' – vai trò nhập tại phòng', n.vtNhapTai], [n.pb + ' – vai trò trả thẻ', n.vtTra]])).forEach(([k, l]) =>
     l.filter(r => !roles.includes(r)).forEach(r => msg.push('- ' + k + ': vai trò "' + r + '" không có trong sheet VaiTro.')));
   cfg.noiNhan.filter(n => n.on).forEach(n => {
     if (!pbs[n.pb]) msg.push('- TA_NoiNhan: "' + n.pb + '" không có trong sheet PhongBan.');
-    if (!n.emails.length) msg.push('- ' + n.pb + ': chưa có Email nhận (thông báo nhập thẻ, nhắc hủy).');
+    if (!n.emails.length) msg.push('- ' + n.pb + ': chưa có Email nhận (' + (n.banGiao ? 'thông báo thẻ bàn giao, ' : '') + 'nhắc hủy).');
+    const users = loadData_().users; n.pgd.filter(id => !users[id]).forEach(id => msg.push('- ' + n.pb + ': ID PGĐ phụ trách "' + id + '" không có trong CanBo.'));
     n.emailBad.forEach(x => msg.push('- ' + n.pb + ': email "' + x + '" không thuộc @' + cfg.mien + ', sẽ bị bỏ qua.'));
   });
   return msg.length ? 'LƯU Ý cấu hình thẻ ATM:\n' + msg.join('\n') : '';
@@ -1471,7 +1567,8 @@ function taConfig_(fresh) {
   const noiNhan = rows(TA_SH.NOINHAN).filter(r => String(r[0]).trim() && String(r[1]).trim()).map(r => {
     const em = list(r[4]), cc = list(r[5]);
     return { pb: String(r[0]).trim(), fileId: String(r[1]).trim(), prefix: String(r[2] || '').trim().toUpperCase() || 'TH', kinhGui: String(r[3] || '').trim() || String(r[0]).trim(),
-      emails: em.filter(okMail), cc: cc.filter(okMail), emailBad: em.concat(cc).filter(e => !okMail(e)), on: r[6] !== false };
+      emails: em.filter(okMail), cc: cc.filter(okMail), emailBad: em.concat(cc).filter(e => !okMail(e)), on: r[6] !== false,
+      banGiao: r[8] === true, vtNhapTai: list(r[9]), vtTraRaw: list(r[10]), pgd: list(r[11]).map(x => x.replace(/\D/g, '')).filter(Boolean) };
   });
   const banks = rows(TA_SH.NGANHANG).filter(r => String(r[0]).trim() && r[4] !== false).map(r => ({
     ten: String(r[0]).trim(), full: String(r[1] || '').trim(), bins: list(r[2]).map(x => x.replace(/\D/g, '')).filter(x => x.length >= 4), alias: list(r[3]) }));
@@ -1485,34 +1582,47 @@ function taConfig_(fresh) {
     nhomTon: list(kv.NHOM_TUOI_TON || '15,30,60,90').map(Number).filter(x => x > 0).sort((a, b) => a - b),
     soDau: num(kv.SO_CHU_SO_DAU, 6, 4, 6) >= 6 ? 6 : 4, mien, guiEmailNhap: kv.GUI_EMAIL_KHI_NHAP === undefined ? true : yes(kv.GUI_EMAIL_KHI_NHAP),
     vtNhap: list(kv.VAI_TRO_NHAP || 'Quản trị hệ thống, Điện toán'), vtTra: list(kv.VAI_TRO_TRA || 'Trưởng phòng, Phó phòng'),
-    vtHuy: list(kv.VAI_TRO_HUY || 'Trưởng phòng, Phó phòng'), vtXem: list(kv.VAI_TRO_XEM_TAT_CA),
+    vtHuy: list(kv.VAI_TRO_HUY || 'Phó phòng'), vtXem: list(kv.VAI_TRO_XEM_TAT_CA),
+    vtBaoCao: list(kv.VAI_TRO_BAO_CAO || 'Trưởng phòng, Phó phòng, GDV, Cán bộ DVKH'), vtPgd: list(kv.VAI_TRO_PGD || 'Phó Giám đốc'),
     hoanTac: kv.HOAN_TAC_TRONG_NGAY === undefined ? true : yes(kv.HOAN_TAC_TRONG_NGAY),
     diaDanh: kv.DIA_DANH || '', tenCN: kv.TEN_CHI_NHANH || 'Chi nhánh Tây Tiền Giang',
     bm: { ma: kv.MAU_PHIEU_MA || 'BM09-GNT', banHanh: kv.MAU_PHIEU_BAN_HANH || '02', suaDoi: kv.MAU_PHIEU_SUA_DOI || '00' },
     docThe: /^m[aá]y$/i.test(kv.DOC_THE_BANG || '') ? 'may' : 'ai', modelDocThe: kv.MODEL_DOC_THE || 'claude-sonnet-5-5',
     noiNhan, banks, atms };
+  cfg.noiNhan.forEach(n => { n.vtTra = n.vtTraRaw.length ? n.vtTraRaw : cfg.vtTra; delete n.vtTraRaw; });
   try { cache.put('ta_cfg', JSON.stringify(cfg), 60); } catch (e) {}
   return cfg;
 }
 /** Quyền trong ứng dụng thẻ ATM */
 function taRole_(u, cfg) {
-  const nn = cfg.noiNhan.find(x => x.on && x.pb === u.pb);
-  const canEnter = cfg.vtNhap.includes(u.vt), canReturn = !!nn && cfg.vtTra.includes(u.vt), canCancel = !!nn && cfg.vtHuy.includes(u.vt);
-  const viewAll = canEnter || cfg.vtXem.includes(u.vt);
-  const scope = viewAll ? cfg.noiNhan.filter(x => x.on).map(x => x.pb) : (nn ? [u.pb] : []);
-  return { canEnter, canReturn, canCancel, viewAll, scope, myPb: nn ? u.pb : '' };
+  const on = cfg.noiNhan.filter(x => x.on), all = on.map(x => x.pb), nn = on.find(x => x.pb === u.pb), uniq = a => a.filter((x, i) => a.indexOf(x) === i);
+  const bg = cfg.vtNhap.includes(u.vt);                                   // nhập thẻ bàn giao (điện toán, quản trị)
+  const bgPbs = bg ? on.filter(x => x.banGiao).map(x => x.pb) : [];
+  const tuNhap = !!nn && nn.vtNhapTai.includes(u.vt);                     // nhập thẻ tại phòng mình
+  const nhapPbs = uniq(bgPbs.concat(tuNhap ? [u.pb] : []));
+  const canReturn = !!nn && nn.vtTra.includes(u.vt), canCancel = !!nn && cfg.vtHuy.includes(u.vt);
+  const xemAll = cfg.vtXem.includes(u.vt);
+  const soScope = bg || xemAll ? all : (nn && (tuNhap || canReturn) ? [u.pb] : []);
+  let bcScope = xemAll ? all : [];
+  if (!xemAll) {
+    if (cfg.vtPgd.includes(u.vt)) bcScope = on.filter(x => x.pgd.includes(u.id)).map(x => x.pb);
+    if (nn && (cfg.vtBaoCao.includes(u.vt) || tuNhap || canReturn || canCancel)) bcScope = uniq(bcScope.concat([u.pb]));
+  }
+  return { canEnter: nhapPbs.length > 0, nhapPbs, bgPbs, canReturn, canCancel, viewAll: soScope.length > 1, soScope, bcScope, scope: soScope, myPb: nn ? u.pb : '' };
 }
 /** Ẩn I006/I007 với cán bộ không thuộc phòng nhận thẻ và không có vai trò liên quan */
 function taFilterApps_(u, apps) {
   if (!apps.includes(TA_APP) && !apps.includes(TA_APP_BC)) return apps;
   let r; try { r = taRole_(u, taConfig_()); } catch (e) { return apps.filter(a => a !== TA_APP && a !== TA_APP_BC); }
-  return apps.filter(a => a === TA_APP ? (r.canEnter || r.canReturn) : a === TA_APP_BC ? r.scope.length > 0 : true);
+  return apps.filter(a => a === TA_APP ? (r.canEnter || r.canReturn) : a === TA_APP_BC ? r.bcScope.length > 0 : true);
 }
 function taGuard_(b, app) {
   const v = checkToken_(b.token); if (v.error) return v;
   if (!userApps_(v.user).includes(app)) return { error: 'forbidden' };
   let cfg; try { cfg = taConfig_(); } catch (e) { return { error: 'not_configured', message: 'Chưa cài đặt ứng dụng thẻ ATM.' }; }
   const role = taRole_(v.user, cfg);
+  role.scope = app === TA_APP_BC ? role.bcScope : role.soScope;
+  role.viewAll = role.scope.length > 1;
   if (!role.scope.length || (app === TA_APP && !role.canEnter && !role.canReturn))
     return { error: 'forbidden', message: 'Tài khoản không thuộc phòng nhận thẻ hoặc chưa có vai trò trong ứng dụng thẻ ATM.' };
   return { user: v.user, cfg, role };
@@ -1561,7 +1671,8 @@ function taReadRows_(sh, n, cfg, sync) {
       giaoBoi: String(r[TC.GIAO_BOI] || '').trim(), ghiChu: String(r[TC.GHI_CHU] || '').trim(), atm: String(r[TC.ATM] || '').trim(),
       xlBoi: xl.replace(/\s*\(9\d{4}\)\s*$/, ''), xlId, xlLuc: r[TC.XL_LUC] instanceof Date ? Utilities.formatDate(r[TC.XL_LUC], TZ, 'dd/MM/yyyy HH:mm') : String(r[TC.XL_LUC] || ''),
       xlNgay: r[TC.XL_LUC] instanceof Date ? Utilities.formatDate(r[TC.XL_LUC], TZ, 'yyyy-MM-dd') : '', xlGhiChu: String(r[TC.XL_GHI_CHU] || '').trim(),
-      canhBao: String(r[TC.CANH_BAO] || '').trim(), soNgay: taDays(vao, tra || today) });
+      canhBao: String(r[TC.CANH_BAO] || '').trim(), soNgay: taDays(vao, tra || today),
+      nguon: String(r[TC.NGUON] || '').trim() || (n.banGiao ? TA_NGUON.BG : TA_NGUON.TAI) });
   });
   return out;
 }
@@ -1588,7 +1699,7 @@ function taPublicCfg_(cfg) {
   const aiOn = !!PropertiesService.getScriptProperties().getProperty('ANTHROPIC_API_KEY');
   return { soNgayHuy: cfg.soNgayHuy, soDau: cfg.soDau, nhomTon: cfg.nhomTon, mien: cfg.mien, hoanTac: cfg.hoanTac, diaDanh: cfg.diaDanh, tenCN: cfg.tenCN, bm: cfg.bm,
     docThe: cfg.docThe === 'ai' && aiOn ? 'ai' : 'may', aiOn,
-    banks: cfg.banks, atms: cfg.atms, phong: cfg.noiNhan.filter(n => n.on).map(n => ({ pb: n.pb, kinhGui: n.kinhGui, coEmail: n.emails.length > 0 })) };
+    banks: cfg.banks, atms: cfg.atms, phong: cfg.noiNhan.filter(n => n.on).map(n => ({ pb: n.pb, kinhGui: n.kinhGui, coEmail: n.emails.length > 0, banGiao: n.banGiao, tuNhap: n.vtNhapTai.length > 0 })) };
 }
 function taOut_(x, user, cfg, today) {
   const o = Object.assign({}, x); delete o.row; delete o.xlId;
@@ -1608,7 +1719,7 @@ function apiTaLoad_(b) {
   if (view === 'so') cards = cards.filter(x => x.tt === TA_ST.GIU || (x.tt === TA_ST.TRA && taDays(x.ngayTra || x.xlNgay, today) <= 60));
   if (view === 'huy') cards = cards.filter(x => x.tt === TA_ST.HUY);
   cards.sort((a, c) => (c.ngayVao + c.nhapLuc).localeCompare(a.ngayVao + a.nhapLuc));
-  return { ok: true, today, view, me: user.hoTen, role: { canEnter: role.canEnter, canReturn: role.canReturn, canCancel: role.canCancel, viewAll: role.viewAll, scope: role.scope, myPb: role.myPb },
+  return { ok: true, today, view, me: user.hoTen, role: { canEnter: role.canEnter, nhapPbs: role.nhapPbs, bgPbs: role.bgPbs, canReturn: role.canReturn, canCancel: role.canCancel, viewAll: role.viewAll, scope: role.scope, myPb: role.myPb },
     cfg: taPublicCfg_(cfg), cards: cards.map(x => taOut_(x, user, cfg, today)) };
 }
 
@@ -1619,6 +1730,8 @@ function apiTaAdd_(b) {
   if (!role.canEnter) return { error: 'forbidden', message: 'Vai trò của tài khoản không được nhập thẻ.' };
   const n = cfg.noiNhan.find(x => x.on && x.pb === String(b.pb || ''));
   if (!n) return { error: 'invalid', message: 'Chọn phòng nhận thẻ.' };
+  if (!role.nhapPbs.includes(n.pb)) return { error: 'forbidden', message: 'Tài khoản không được nhập thẻ vào sổ ' + n.pb + '.' };
+  const banGiao = role.bgPbs.includes(n.pb), nguon = banGiao ? TA_NGUON.BG : TA_NGUON.TAI;
   const list = Array.isArray(b.cards) ? b.cards.slice(0, 30) : [];
   if (!list.length) return { error: 'invalid', message: 'Chưa có thẻ nào trong lô.' };
   const clean = [];
@@ -1650,16 +1763,16 @@ function apiTaAdd_(b) {
     clean.forEach((c, i) => {
       const ts = new Date(now.getTime() + i * 1000), ma = taNewMa_(n.prefix, ts, used);
       left.push([ts, user.hoTen, day, '', c.ten, txt(c.so), c.nh, '', c.ghiChu, txt(ma), txt(c.so), c.nh, TA_ST.GIU, '', '', '']);
-      right.push([c.atm, txt(user.id)]);
+      right.push([c.atm, txt(user.id), nguon]);
       added.push(Object.assign({ ma }, c));
     });
     sh.getRange(row0, 1, clean.length, 16).setValues(left);           // A–P (bỏ qua Q: công thức cảnh báo)
-    sh.getRange(row0, TC.ATM + 1, clean.length, 2).setValues(right);  // R–S
-    log_(user.id, user.hoTen, 'Nhập thẻ ATM', TA_APP, n.pb + ' · ' + added.length + ' thẻ · ' + added.map(a => a.ma).join(', '), '');
+    sh.getRange(row0, TC.ATM + 1, clean.length, 3).setValues(right);  // R–T
+    log_(user.id, user.hoTen, 'Nhập thẻ ATM', TA_APP, n.pb + ' · ' + nguon + ' · ' + added.length + ' thẻ · ' + added.map(a => a.ma).join(', '), '');
   } finally { lock.releaseLock(); }
   // Email cho cán bộ phụ trách phòng nhận (ngoài khóa ghi)
   let mail = '';
-  if (cfg.guiEmailNhap) {
+  if (cfg.guiEmailNhap && banGiao) {      // nhập tại phòng: không gửi email
     if (!n.emails.length) mail = 'Chưa gửi email: ' + n.pb + ' chưa có email nhận trong cấu hình.';
     else {
       try {
@@ -1785,17 +1898,11 @@ function apiTaOcr_(b) {
   if (img.length < 1000 || img.length > 4.5e6 || !/^[A-Za-z0-9+/=]+$/.test(img.slice(0, 200))) return { error: 'invalid', message: 'Ảnh không hợp lệ hoặc quá lớn. Chụp lại.' };
   const lim = aiLimit_(props); if (lim) return Object.assign(lim, { message: lim.error === 'daily_limit' ? 'Đã hết lượt AI trong ngày. Nhập tay.' : 'AI đang bận, thử lại sau vài giây.' });
   const banks = cfg.banks.map(x => x.ten).join(', ');
-  const res = UrlFetchApp.fetch('https://api.anthropic.com/v1/messages', {
-    method: 'post', contentType: 'application/json', muteHttpExceptions: true,
-    headers: aiHeaders_(key),
-    payload: JSON.stringify({ model: cfg.modelDocThe, max_tokens: 300, temperature: 0, system: TA_OCR_PROMPT.replace('SO_DAU', String(cfg.soDau)),
+  const r = aiFetch_(key, { model: cfg.modelDocThe, max_tokens: 400, temperature: 0, system: TA_OCR_PROMPT.replace('SO_DAU', String(cfg.soDau)),
       messages: [{ role: 'user', content: [{ type: 'image', source: { type: 'base64', media_type: mt, data: img } },
-        { type: 'text', text: 'Danh sách ngân hàng: ' + banks + '. Số chữ số đầu cần lấy: ' + cfg.soDau + '.' }] }] })
-  });
-  const code = res.getResponseCode();
-  if (code === 429 || code === 529) return { error: 'rate_limited', message: 'Dịch vụ AI đang quá tải, thử lại sau ít phút.' };
-  if (code !== 200) { console.error('Claude API ' + code + ': ' + res.getContentText().slice(0, 300)); return { error: 'upstream_error', message: 'Dịch vụ AI tạm thời lỗi. Nhập tay hoặc thử lại.' }; }
-  const text = (JSON.parse(res.getContentText()).content || []).filter(c => c.type === 'text').map(c => c.text).join('');
+        { type: 'text', text: 'Danh sách ngân hàng: ' + banks + '. Số chữ số đầu cần lấy: ' + cfg.soDau + '.' }] }] });
+  if (r.error) { log_(user.id, user.hoTen, 'Lỗi AI đọc thẻ', TA_APP, r.detail, ''); return { error: r.error, message: r.message + ' Có thể nhập tay.' }; }
+  const text = r.text;
   let v = null; try { const a = text.indexOf('{'), z = text.lastIndexOf('}'); v = JSON.parse(text.slice(a, z + 1)); } catch (e) { v = null; }
   if (!v) return { error: 'upstream_error', message: 'AI không đọc được ảnh. Chụp lại hoặc nhập tay.' };
   let dau = String(v.dau || '').replace(/\D/g, ''), cuoi = String(v.cuoi || '').replace(/\D/g, '');
