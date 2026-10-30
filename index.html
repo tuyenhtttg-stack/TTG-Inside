@@ -681,6 +681,7 @@ footer .shell{display:flex;flex-direction:column;align-items:center;gap:6px;padd
       <button class="btn" type="button" id="taCamBtn"><svg class="i" viewBox="0 0 24 24" style="stroke:#fff"><path d="M4 8h3l2-3h6l2 3h3v11H4z"/><circle cx="12" cy="13" r="3.5"/></svg>Chụp thẻ để đọc tự động</button>
       <button class="btn ghost" type="button" id="taPickBtn" aria-label="Chọn ảnh có sẵn"><svg class="i" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="2"/><circle cx="9" cy="10" r="2"/><path d="M21 17l-5-5-9 8"/></svg></button>
     </div>
+    <p class="hint" id="taCamHint" style="margin:0"></p>
     <input type="file" accept="image/*" capture="environment" id="taCamFile" hidden>
     <input type="file" accept="image/*" id="taPickFile" hidden>
     <div class="preview-box ta-ocr" id="taOcr" hidden></div>
@@ -888,7 +889,7 @@ footer .shell{display:flex;flex-direction:column;align-items:center;gap:6px;padd
 /* =====================================================================
    CẤU HÌNH — chỉnh tại đây khi triển khai
    ===================================================================== */
-const APP_VERSION='1.6.0 · 29/10/2026';
+const APP_VERSION='1.6.1 · 30/10/2026';
 // Tên bộ công cụ (song ngữ)
 const SUITE={vi:'Không Gian Số Nội Bộ',en:'TTG Inside'};
 
@@ -1302,7 +1303,7 @@ function taRenderForm(){
   $('#taPb').innerHTML=c.phong.map(p=>`<button type="button" role="tab" aria-selected="${p.pb===TA.pb}" data-p="${esc(p.pb)}">${esc(p.pb.replace(/^Phòng /,''))}</button>`).join('');
   $('#taPb').querySelectorAll('button').forEach(b=>b.onclick=()=>{if(TA.batch.length&&b.dataset.p!==TA.pb&&!confirm('Lô đang có '+TA.batch.length+' thẻ cho '+TA.pb+'. Đổi phòng sẽ bỏ lô này?'))return;
     if(b.dataset.p!==TA.pb)TA.batch=[];TA.pb=b.dataset.p;store.set('ta.pb',TA.pb);taRenderForm()});
-  $('#taToday').textContent=taDmy(TA.d.today);
+  $('#taToday').textContent=taDmy(TA.d.today);taCamHint();
   $('#taDau').maxLength=c.soDau;$('#taDau').placeholder=c.soDau+' số đầu';$('#taMid').textContent=c.soDau>=6?'xxxxxx':'xxxx';
   const keep=$('#taNh').value;
   $('#taNh').innerHTML='<option value="">— Chọn ngân hàng —</option>'+c.banks.map(b=>`<option>${esc(b.ten)}</option>`).join('')+'<option value="__khac">Khác…</option>';
@@ -1405,6 +1406,7 @@ function taParseOcr(texts,soDau){
 async function taOcrRun(file){
   const url=URL.createObjectURL(file),img=new Image();img.src=url;
   try{await img.decode()}catch(e){taOcrBox('<span>Không mở được ảnh. Chụp lại.</span>');return}
+  if(TA.d.cfg.docThe==='ai'&&!DEMO)return taOcrAi(img,url);
   taOcrBox(`<img src="${url}" alt="Ảnh thẻ vừa chụp"><span id="taOcrMsg">Đang chuẩn bị bộ đọc chữ… (lần đầu tải khoảng 3–4 MB)</span><div class="prog"><i id="taOcrBar"></i></div>`);
   const msg=t=>{const m=$('#taOcrMsg');if(m)m.textContent=t},bar=p=>{const b=$('#taOcrBar');if(b)b.style.width=Math.round(p*100)+'%'};
   let stage=0;
@@ -1427,6 +1429,35 @@ async function taOcrRun(file){
   }catch(e){console.error(e);msg('Không dùng được bộ đọc chữ (cần mạng lần đầu). Nhập tay các ô bên dưới.')}
   finally{setTimeout(()=>URL.revokeObjectURL(url),60000)}
 }
+
+/** Phương án B: gửi ảnh (đã thu nhỏ) cho Claude đọc qua máy chủ; điền 6 số đầu, 4 số cuối, họ tên, ngân hàng */
+function taJpeg(img,max=1600,q=.85){
+  const w0=img.naturalWidth||img.width,h0=img.naturalHeight||img.height,k=Math.min(1,max/Math.max(w0,h0));
+  const c=document.createElement('canvas');c.width=Math.round(w0*k);c.height=Math.round(h0*k);c.getContext('2d').drawImage(img,0,0,c.width,c.height);
+  return c.toDataURL('image/jpeg',q);
+}
+async function taOcrAi(img,url){
+  taOcrBox(`<img src="${url}" alt="Ảnh thẻ vừa chụp"><span id="taOcrMsg">AI đang đọc thẻ… (khoảng 5–10 giây)</span><div class="prog"><i id="taOcrBar" style="width:35%"></i></div>`);
+  const msg=t=>{const m=$('#taOcrMsg');if(m)m.textContent=t},bar=p=>{const b=$('#taOcrBar');if(b)b.style.width=p+'%'};
+  let tick=setInterval(()=>{const b=$('#taOcrBar');if(b)b.style.width=Math.min(90,parseFloat(b.style.width)+6)+'%'},700);
+  try{
+    let data=taJpeg(img);if(data.length>4e6)data=taJpeg(img,1200,.8);
+    const r=await taApi('ta_ocr',{image:data.split(',')[1],mediaType:'image/jpeg'});data='';
+    clearInterval(tick);bar(100);
+    if(!r.ok){if(r.error==='expired'||r.error==='revoked'){logout(r.error);return}msg((r.message||'AI chưa đọc được ảnh.')+' Có thể nhập tay các ô bên dưới.');return}
+    if(r.dau){$('#taDau').value=r.dau;$('#taCuoi').value=r.cuoi}
+    if(r.hoTen)$('#taTen').value=r.hoTen;
+    if(r.nganHang){$('#taNh').value=r.nganHang;$('#taNhKhac').hidden=true}
+    else if(r.nganHangDoc){$('#taNh').value='__khac';$('#taNhKhac').hidden=false;$('#taNhKhac').value=r.nganHangDoc}
+    const got=[r.dau?'số thẻ':'',r.hoTen?'họ tên':'',r.nganHang||r.nganHangDoc?'ngân hàng':''].filter(Boolean);
+    const low=/th[aấ]p/i.test(r.doTinCay||'');
+    msg(got.length?`Đã đọc: ${got.join(', ')}${low?' (độ tin cậy thấp)':''}. ${r.ghiChu?r.ghiChu+'. ':''}Đối chiếu với thẻ rồi bấm "Thêm vào lô".`:'Chưa đọc được số thẻ. Chụp lại gần hơn, nghiêng thẻ tránh lóa; hoặc nhập tay.');
+    if(low){$('#taOcr').classList.add('bad')}else $('#taOcr').classList.remove('bad');
+    if(!r.dau)$('#taDau').focus();
+  }catch(e){console.error(e);msg('Không gửi được ảnh. Kiểm tra mạng rồi thử lại, hoặc nhập tay.')}
+  finally{clearInterval(tick);setTimeout(()=>URL.revokeObjectURL(url),60000)}
+}
+function taCamHint(){const c=TA.d?.cfg;if(!c)return;const h=$('#taCamHint');if(h)h.textContent=c.docThe==='ai'&&!DEMO?'Ảnh được gửi tới AI (Claude) để đọc, không lưu lại; ứng dụng chỉ giữ '+c.soDau+' số đầu và 4 số cuối. Chụp thẳng, đủ sáng, nghiêng nhẹ để số in nổi không bị lóa.':'Ảnh được đọc ngay trên điện thoại, không gửi đi.'}
 
 /* ---------- Sổ thẻ ---------- */
 $('#taQ').addEventListener('input',e=>{TA.q=e.target.value;taRenderSo()});
@@ -1490,7 +1521,9 @@ function taOverlay(){
   taOv=document.createElement('div');taOv.className='ta-ov';taOv.hidden=true;taOv.setAttribute('role','dialog');taOv.setAttribute('aria-modal','true');
   taOv.innerHTML=`<div class="ta-ovbar"><button class="btn ghost sm" id="taOvClose">Đóng</button><b id="taOvTitle"></b></div>
     <div class="ta-ovact"><div class="row"><button class="btn" id="taOvPrint">In / Lưu PDF</button><button class="btn ghost" id="taOvMailBtn">Gửi email</button></div>
-      <div class="ta-mail" id="taOvMail" hidden><input class="inp" id="taOvMailIn" inputmode="email" autocomplete="email" placeholder="ten.canbo"><span id="taOvDom"></span><button class="btn sm" id="taOvSend">Gửi</button></div>
+      <div class="stack" id="taOvMail" hidden style="gap:8px"><div class="ta-mail"><input class="inp" id="taOvMailIn" inputmode="email" autocomplete="email" placeholder="ten.canbo"><span id="taOvDom"></span></div>
+        <div class="row"><button class="btn sm" id="taOvSendPdf" data-loai="pdf">Gửi file PDF</button><button class="btn sm ghost" id="taOvSendDocx" data-loai="docx">Gửi file Word</button></div>
+        <span class="hint" style="margin:0">Word: mở để bổ sung, chỉnh sửa nội dung trước khi in.</span></div>
       <span class="hint" id="taOvMsg" hidden></span></div>
     <div class="ta-ovbody"><div class="ta-paper" id="taOvPaper"><div class="pg" id="taOvPage"></div></div></div>`;
   document.body.append(taOv);
@@ -1500,9 +1533,11 @@ function taOverlay(){
     const done=()=>{document.body.classList.remove('ta-printing');root.innerHTML='';removeEventListener('afterprint',done)};addEventListener('afterprint',done);
     setTimeout(()=>{window.print();setTimeout(()=>{if(!matchMedia('print').matches)done()},1500)},50)};
   $('#taOvMailBtn').onclick=()=>{$('#taOvMail').hidden=!$('#taOvMail').hidden;if(!$('#taOvMail').hidden){const v=store.get('ta.mail');if(v)$('#taOvMailIn').value=v;$('#taOvMailIn').focus()}};
-  $('#taOvSend').onclick=async()=>{const u=$('#taOvMailIn').value.trim().replace(/@.*$/,'');if(!u)return;const email=u+'@'+TA.d.cfg.mien,b=$('#taOvSend');b.disabled=true;b.textContent='…';
-    const r=await taApi('ta_phieu_email',{ma:taOv.dataset.ma,email});b.disabled=false;b.textContent='Gửi';const m=$('#taOvMsg');m.hidden=false;
-    if(r.ok){store.set('ta.mail',u);m.className='hint';m.textContent=r.message}else{m.className='hint bad';taErrShow(m,r)}};
+  ['#taOvSendPdf','#taOvSendDocx'].forEach(id=>$(id).onclick=async()=>{const u=$('#taOvMailIn').value.trim().replace(/@.*$/,''),m=$('#taOvMsg');
+    if(!u){m.hidden=false;m.className='hint bad';m.textContent='Nhập tên email trước @'+TA.d.cfg.mien+'.';$('#taOvMailIn').focus();return}
+    const email=u+'@'+TA.d.cfg.mien,b=$(id),t=b.textContent;$('#taOvSendPdf').disabled=$('#taOvSendDocx').disabled=true;b.textContent='Đang gửi…';
+    const r=await taApi('ta_phieu_email',{ma:taOv.dataset.ma,email,loai:b.dataset.loai});$('#taOvSendPdf').disabled=$('#taOvSendDocx').disabled=false;b.textContent=t;m.hidden=false;
+    if(r.ok){store.set('ta.mail',u);m.className='hint';m.textContent=r.message}else{m.className='hint bad';taErrShow(m,r)}});
   addEventListener('resize',taFit);return taOv;
 }
 function taFit(){if(!taOv||taOv.hidden)return;const p=$('#taOvPaper'),pg=$('#taOvPage'),w=taOv.querySelector('.ta-ovbody').clientWidth-24,s=Math.min(1,w/718);
@@ -1655,7 +1690,7 @@ async function taDemo(action,d){
     return Object.assign(out('so'),{mail:'(Xem thử: không gửi email thật.)'})}
   if(action==='ta_return'){const x=find(d.ma);Object.assign(x,{tt:TA_ST.TRA,ngayTra:now,xlBoi:me,xlLuc:taDmy(now)+' '+hm(),xlNgay:now,xlGhiChu:d.ghiChu||''});return Object.assign(out('so'),{returned:d.ma})}
   if(action==='ta_undo'){const x=find(d.ma);Object.assign(x,{tt:TA_ST.GIU,ngayTra:'',xlBoi:'',xlLuc:'',xlNgay:'',xlGhiChu:'',soNgay:taDays(x.ngayVao,now)});return out('so')}
-  if(action==='ta_phieu_email')return{ok:true,message:'Xem thử: bản thật sẽ gửi file PDF tới '+d.email+'.'};
+  if(action==='ta_phieu_email')return{ok:true,message:'Xem thử: bản thật sẽ gửi file '+(d.loai==='docx'?'Word':'PDF')+' tới '+d.email+'.'};
   if(action==='ta_cancel'){let n=0;d.mas.forEach(ma=>{const x=find(ma);if(x&&x.tt===TA_ST.GIU&&x.soNgay>=D.cfg.soNgayHuy){Object.assign(x,{tt:TA_ST.HUY,xlBoi:me,xlLuc:taDmy(now)+' '+hm(),xlNgay:now,xlGhiChu:d.ghiChu});n++}});
     return Object.assign(out('bc'),{cancelled:n,skipped:d.mas.length-n})}
   return{error:'bad_request'};

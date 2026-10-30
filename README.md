@@ -1,12 +1,12 @@
 # Không Gian Số Nội Bộ · TTG Inside
 
 Bộ tiện ích nội bộ dành cho cán bộ **VietinBank Chi nhánh Tây Tiền Giang**, thiết kế cho điện thoại.
-Phiên bản 1.6.0 – 29/10/2026: thêm Quản lý thẻ ATM bị máy thu (I006) và Báo cáo thẻ ATM máy thu (I007).
+Phiên bản 1.6.1 – 30/10/2026: chụp thẻ ATM đọc bằng AI (Claude); gửi phiếu trả thẻ qua email dạng PDF hoặc Word.
 
 | Nhóm | Tiện ích | Mô tả |
 |---|---|---|
 | Thông tin | Bản tin sáng (I005) | Bản tin 06:30 mỗi sáng: điểm nhấn, lưu ý và gợi ý điều hành, chỉ số thị trường, văn bản sắp hiệu lực, tin địa bàn, chính sách, cạnh tranh; xem lại 30 ngày |
-| Thẻ ATM | Quản lý thẻ ATM bị máy thu (I006) | Chụp thẻ để đọc tự động số thẻ, họ tên, ngân hàng (đọc ngay trên điện thoại); nhập theo lô và email phòng nhận; sổ thẻ nhóm theo ngân hàng; trả thẻ, in phiếu BM09-GNT hoặc gửi PDF qua email |
+| Thẻ ATM | Quản lý thẻ ATM bị máy thu (I006) | Chụp thẻ để đọc tự động số thẻ, họ tên, ngân hàng (đọc ngay trên điện thoại); nhập theo lô và email phòng nhận; sổ thẻ nhóm theo ngân hàng; trả thẻ, in phiếu BM09-GNT hoặc gửi qua email file PDF / Word (Word dùng đúng mẫu BM09 gốc, sửa được) |
 | Thẻ ATM | Báo cáo thẻ ATM máy thu (I007) | Thẻ tồn theo thời gian giữ, theo ngân hàng, theo phòng; thẻ đã trả trong kỳ; thẻ quá hạn cần hủy: xuất danh sách rà soát, tải CSV, thực hiện hủy; tra cứu thẻ đã hủy |
 | Mã QR | Tạo QR kết nối WiFi | 4 bước: chọn điểm giao dịch → chọn mạng WiFi → quét thử → in thẻ niêm yết A6 |
 | Chi phí | Quản lý chi phí (I003) | Hạn mức phê duyệt còn lại theo thời gian thực; trưởng/phó phòng nhập khoản đã duyệt; PGĐ, Giám đốc, kế toán xem theo quyền |
@@ -124,7 +124,8 @@ Danh mục ngân hàng và đầu số BIN ở `TA_NganHang` (BIN nội địa 9
 
 Quy tắc: Quản trị hệ thống, Điện toán nhập thẻ (không trả); Trưởng/Phó phòng, GDV, Cán bộ DVKH của phòng nhận thẻ trả thẻ sổ phòng mình; người trả hoàn tác trong ngày;
 thẻ giữ từ 90 ngày vào danh sách cần hủy và email nhắc; Trưởng/Phó phòng nhận thẻ thực hiện hủy sau khi rà soát (ghi số biên bản); thẻ đã hủy ẩn khỏi sổ, tra cứu lại được.
-Camera chỉ đọc ảnh trên điện thoại; ứng dụng chỉ lưu số đầu và 4 số cuối, không lưu số thẻ đầy đủ, không lưu ảnh.
+Đọc ảnh thẻ (v1.6.1): mặc định gửi ảnh qua Apps Script tới Claude (tham số `DOC_THE_BANG` = AI, mô hình `MODEL_DOC_THE`, cần `ANTHROPIC_API_KEY`); đặt `DOC_THE_BANG` = Máy để đọc trên điện thoại.
+Ảnh không được lưu ở đâu; ứng dụng chỉ lưu số đầu và 4 số cuối, không lưu số thẻ đầy đủ. Lượt AI tính chung giới hạn `DAILY_LIMIT`/`PER_MINUTE_LIMIT`.
 
 ## Cập nhật phiên bản
 
