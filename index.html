@@ -396,6 +396,7 @@ footer .shell{display:flex;flex-direction:column;align-items:center;gap:6px;padd
 .ta-st{font-size:12px;font-weight:700;border-radius:999px;padding:3px 8px;flex:none}
 .ta-st.tra{background:var(--ok-bg);color:var(--ok)}
 .ta-st.huy{background:#EEF1F4;color:#6B7A88}
+.ta-st.cho{background:#FDE7EC;color:#9B0E35}
 .ta-empty{font-size:14px;color:var(--muted);text-align:center;padding:14px 0}
 .ta-ck{display:flex;align-items:flex-start;gap:10px}
 .ta-ck input{width:22px;height:22px;margin-top:2px;flex:none;accent-color:var(--vtb-xanh-dam)}
@@ -750,7 +751,7 @@ footer .shell{display:flex;flex-direction:column;align-items:center;gap:6px;padd
   <div class="card"><h2>Thẻ tồn theo ngân hàng</h2><table class="tbl" id="tbBanks"></table></div>
   <div class="card" id="tbPbCard" hidden><h2>Theo phòng nhận thẻ</h2><div class="ta-wrap"><table class="ta-tbl" id="tbPbTbl"></table></div></div>
   <div class="card" id="tbDueCard">
-    <h2 id="tbDueTitle">Thẻ quá hạn cần hủy</h2>
+    <h2 id="tbDueTitle">Thẻ quá hạn chưa lập lô</h2>
     <p class="lead" style="margin:0" id="tbDueLead"></p>
     <div class="row" style="display:flex;gap:8px;flex-wrap:wrap">
       <button class="btn ghost sm" id="tbDuePrint" style="flex:1">Xuất danh sách rà soát</button>
@@ -758,12 +759,16 @@ footer .shell{display:flex;flex-direction:column;align-items:center;gap:6px;padd
     </div>
     <label class="ta-ck" id="tbDueAllL"><input type="checkbox" id="tbDueAll" checked><span class="hint">Chọn tất cả</span></label>
     <div class="cp-list" id="tbDue"></div>
-    <div class="ta-conf" id="tbCancelBox" hidden>
-      <p>Chỉ thực hiện hủy sau khi đã rà soát, kiểm kê thực tế. Thẻ đã hủy sẽ không hiện trong sổ.</p>
-      <div class="field"><label for="tbCancelNote">Số biên bản / căn cứ hủy <i>*</i></label><input class="inp" id="tbCancelNote" maxlength="200" placeholder="VD: Biên bản hủy thẻ số 05/2026/BB-DVKH ngày 30/10/2026"></div>
-      <span class="hint bad" id="tbCancelErr" role="alert" hidden></span>
-      <button class="btn" id="tbCancelBtn" style="background:var(--vtb-do);border-color:var(--vtb-do)">Thực hiện hủy thẻ đã chọn</button>
+    <div class="ta-conf" id="tbLoBox" hidden>
+      <p>Bước 1: chuyển thẻ đã chọn sang "Chờ hủy" thành một lô riêng. Bước 2: kiểm kê rồi hủy theo từng lô ở mục Lô chờ hủy.</p>
+      <span class="hint bad" id="tbLoErr" role="alert" hidden></span>
+      <button class="btn" id="tbLoBtn">Chuyển thẻ đã chọn sang chờ hủy</button>
     </div>
+  </div>
+  <div class="card" id="tbLoCard">
+    <h2 id="tbLoTitle">Lô chờ hủy</h2>
+    <p class="lead" style="margin:0">Mỗi lần chuyển chờ hủy là một lô, hủy theo từng lô. Thẻ khách đến nhận trong thời gian chờ vẫn trả được tại I006 và tự rời lô. Lô đã hủy hiện theo kỳ báo cáo.</p>
+    <div class="stack" id="tbLoList" style="gap:10px"></div>
   </div>
   <div class="card">
     <h2>Thẻ đã trả trong kỳ</h2>
@@ -889,7 +894,7 @@ footer .shell{display:flex;flex-direction:column;align-items:center;gap:6px;padd
 /* =====================================================================
    CẤU HÌNH — chỉnh tại đây khi triển khai
    ===================================================================== */
-const APP_VERSION='1.7.0 · 30/10/2026';
+const APP_VERSION='1.8.0 · 04/11/2026';
 // Tên bộ công cụ (song ngữ)
 const SUITE={vi:'Không Gian Số Nội Bộ',en:'TTG Inside'};
 
@@ -1185,7 +1190,7 @@ async function btDemo(action,data){
 }
 
 /* ===== Dùng chung máy chủ (Code.gs) và trang (index.html) – Thẻ ATM bị máy thu (I006, I007) ===== */
-const TA_ST = { GIU: 'Đang giữ', TRA: 'Đã trả khách', HUY: 'Đã hủy' };
+const TA_ST = { GIU: 'Đang giữ', CHO: 'Chờ hủy', TRA: 'Đã trả khách', HUY: 'Đã hủy' };
 const TA_LOGO = 'data:image/png;base64,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';
 /** Bỏ dấu tiếng Việt, chữ thường – dùng để tìm kiếm */
 function taKhongDau(s) {
@@ -1470,7 +1475,7 @@ $('#taQ').addEventListener('input',e=>{TA.q=e.target.value;taRenderSo()});
 function taRenderSo(){
   const d=TA.d;if(!d)return;const c=d.cfg,ro=d.role;
   const inPb=x=>!TA.pbFilter||x.pb===TA.pbFilter;
-  const giu=d.cards.filter(x=>x.tt===TA_ST.GIU&&inPb(x)),list=giu.filter(x=>taMatch(x,TA.q));
+  const giu=d.cards.filter(x=>(x.tt===TA_ST.GIU||x.tt===TA_ST.CHO)&&inPb(x)),list=giu.filter(x=>taMatch(x,TA.q));
   const late=giu.filter(x=>x.soNgay>=c.soNgayHuy).length;
   $('#taSum').innerHTML=`<span>Đang giữ <b>${giu.length}</b> thẻ${TA.q?' · khớp '+list.length:''}</span><span>Quá ${c.soNgayHuy} ngày: <b style="color:${late?'var(--vtb-do)':'inherit'}">${late}</b></span>`;
   const groups={};list.forEach(x=>(groups[x.nganHang||'Khác']=groups[x.nganHang||'Khác']||[]).push(x));
@@ -1488,8 +1493,8 @@ function taRenderSo(){
   taBindItems($('#taRet'));
 }
 function taItem(x,ro,c){
-  return `<div class="cp-it ta-it" data-ma="${esc(x.ma)}"><div class="cp-r1"><span class="cp-date">${esc(taDmy(x.ngayVao).slice(0,5))}</span><span class="cp-pb">${esc(x.hoTen||'(Thẻ không in tên)')}</span>${taAge(x,c)}</div>
-    <div class="cp-meta">${esc(taMaskView(x.soThe))}${ro.scope.length>1?' · '+esc(x.pb):''}${taNguonTag(x)?' · '+taNguonTag(x):''}${x.atm?' · '+esc(x.atm):''}${x.ghiChu?' · '+esc(x.ghiChu):''}</div>
+  return `<div class="cp-it ta-it" data-ma="${esc(x.ma)}"><div class="cp-r1"><span class="cp-date">${esc(taDmy(x.ngayVao).slice(0,5))}</span><span class="cp-pb">${esc(x.hoTen||'(Thẻ không in tên)')}</span>${x.tt===TA_ST.CHO?'<span class="ta-st cho">Chờ hủy</span>':''}${taAge(x,c)}</div>
+    <div class="cp-meta">${esc(taMaskView(x.soThe))}${x.tt===TA_ST.CHO?' · lô '+esc(x.lo):''}${ro.scope.length>1?' · '+esc(x.pb):''}${taNguonTag(x)?' · '+taNguonTag(x):''}${x.atm?' · '+esc(x.atm):''}${x.ghiChu?' · '+esc(x.ghiChu):''}</div>
     ${x.canhBao?`<div class="cp-meta" style="color:var(--warn-ink)">⚠ ${esc(x.canhBao)}</div>`:''}
     ${ro.canReturn&&x.pb===ro.myPb?'<div class="ta-act"><button class="btn sm" data-act="tra">Trả thẻ cho khách</button></div>':''}</div>`;
 }
@@ -1586,20 +1591,20 @@ $('#tbFrom').onchange=e=>{TB.from=e.target.value;tbRender()};$('#tbTo').onchange
 $('#tbReload').onclick=tbLoad;
 function tbRender(){
   const d=TB.d;if(!d)return;const c=d.cfg,ro=d.role,today=d.today,from=TB.from||'0000',to=TB.to||today;
-  const all=d.cards.filter(x=>!TB.pb||x.pb===TB.pb),giu=all.filter(x=>x.tt===TA_ST.GIU);
+  const all=d.cards.filter(x=>!TB.pb||x.pb===TB.pb),giu=all.filter(x=>x.tt===TA_ST.GIU||x.tt===TA_ST.CHO),cho=all.filter(x=>x.tt===TA_ST.CHO);
   const inK=s=>s&&s>=from&&s<=to;
   const ret=all.filter(x=>x.tt===TA_ST.TRA&&inK(x.ngayTra)).sort((a,b)=>b.ngayTra.localeCompare(a.ngayTra));
   const vao=all.filter(x=>inK(x.ngayVao)),huy=all.filter(x=>x.tt===TA_ST.HUY&&inK(x.xlNgay||''));
-  const due=giu.filter(x=>x.soNgay>=c.soNgayHuy).sort((a,b)=>b.soNgay-a.soNgay);
+  const late=giu.filter(x=>x.soNgay>=c.soNgayHuy),due=late.filter(x=>x.tt===TA_ST.GIU).sort((a,b)=>b.soNgay-a.soNgay);
   const avg=ret.length?Math.round(ret.reduce((s,x)=>s+(x.soNgay||0),0)/ret.length*10)/10:null;
   $('#tbScope').textContent=TB.pb||'Tất cả phòng nhận thẻ';
   const kpi=(l,v,s)=>`<div class="kpi"><span>${l}</span><b>${v}</b>${s?`<small>${s}</small>`:''}</div>`;
-  $('#tbKpis').innerHTML=kpi('Đang giữ',fmtN(giu.length),'thẻ khách chưa nhận')+kpi('Quá hạn cần hủy',fmtN(due.length),'≥ '+c.soNgayHuy+' ngày')+
+  $('#tbKpis').innerHTML=kpi('Đang giữ',fmtN(giu.length),'thẻ khách chưa nhận')+kpi('Quá hạn chưa lập lô',fmtN(due.length),'≥ '+c.soNgayHuy+' ngày')+kpi('Chờ hủy',fmtN(cho.length),'trong các lô chưa hủy')+
     kpi('Nhận vào sổ',fmtN(vao.length),'trong kỳ')+kpi('Đã trả khách',fmtN(ret.length),'trong kỳ')+kpi('Thời gian trả TB',avg===null?'—':String(avg).replace('.',',')+' ngày','từ lúc vào sổ')+kpi('Đã hủy',fmtN(huy.length),'trong kỳ');
   // Nhóm tuổi tồn
   const cuts=[...c.nhomTon.filter(v=>v<c.soNgayHuy),c.soNgayHuy].filter((v,i,a)=>a.indexOf(v)===i).sort((a,b)=>a-b);
   const bks=cuts.map((v,i)=>({l:(i?cuts[i-1]:0)+'–'+(v-1)+' ngày',n:giu.filter(x=>x.soNgay>=(i?cuts[i-1]:0)&&x.soNgay<v).length,late:false}));
-  bks.push({l:'≥ '+c.soNgayHuy+' ngày',n:due.length,late:true});
+  bks.push({l:'≥ '+c.soNgayHuy+' ngày',n:late.length,late:true});
   const mx=Math.max(1,...bks.map(b=>b.n));
   $('#tbBuckets').innerHTML=bks.map(b=>`<div class="ta-bk"><span>${b.l}</span><div class="bar"><i class="${b.late?'late':''}" style="width:${b.n/mx*100}%"></i></div><b>${b.n}</b></div>`).join('');
   // Theo ngân hàng
@@ -1607,16 +1612,16 @@ function tbRender(){
   $('#tbBanks').innerHTML=bl.length?bl.map(([k,v])=>`<tr><td>${esc(k)}<div class="mini"><i style="width:${v/bm*100}%"></i></div></td><td>${v}</td></tr>`).join(''):'<tr><td class="ta-empty">Không có thẻ tồn.</td><td></td></tr>';
   // Theo phòng
   $('#tbPbCard').hidden=!!TB.pb||ro.scope.length<2;
-  if(!TB.pb&&ro.scope.length>1)$('#tbPbTbl').innerHTML='<tr><th>Phòng</th><th class="n">Đang giữ</th><th class="n">Quá hạn</th><th class="n">Nhận</th><th class="n">Đã trả</th></tr>'+ro.scope.map(p=>{
-    const f=x=>x.pb===p;return `<tr><td>${esc(p)}</td><td class="n">${giu.filter(f).length}</td><td class="n">${due.filter(f).length}</td><td class="n">${vao.filter(f).length}</td><td class="n">${ret.filter(f).length}</td></tr>`}).join('');
+  if(!TB.pb&&ro.scope.length>1)$('#tbPbTbl').innerHTML='<tr><th>Phòng</th><th class="n">Đang giữ</th><th class="n">Quá hạn</th><th class="n">Chờ hủy</th><th class="n">Nhận</th><th class="n">Đã trả</th></tr>'+ro.scope.map(p=>{
+    const f=x=>x.pb===p;return `<tr><td>${esc(p)}</td><td class="n">${giu.filter(f).length}</td><td class="n">${due.filter(f).length}</td><td class="n">${cho.filter(f).length}</td><td class="n">${vao.filter(f).length}</td><td class="n">${ret.filter(f).length}</td></tr>`}).join('');
   // Quá hạn cần hủy
   TB.due=due;if(!TB.sel.size)due.forEach(x=>TB.sel.add(x.ma));
-  $('#tbDueTitle').textContent=`Thẻ quá hạn cần hủy (${due.length})`;
-  $('#tbDueLead').textContent=due.length?`Thẻ khách chưa nhận đã giữ từ ${c.soNgayHuy} ngày trở lên. Xuất danh sách để rà soát, kiểm kê trước khi hủy.`:`Không có thẻ giữ quá ${c.soNgayHuy} ngày.`;
+  $('#tbDueTitle').textContent=`Thẻ quá hạn chưa lập lô (${due.length})`;
+  $('#tbDueLead').textContent=due.length?`Thẻ khách chưa nhận đã giữ từ ${c.soNgayHuy} ngày trở lên. Rà soát, chọn thẻ rồi chuyển sang chờ hủy – mỗi lần chuyển là một lô riêng; hủy thực hiện theo từng lô.`:`Không có thẻ quá ${c.soNgayHuy} ngày chưa lập lô.`;
   ['#tbDuePrint','#tbDueCsv'].forEach(s=>$(s).disabled=!due.length);
-  const canCancel=ro.canCancel&&(TB.pb===ro.myPb||ro.scope.length===1);
-  $('#tbDueAllL').hidden=!canCancel||!due.length;$('#tbCancelBox').hidden=!canCancel||!due.length;
-  $('#tbDue').innerHTML=due.map(x=>`<div class="cp-it ta-it"><label class="ta-ck">${canCancel?`<input type="checkbox" data-ma="${esc(x.ma)}"${TB.sel.has(x.ma)?' checked':''}>`:''}<span style="flex:1;min-width:0">
+  const own=TB.pb===ro.myPb||ro.scope.length===1,canLo=ro.canLapLo&&own;TB.canLo=canLo;TB.canHuy=ro.canCancel&&own;
+  $('#tbDueAllL').hidden=!canLo||!due.length;$('#tbLoBox').hidden=!canLo||!due.length;
+  $('#tbDue').innerHTML=due.map(x=>`<div class="cp-it ta-it"><label class="ta-ck">${canLo?`<input type="checkbox" data-ma="${esc(x.ma)}"${TB.sel.has(x.ma)?' checked':''}>`:''}<span style="flex:1;min-width:0">
     <span class="cp-r1"><span class="cp-pb">${esc(x.hoTen||'(Thẻ không in tên)')}</span>${taAge(x,c)}</span>
     <span class="cp-meta" style="display:block">${esc(taMaskView(x.soThe))} · ${esc(x.nganHang)} · vào sổ ${esc(taDmy(x.ngayVao))}${TB.pb?'':' · '+esc(x.pb)}</span></span></label></div>`).join('');
   $('#tbDue').querySelectorAll('input[type=checkbox]').forEach(k=>k.onchange=()=>{k.checked?TB.sel.add(k.dataset.ma):TB.sel.delete(k.dataset.ma);tbSelUpd()});
@@ -1624,24 +1629,58 @@ function tbRender(){
   // Đã trả trong kỳ
   $('#tbRet').innerHTML=ret.length?ret.map(x=>`<div class="cp-it ta-it"><div class="cp-r1"><span class="cp-date">${esc(taDmy(x.ngayTra).slice(0,5))}</span><span class="cp-pb">${esc(x.hoTen||'(Thẻ không in tên)')}</span><span class="ta-age">${x.soNgay??0} ngày</span></div>
     <div class="cp-meta">${esc(taMaskView(x.soThe))} · ${esc(x.nganHang)}${TB.pb?'':' · '+esc(x.pb)} · trả bởi ${esc(x.xlBoi||'')}</div></div>`).join(''):'<div class="ta-empty">Không có thẻ trả trong kỳ.</div>';
-  TB.ret=ret;tbHuy();
+  TB.ret=ret;tbHuy();tbLoRender(all);
 }
-function tbSelUpd(){const n=TB.due.filter(x=>TB.sel.has(x.ma)).length;$('#tbCancelBtn').textContent=`Thực hiện hủy ${n} thẻ đã chọn`;$('#tbCancelBtn').disabled=!n;$('#tbDueAll').checked=n===TB.due.length}
+function tbSelUpd(){const n=TB.due.filter(x=>TB.sel.has(x.ma)).length;$('#tbLoBtn').textContent=`Chuyển ${n} thẻ sang chờ hủy (lập lô mới)`;$('#tbLoBtn').disabled=!n;$('#tbDueAll').checked=n===TB.due.length}
+/** Gom thẻ theo lô chờ hủy. Trạng thái lô: còn thẻ "Chờ hủy" → Chờ hủy; ngược lại → Đã hủy (thẻ trả khách trong thời gian chờ ghi rõ) */
+function tbLos(all){const m={};all.filter(x=>x.lo).forEach(x=>{const l=m[x.lo]=m[x.lo]||{lo:x.lo,pb:x.pb,boi:x.loBoi,luc:x.loLuc,cards:[]};l.cards.push(x)});
+  return Object.values(m).map(l=>{const cho=l.cards.filter(x=>x.tt===TA_ST.CHO),huy=l.cards.filter(x=>x.tt===TA_ST.HUY),h=huy[0];
+    return Object.assign(l,{cho,huy,tra:l.cards.filter(x=>x.tt===TA_ST.TRA),pending:cho.length>0,bb:h?h.xlGhiChu:'',huyLuc:h?h.xlLuc:'',huyBoi:h?h.xlBoi:'',huyNgay:h?h.xlNgay:''})})
+    .sort((a,b)=>(b.pending-a.pending)||b.lo.localeCompare(a.lo))}
+function tbLoRender(all){
+  const from=TB.from||'0000',to=TB.to||TB.d.today,los=tbLos(all).filter(l=>l.pending||(l.huyNgay>=from&&l.huyNgay<=to)),np=los.filter(l=>l.pending).length;TB.los=los;
+  $('#tbLoTitle').textContent=`Lô chờ hủy (${np} lô chưa hủy)`;
+  $('#tbLoList').innerHTML=los.length?los.map(l=>{const st=l.pending?`<span class="ta-st cho">Chờ hủy</span>`:`<span class="ta-st huy">Đã hủy</span>`;
+    return `<details class="ta-grp"${l.pending&&np<=2?' open':''} data-lo="${esc(l.lo)}"><summary><span style="min-width:0;overflow-wrap:anywhere">${esc(l.lo)}<small style="display:block;font-weight:400;color:var(--muted);font-size:12.5px">${l.cards.length} thẻ · lập ${esc(l.luc.slice(0,10))} bởi ${esc(l.boi)}${TB.pb?'':' · '+esc(l.pb)}</small></span>${st}${CHEV}</summary><div>
+      ${!l.pending?`<div class="cp-meta">Đã hủy ${l.huy.length} thẻ lúc ${esc(l.huyLuc)} bởi ${esc(l.huyBoi)} · ${esc(l.bb)}</div>`:''}
+      ${l.cards.map(x=>`<div class="cp-it ta-it"><div class="cp-r1"><span class="cp-pb">${esc(x.hoTen||'(Thẻ không in tên)')}</span>${x.tt===TA_ST.CHO?taAge(x,TB.d.cfg):`<span class="ta-st ${x.tt===TA_ST.TRA?'tra':'huy'}">${x.tt===TA_ST.TRA?'Đã trả khách':'Đã hủy'}</span>`}</div>
+        <div class="cp-meta">${esc(taMaskView(x.soThe))} · ${esc(x.nganHang)} · vào sổ ${esc(taDmy(x.ngayVao))}${x.tt===TA_ST.TRA?' · trả '+esc(taDmy(x.ngayTra))+' bởi '+esc(x.xlBoi):''}</div>
+        ${TB.canLo&&x.tt===TA_ST.CHO&&x.pb===TB.d.role.myPb?`<div class="ta-act"><button class="btn ghost sm" data-rut="${esc(x.ma)}">Rút khỏi lô</button></div>`:''}</div>`).join('')}
+      <div class="row" style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn ghost sm" data-lprint style="flex:1">Xuất danh sách lô</button><button class="btn ghost sm" data-lcsv style="flex:1">Tải Excel (CSV)</button></div>
+      ${l.pending&&TB.canHuy&&l.pb===TB.d.role.myPb?`<div class="ta-conf"><p>Hủy toàn bộ ${l.cho.length} thẻ đang chờ hủy của lô sau khi đã kiểm kê thực tế. Thẻ đã hủy không hiện trong sổ.</p>
+        <div class="field"><label>Số biên bản / căn cứ hủy <i>*</i></label><input class="inp" data-lnote maxlength="200" placeholder="VD: Biên bản hủy thẻ số 05/2026/BB-DVKH ngày ${taDmy(TB.d.today)}"></div>
+        <span class="hint bad" data-lerr role="alert" hidden></span>
+        <button class="btn" data-lhuy style="background:var(--vtb-do);border-color:var(--vtb-do)">Hủy ${l.cho.length} thẻ của lô ${esc(l.lo)}</button></div>`:''}</div></details>`}).join('')
+    :'<div class="ta-empty">Chưa có lô chờ hủy.</div>';
+  $('#tbLoList').querySelectorAll('details[data-lo]').forEach(el=>{const l=los.find(z=>z.lo===el.dataset.lo);
+    el.querySelector('[data-lprint]').onclick=()=>taShowPaper('Danh sách lô '+l.lo,tbDueHtml(l.pending?l.cho:l.huy.length?l.huy:l.cards,l));
+    el.querySelector('[data-lcsv]').onclick=()=>taCsv(`Lo_${l.lo}.csv`,['STT','Lô','Mã thẻ','Phòng','Họ tên trên thẻ','Số thẻ','Ngân hàng','Ngày vào sổ','Số ngày giữ','Trạng thái','Người lập lô','Thời gian lập lô','Ghi chú xử lý'],
+      l.cards.map((x,i)=>[i+1,l.lo,x.ma,x.pb,x.hoTen,taMaskView(x.soThe),x.nganHang,taDmy(x.ngayVao),x.soNgay,x.tt,l.boi,l.luc,x.xlGhiChu||'']));
+    el.querySelectorAll('[data-rut]').forEach(b=>b.onclick=async()=>{const x=l.cards.find(z=>z.ma===b.dataset.rut);
+      if(!confirm(`Rút thẻ ${x.hoTen||x.ma} khỏi lô ${l.lo}? Thẻ trở lại "Đang giữ", có thể đưa vào lô sau.`))return;
+      b.disabled=true;const r=await taApi('ta_rut_lo',{ma:x.ma});if(!r.ok){b.disabled=false;toast(r.message||'Không rút được thẻ.');return}TB.d=r;tbRender();toast('Đã rút thẻ khỏi lô '+l.lo)});
+    const hb=el.querySelector('[data-lhuy]');if(hb)hb.onclick=async()=>{const note=el.querySelector('[data-lnote]').value.trim(),err=el.querySelector('[data-lerr]');err.hidden=true;
+      if(note.length<5){err.textContent='Ghi số biên bản hoặc căn cứ hủy.';err.hidden=false;el.querySelector('[data-lnote]').focus();return}
+      if(!confirm(`Hủy ${l.cho.length} thẻ của lô ${l.lo}? Thao tác không hoàn tác được; thẻ đã hủy chỉ còn trong mục tra cứu.`))return;
+      hb.disabled=true;hb.textContent='Đang hủy…';const r=await taApi('ta_cancel',{lo:l.lo,ghiChu:note});
+      if(!r.ok){hb.disabled=false;hb.textContent=`Hủy ${l.cho.length} thẻ của lô ${l.lo}`;taErrShow(err,r);return}
+      TB.d=r;tbRender();toast(`Đã hủy ${r.cancelled} thẻ của lô ${r.lo}`)}});
+}
 $('#tbDueAll').onchange=e=>{TB.sel=new Set(e.target.checked?TB.due.map(x=>x.ma):[]);tbRender()};
 $('#tbHuyQ').addEventListener('input',tbHuy);
 function tbHuy(){const d=TB.d;if(!d)return;taRenderHuy($('#tbHuy'),d.cards.filter(x=>x.tt===TA_ST.HUY&&(!TB.pb||x.pb===TB.pb)),$('#tbHuyQ').value)}
 /** Danh sách rà soát thẻ quá hạn (mẫu mặc định – thay bằng mẫu chính thức khi có) */
-function tbDueHtml(list){
-  const c=TB.d.cfg,t=TB.d.today,pb=TB.pb||'Tất cả phòng nhận thẻ';
+function tbDueHtml(list,lo){
+  const c=TB.d.cfg,t=TB.d.today,pb=lo?lo.pb:TB.pb||'Tất cả phòng nhận thẻ';
   return `<div class="ta-rpt"><table><tr><td style="width:55%"><b>NGÂN HÀNG TMCP CÔNG THƯƠNG VIỆT NAM</b><br><b>${esc(c.tenCN.toUpperCase())}</b><br>${esc(pb)}</td>
     <td class="c"><b>CỘNG HÒA XÃ HỘI CHỦ NGHĨA VIỆT NAM</b><br><b><u>Độc lập – Tự do – Hạnh phúc</u></b><br><i>${esc(c.diaDanh)}, ngày ${t.slice(8)} tháng ${t.slice(5,7)} năm ${t.slice(0,4)}</i></td></tr></table>
-    <h1>DANH SÁCH THẺ ATM BỊ MÁY THU QUÁ HẠN ĐỀ NGHỊ HỦY</h1><p class="c" style="margin:0 0 10px"><i>(Thẻ khách hàng chưa nhận lại, giữ từ ${c.soNgayHuy} ngày trở lên tính đến ngày ${taDmy(t)})</i></p>
+    <h1>${lo?'DANH SÁCH THẺ ATM BỊ MÁY THU CHỜ HỦY':'DANH SÁCH THẺ ATM BỊ MÁY THU QUÁ HẠN ĐỀ NGHỊ HỦY'}</h1><p class="c" style="margin:0 0 10px"><i>${lo?`Lô: <b>${esc(lo.lo)}</b> · lập ngày ${esc(lo.luc.slice(0,10))} bởi ${esc(lo.boi)}${lo.pending?'':' · đã hủy '+esc(lo.huyLuc.slice(0,10))+' theo '+esc(lo.bb)}`:`(Thẻ khách hàng chưa nhận lại, giữ từ ${c.soNgayHuy} ngày trở lên tính đến ngày ${taDmy(t)})`}</i></p>
     <table class="t"><tr><th>STT</th><th>Mã thẻ</th><th>Họ tên trên thẻ</th><th>Số thẻ</th><th>Ngân hàng phát hành</th><th>Ngày vào sổ</th><th>Số ngày giữ</th><th>Kiểm kê thực tế</th></tr>
     ${list.map((x,i)=>`<tr><td class="c">${i+1}</td><td>${esc(x.ma)}</td><td>${esc(x.hoTen||'')}</td><td>${esc(taMaskView(x.soThe))}</td><td>${esc(x.nganHang)}</td><td class="c">${esc(taDmy(x.ngayVao))}</td><td class="r">${x.soNgay}</td><td></td></tr>`).join('')}
     <tr><td colspan="6" class="r"><b>Tổng cộng</b></td><td class="r"><b>${list.length}</b></td><td></td></tr></table>
     <table style="margin-top:18px"><tr><td class="c" style="width:33%"><b>Người lập</b><br><i>(Ký, ghi rõ họ tên)</i></td><td class="c" style="width:33%"><b>Kiểm soát</b><br><i>(Ký, ghi rõ họ tên)</i></td><td class="c"><b>Lãnh đạo phòng</b><br><i>(Ký, ghi rõ họ tên)</i></td></tr><tr><td style="height:80px"></td><td></td><td></td></tr></table></div>`;
 }
-$('#tbDuePrint').onclick=()=>{const l=TB.due.filter(x=>TB.sel.has(x.ma)||!$('#tbCancelBox').offsetParent);taShowPaper('Danh sách thẻ quá hạn cần hủy',tbDueHtml(l.length?l:TB.due))};
+$('#tbDuePrint').onclick=()=>{const l=TB.due.filter(x=>TB.sel.has(x.ma)||!$('#tbLoBox').offsetParent);taShowPaper('Danh sách thẻ quá hạn cần hủy',tbDueHtml(l.length?l:TB.due))};
 function taCsv(name,head,rows){
   const q=v=>{v=String(v??'');return /[",;\n]/.test(v)?'"'+v.replace(/"/g,'""')+'"':v};
   const blob=new Blob(['﻿'+[head,...rows].map(r=>r.map(q).join(',')).join('\r\n')],{type:'text/csv;charset=utf-8'});
@@ -1651,14 +1690,14 @@ $('#tbDueCsv').onclick=()=>taCsv(`The_qua_han_${TB.d.today}.csv`,['STT','Mã th�
   TB.due.map((x,i)=>[i+1,x.ma,x.pb,x.hoTen,taMaskView(x.soThe),x.nganHang,taDmy(x.ngayVao),x.soNgay,x.nguon||'']));
 $('#tbRetCsv').onclick=()=>taCsv(`The_da_tra_${TB.from}_${TB.to}.csv`,['STT','Mã thẻ','Phòng','Họ tên trên thẻ','Số thẻ','Ngân hàng','Ngày vào sổ','Ngày trả','Số ngày giữ','Người trả','Nguồn thẻ'],
   (TB.ret||[]).map((x,i)=>[i+1,x.ma,x.pb,x.hoTen,taMaskView(x.soThe),x.nganHang,taDmy(x.ngayVao),taDmy(x.ngayTra),x.soNgay,x.xlBoi,x.nguon||'']));
-$('#tbCancelBtn').onclick=async()=>{
-  const mas=TB.due.filter(x=>TB.sel.has(x.ma)).map(x=>x.ma),note=$('#tbCancelNote').value.trim(),err=$('#tbCancelErr');err.hidden=true;
-  if(note.length<5){err.textContent='Ghi số biên bản hoặc căn cứ hủy.';err.hidden=false;$('#tbCancelNote').focus();return}
-  if(!confirm(`Hủy ${mas.length} thẻ đã chọn? Thao tác không hoàn tác được; thẻ đã hủy chỉ còn trong mục tra cứu.`))return;
-  const b=$('#tbCancelBtn');b.disabled=true;b.textContent='Đang hủy…';
-  const r=await taApi('ta_cancel',{mas,ghiChu:note});b.disabled=false;
+$('#tbLoBtn').onclick=async()=>{
+  const mas=TB.due.filter(x=>TB.sel.has(x.ma)).map(x=>x.ma),err=$('#tbLoErr');err.hidden=true;
+  if(!confirm(`Chuyển ${mas.length} thẻ sang trạng thái chờ hủy thành một lô mới?`))return;
+  const b=$('#tbLoBtn');b.disabled=true;b.textContent='Đang lập lô…';
+  const r=await taApi('ta_lap_lo',{mas});b.disabled=false;
   if(!r.ok){tbSelUpd();taErrShow(err,r);return}
-  $('#tbCancelNote').value='';TB.d=r;TB.sel=new Set();tbRender();toast(`Đã hủy ${r.cancelled} thẻ`+(r.skipped?` (bỏ qua ${r.skipped} thẻ không đủ điều kiện)`:''));
+  TB.d=r;TB.sel=new Set();tbRender();toast(`Đã lập lô ${r.lo}: ${r.added} thẻ chờ hủy`+(r.skipped?` (bỏ qua ${r.skipped} thẻ không đủ điều kiện)`:''));
+  const el=document.querySelector(`#tbLoList details[data-lo="${r.lo}"]`);if(el){el.open=true;el.scrollIntoView({behavior:'smooth',block:'start'})}
 };
 window.addEventListener('ttg:view',e=>{if(e.detail==='the-baocao')tbLoad()});
 
@@ -1681,13 +1720,14 @@ function taDemoInit(){
       xlBoi:ret?'Giao dịch viên A':'',xlLuc:ret?taDmy(day(k-3))+' 10:15':'',xlNgay:ret?day(k-3):'',xlGhiChu:'',canhBao:''};
     x.soNgay=taDays(x.ngayVao,x.ngayTra||today);cards.push(x)});
   cards.push(Object.assign({},cards[9],{ma:'DV-'+day(130).slice(2).replace(/-/g,'')+'-0999',hoTen:'TRUONG VAN PHUC',tt:TA_ST.HUY,ngayVao:day(130),soNgay:130,xlBoi:'Trưởng phòng DVKH',xlLuc:taDmy(day(30))+' 16:00',xlNgay:day(30),xlGhiChu:'Biên bản hủy thẻ số 03/2026'}));
+  {const lo='LH-DV-'+day(7).slice(2).replace(/-/g,'')+'-01';cards.filter(x=>x.tt===TA_ST.GIU&&x.soNgay>=90).slice(0,1).map(x=>Object.assign(x,{pb:'Phòng DVKH'})).forEach(x=>Object.assign(x,{tt:TA_ST.CHO,lo,loBoi:'Phó phòng DVKH',loLuc:taDmy(day(7))+' 15:20'}))}
   TA_DEMO={today,cards,cfg:{soNgayHuy:90,soDau:6,nhomTon:[15,30,60,90],mien:'vietinbank.vn',hoanTac:true,diaDanh:'Tiền Giang',tenCN:'Chi nhánh Tây Tiền Giang',bm:{ma:'BM09-GNT',banHanh:'02',suaDoi:'00'},
     banks,atms:[{ma:'TTG01',diaDiem:'ATM Trụ sở Chi nhánh',pb:'Phòng DVKH'},{ma:'TTG05',diaDiem:'ATM PGD An Hữu',pb:'PGD An Hữu'},{ma:'TTG02',diaDiem:'ATM PGD Cái Bè',pb:'PGD Cái Bè'},{ma:'TTG03',diaDiem:'ATM PGD Long Định',pb:'PGD Long Định'},{ma:'TTG04',diaDiem:'ATM PGD Hưng Long',pb:'PGD Hưng Long'}],
     phong:pbs.map(p=>({pb:p,kinhGui:p==='Phòng DVKH'?'Chi nhánh Tây Tiền Giang – Phòng DVKH':p,coEmail:bg.includes(p),banGiao:bg.includes(p),tuNhap:p!=='PGD Ấp Bắc'}))}};
 }
 async function taDemo(action,d){
   await new Promise(x=>setTimeout(x,300));if(!TA_DEMO)taDemoInit();const D=TA_DEMO,me='Tuyến (xem thử)',now=D.today;
-  const all=D.cfg.phong.map(p=>p.pb),role={canEnter:true,nhapPbs:all,bgPbs:['Phòng DVKH','PGD An Hữu','PGD Ấp Bắc'],canReturn:true,canCancel:true,viewAll:true,scope:all,myPb:'Phòng DVKH'};
+  const all=D.cfg.phong.map(p=>p.pb),role={canEnter:true,nhapPbs:all,bgPbs:['Phòng DVKH','PGD An Hữu','PGD Ấp Bắc'],canReturn:true,canCancel:true,canLapLo:true,viewAll:true,scope:all,myPb:'Phòng DVKH'};
   const out=view=>({ok:true,today:D.today,view,me,role,cfg:D.cfg,cards:D.cards.filter(x=>view==='bc'||(view==='huy'?x.tt===TA_ST.HUY:x.tt!==TA_ST.HUY)).map(x=>Object.assign({},x,{cuaToi:x.xlBoi===me,canUndo:x.tt===TA_ST.TRA&&x.xlBoi===me&&x.xlNgay===now}))
     .sort((a,b)=>(b.ngayVao+b.nhapLuc).localeCompare(a.ngayVao+a.nhapLuc))});
   const find=ma=>D.cards.find(x=>x.ma===ma),hm=()=>new Intl.DateTimeFormat('en-GB',{timeZone:'Asia/Ho_Chi_Minh',hour:'2-digit',minute:'2-digit',hour12:false}).format(new Date());
@@ -1697,10 +1737,14 @@ async function taDemo(action,d){
       hoTen:c.hoTen,soThe:taMask(c.dau,c.cuoi),nganHang:bk?bk.ten:c.nganHang,tt:TA_ST.GIU,ngayTra:'',giaoBoi:me,nguon:bgx?'Bàn giao từ chi nhánh':'Nhập tại phòng',ghiChu:c.ghiChu,atm:c.atm,xlBoi:'',xlLuc:'',xlNgay:'',xlGhiChu:'',canhBao:'',soNgay:0})});
     return Object.assign(out('so'),{mail:bgx?'(Xem thử: không gửi email thật.)':''})}
   if(action==='ta_return'){const x=find(d.ma);Object.assign(x,{tt:TA_ST.TRA,ngayTra:now,xlBoi:me,xlLuc:taDmy(now)+' '+hm(),xlNgay:now,xlGhiChu:d.ghiChu||''});return Object.assign(out('so'),{returned:d.ma})}
-  if(action==='ta_undo'){const x=find(d.ma);Object.assign(x,{tt:TA_ST.GIU,ngayTra:'',xlBoi:'',xlLuc:'',xlNgay:'',xlGhiChu:'',soNgay:taDays(x.ngayVao,now)});return out('so')}
+  if(action==='ta_undo'){const x=find(d.ma);Object.assign(x,{tt:x.lo?TA_ST.CHO:TA_ST.GIU,ngayTra:'',xlBoi:'',xlLuc:'',xlNgay:'',xlGhiChu:'',soNgay:taDays(x.ngayVao,now)});return out('so')}
   if(action==='ta_phieu_email')return{ok:true,message:'Xem thử: bản thật sẽ gửi file '+(d.loai==='docx'?'Word':'PDF')+' tới '+d.email+'.'};
-  if(action==='ta_cancel'){let n=0;d.mas.forEach(ma=>{const x=find(ma);if(x&&x.tt===TA_ST.GIU&&x.soNgay>=D.cfg.soNgayHuy){Object.assign(x,{tt:TA_ST.HUY,xlBoi:me,xlLuc:taDmy(now)+' '+hm(),xlNgay:now,xlGhiChu:d.ghiChu});n++}});
-    return Object.assign(out('bc'),{cancelled:n,skipped:d.mas.length-n})}
+  if(action==='ta_lap_lo'){const pk=d.mas.map(find).filter(x=>x&&x.tt===TA_ST.GIU&&!x.lo&&x.soNgay>=D.cfg.soNgayHuy&&x.pb===role.myPb);if(!pk.length)return{error:'invalid',message:'Không có thẻ đủ điều kiện.'};
+    const base='LH-'+TA_DEMO_PRE[role.myPb]+'-'+now.slice(2).replace(/-/g,'')+'-';let k=1;while(D.cards.some(x=>x.lo===base+String(k).padStart(2,'0')))k++;const lo=base+String(k).padStart(2,'0');
+    pk.forEach(x=>Object.assign(x,{tt:TA_ST.CHO,lo,loBoi:me,loLuc:taDmy(now)+' '+hm()}));return Object.assign(out('bc'),{lo,added:pk.length,skipped:d.mas.length-pk.length})}
+  if(action==='ta_rut_lo'){const x=find(d.ma);Object.assign(x,{tt:TA_ST.GIU,lo:'',loBoi:'',loLuc:''});return out('bc')}
+  if(action==='ta_cancel'){let n=0;D.cards.filter(x=>x.lo===d.lo&&x.tt===TA_ST.CHO).forEach(x=>{Object.assign(x,{tt:TA_ST.HUY,xlBoi:me,xlLuc:taDmy(now)+' '+hm(),xlNgay:now,xlGhiChu:d.ghiChu});n++});
+    return Object.assign(out('bc'),{cancelled:n,lo:d.lo})}
   return{error:'bad_request'};
 }
 

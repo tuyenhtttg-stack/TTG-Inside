@@ -1,7 +1,7 @@
 # Không Gian Số Nội Bộ · TTG Inside
 
 Bộ tiện ích nội bộ dành cho cán bộ **VietinBank Chi nhánh Tây Tiền Giang**, thiết kế cho điện thoại.
-Phiên bản 1.7.0 – 30/10/2026: Thẻ ATM máy thu mở rộng 6 sổ (thêm PGD Cái Bè, Long Định, Hưng Long), phân quyền nhập/trả/hủy/báo cáo theo từng sổ.
+Phiên bản 1.8.0 – 04/11/2026: Thẻ ATM máy thu thêm bước Chờ hủy theo lô – thẻ quá hạn chuyển thành từng lô riêng, hủy theo từng lô.
 
 | Nhóm | Tiện ích | Mô tả |
 |---|---|---|
@@ -137,6 +137,15 @@ Phân quyền từng sổ ở `TA_NoiNhan` cột I–L: **Nhận bàn giao từ 
 | Trả thẻ | Vai trò ở cột K (trống thì dùng `VAI_TRO_TRA`), chỉ sổ phòng mình |
 | Hủy thẻ | `VAI_TRO_HUY` (Phó phòng), chỉ sổ phòng mình |
 | Báo cáo | `VAI_TRO_XEM_TAT_CA`: tất cả sổ; `VAI_TRO_BAO_CAO`: sổ phòng mình; `VAI_TRO_PGD`: các sổ có ID mình ở cột L |
+
+### Từ v1.8.0 – Lô chờ hủy
+
+Quy trình hủy 2 bước tại Báo cáo thẻ ATM máy thu (I007):
+1. **Lập lô chờ hủy** (`VAI_TRO_CHO_HUY`, mặc định Trưởng phòng, Phó phòng): chọn thẻ quá hạn → "Chuyển sang chờ hủy". Mỗi lần chuyển là một lô riêng, mã `LH-<tiền tố>-yyMMdd-NN` (VD: LH-CB-261104-01), không gộp.
+2. **Hủy theo lô** (`VAI_TRO_HUY`, Phó phòng): mở lô → ghi số biên bản → hủy toàn bộ thẻ còn "Chờ hủy" trong lô.
+
+Trong thời gian chờ: thẻ vẫn hiện trong sổ I006 (nhãn Chờ hủy), khách đến nhận vẫn trả được và thẻ tự rời lô; có thể "Rút khỏi lô" để thẻ về Đang giữ. Mỗi lô in được danh sách kiểm kê và tải CSV.
+Sổ thêm cột U–W (Lô chờ hủy, Cán bộ lập lô, Thời gian lập lô) – ứng dụng tự thêm khi đọc sổ, chạy lại menu cài đặt để định dạng.
 
 Cập nhật từ v1.6.x: dán Code.gs → chạy lại menu **Cài đặt / cập nhật Thẻ ATM máy thu** (tự thêm 3 sổ, cột I–L, tham số vai trò) → Triển khai phiên bản mới → tải `index.html`, `sw.js` lên GitHub.
 Đọc ảnh thẻ (v1.6.1): mặc định gửi ảnh qua Apps Script tới Claude (tham số `DOC_THE_BANG` = AI, mô hình `MODEL_DOC_THE`, cần `ANTHROPIC_API_KEY`); đặt `DOC_THE_BANG` = Máy để đọc trên điện thoại.
