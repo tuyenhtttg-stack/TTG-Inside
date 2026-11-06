@@ -1,6 +1,6 @@
 /**
  * KHÔNG GIAN SỐ NỘI BỘ (TTG Inside) – Máy chủ phân quyền
- * VietinBank Chi nhánh Tây Tiền Giang · phiên bản 1.8.0 · 04/11/2026
+ * VietinBank Chi nhánh Tây Tiền Giang · phiên bản 1.9.0 · 06/11/2026
  *
  * Script này GẮN VỚI file Google Sheet phân quyền (Tiện ích mở rộng → Apps Script), làm 2 việc:
  *   1. Menu quản trị + tự tick quyền theo vai trò ngay trong Sheet.
@@ -21,7 +21,8 @@
  *   MODEL, DAILY_LIMIT, PER_MINUTE_LIMIT : (giai đoạn 2) như hướng dẫn cũ
  *   BT_FOLDER_ID       : (v1.5.0) ID thư mục BanTin chứa file BanTin_YYYY-MM-DD.json (tự đặt khi chạy Cài đặt Bản tin sáng)
  *   TA_SHEET_ID        : (v1.6.0) ID file cấu hình thẻ ATM KhongGianSoNoiBo_TheATM (tự tạo khi chạy Cài đặt Thẻ ATM máy thu)
- * Manifest appsscript.json (v1.6.0) khai báo quyền tối thiểu, Drive chỉ ĐỌC (drive.readonly).
+ *   UQ_SHEET_ID, UQ_FOLDER_ID : (v1.9.0) file cấu hình + sổ giấy ủy quyền và thư mục lưu PDF (tự tạo khi chạy Cài đặt Giấy ủy quyền)
+ * Manifest appsscript.json (v1.9.0) khai báo quyền tối thiểu; Drive cần quyền ghi (drive) để lưu file PDF giấy ủy quyền vào thư mục riêng.
  */
 
 const TZ = 'Asia/Ho_Chi_Minh';
@@ -57,6 +58,8 @@ function onOpen() {
     .addItem('Cài đặt Bản tin sáng (I005)', 'caiDatBanTin')
     .addItem('Cài đặt / cập nhật Thẻ ATM máy thu (I006, I007)', 'caiDatTheATM')
     .addItem('Gửi ngay email nhắc hủy thẻ ATM', 'nhacHuyTheATM')
+    .addItem('Cài đặt / cập nhật Giấy ủy quyền (I008)', 'caiDatUyQuyen')
+    .addItem('Gửi ngay email nhắc hạn giấy ủy quyền', 'nhacHanUyQuyen')
     .addItem('Kiểm tra kết nối AI (Claude)', 'kiemTraAI')
     .addItem('Thêm ứng dụng mới…', 'themUngDung')
     .addItem('Sinh thêm ID dự phòng…', 'sinhThemID')
@@ -335,7 +338,7 @@ function kiemTraDuLieu() {
 }
 
 function lamMoiBoNhoDem(silent) {
-  CacheService.getScriptCache().remove(CACHE_KEY);
+  CacheService.getScriptCache().removeAll([CACHE_KEY, 'ta_cfg', 'uq_cfg']);
   if (silent !== true) SpreadsheetApp.getActive().toast('Ứng dụng sẽ dùng dữ liệu mới ngay lần mở kế tiếp.', 'Không Gian Số');
 }
 
@@ -369,6 +372,12 @@ function doPost(e) {
       case 'ta_lap_lo': return json_(apiTaLapLo_(body));
       case 'ta_rut_lo': return json_(apiTaRutLo_(body));
       case 'ta_ocr':    return json_(apiTaOcr_(body));
+      case 'uq_load':   return json_(apiUqLoad_(body));
+      case 'uq_ai':     return json_(apiUqAi_(body));
+      case 'uq_add':    return json_(apiUqAdd_(body));
+      case 'uq_reject': return json_(apiUqReject_(body));
+      case 'uq_replace': return json_(apiUqReplace_(body));
+      case 'uq_file':   return json_(apiUqFile_(body));
       default:       return json_({ error: 'bad_request' });
     }
   } catch (err) {
@@ -419,7 +428,7 @@ function apiOpen_(b) {
 
 function session_(u) {
   return { user: { ten: firstName_(u.hoTen), xungHo: u.gt === 'Nữ' ? 'chị' : u.gt === 'Nam' ? 'anh' : 'anh/chị', phongBan: u.pb, maPhongBan: u.maPB || '', loaiPhongBan: u.loaiPB || '', vaiTro: u.vt },
-           apps: taFilterApps_(u, userApps_(u)), stats: countVisit_(), ai: !!PropertiesService.getScriptProperties().getProperty('ANTHROPIC_API_KEY') && userApps_(u).includes('I002'),
+           apps: uqFilterApps_(u, taFilterApps_(u, userApps_(u))), stats: countVisit_(), ai: !!PropertiesService.getScriptProperties().getProperty('ANTHROPIC_API_KEY') && userApps_(u).includes('I002'),
            expires: endOfDayIso_() };
 }
 
@@ -2085,3 +2094,505 @@ const TA_PHIEU_CSS = '.bm09,.bm09 *{-webkit-print-color-adjust:exact;print-color
   '.bm09 .sg{margin-top:6px;border:1px dashed #000}.bm09 .sg td{border:1px dashed #000}.bm09 .c{text-align:center}' +
   '.bm09 .sp{height:70px}.bm09 .sp2{height:60px}.bm09 .mut{color:#555;font-size:11px}' +
   '.bm09 .ft{margin-top:14px;font-size:10px}.bm09 .ft td{border:1px solid #000;padding:4px;vertical-align:middle}';
+
+/* =====================================================================
+ * THEO DÕI GIẤY ỦY QUYỀN (I008) – v1.9.0
+ * File cấu hình + sổ: KhongGianSoNoiBo_UyQuyen (thuộc tính UQ_SHEET_ID, tự tạo khi chạy menu cài đặt)
+ *   UQ_CauHinh  : tham số (số ngày nhắc, giờ nhắc, vai trò, mô hình AI…)
+ *   UQ_Phong    : phòng áp dụng, tiền tố mã, email Trưởng/Phó phòng nhận nhắc hạn, thư mục lưu file
+ *   UQ_TieuChi  : bộ tiêu chí AI kiểm tra (căn cứ BLDS 2015, LDN 2020 sửa đổi 2025, TT 17/2024) – sửa trên sheet
+ *   UQ_So       : sổ giấy ủy quyền (mỗi dòng 1 giấy)
+ *   UQ_TuChoi   : nhật ký giấy bị từ chối nhập (không lưu file)
+ * File PDF (đã che thông tin) lưu ở thư mục Drive riêng từng phòng, không chia sẻ; xem file qua ứng dụng.
+ * ===================================================================== */
+const UQ_APP = 'I008', UQ_TEN = 'Theo dõi giấy ủy quyền', UQ_FILE_NAME = 'KhongGianSoNoiBo_UyQuyen', UQ_FOLDER_NAME = 'KhongGianSoNoiBo_UyQuyen_File';
+const UQ_SH = { CAUHINH: 'UQ_CauHinh', PHONG: 'UQ_Phong', TIEUCHI: 'UQ_TieuChi', SO: 'UQ_So', TUCHOI: 'UQ_TuChoi', HD: 'HuongDan' };
+const UQ_ST = { HL: 'Đang theo dõi', THAY: 'Đã thay thế' };
+const UQ_TH = { NGAY: 'Ghi trên văn bản', LUAT: 'Theo luật (01 năm)', THAY: 'Đến khi có văn bản thay thế', GD: 'Theo giao dịch cụ thể' };
+// Cột sổ UQ_So (0-based)
+const UC = { MA: 0, PB: 1, LOAI: 2, SO_VB: 3, NGAY_LAP: 4, TEN_DN: 5, MST: 6, NUQ: 7, NUQ_CD: 8, NDUQ: 9, NDUQ_CD: 10, PHAM_VI: 11, PT_KY: 12, UQ_LAI: 13,
+             TU: 14, DEN: 15, CACH_TH: 16, KQ_AI: 17, AI_TOM_TAT: 18, LY_DO: 19, GHI_CHU: 20, FILE_ID: 21, NHAP_BOI: 22, NHAP_LUC: 23, TT: 24,
+             THAY_BOI: 25, THAY_LUC: 26, THAY_GHI_CHU: 27, THAY_BANG: 28 };
+const UQ_NCOL = 29;
+const UQ_HEAD = ['Mã', 'Phòng', 'Loại văn bản', 'Số văn bản', 'Ngày lập', 'Tên doanh nghiệp', 'Mã số DN/MST', 'Người ủy quyền', 'Chức danh người ủy quyền',
+  'Người được ủy quyền', 'Chức danh người được ủy quyền', 'Phạm vi ủy quyền', 'Phương thức ký', 'Ủy quyền lại', 'Hiệu lực từ', 'Hiệu lực đến', 'Cách xác định thời hạn',
+  'Kết quả kiểm tra AI', 'Điểm cần lưu ý (AI)', 'Lý do vẫn nhập', 'Ghi chú', 'ID file PDF', 'Người nhập', 'Thời gian nhập', 'Trạng thái',
+  'Người chuyển thay thế', 'Thời gian thay thế', 'Ghi chú thay thế', 'Thay bằng giấy (mã)'];
+const UQ_KQ = { OK: 'Phù hợp', XEM: 'Cần xem lại', KO: 'Chưa phù hợp' };
+const UQ_PHONG_BAN_DAU = [
+  ['Phòng DVKH', 'DV'], ['PGD An Hữu', 'AH'], ['PGD Ấp Bắc', 'AB'], ['PGD Cái Bè', 'CB'], ['PGD Long Định', 'LD'], ['PGD Hưng Long', 'HL']];
+const UQ_VT_MO = ['Trưởng phòng', 'Phó phòng', 'GDV'];
+const UQ_CAUHINH_BAN_DAU = [
+  ['SO_NGAY_NHAC', '10', 'Bắt đầu gửi email nhắc mỗi ngày từ số ngày này trước ngày hết hạn ủy quyền'],
+  ['NHAC_SAU_HAN', '30', 'Sau ngày hết hạn tiếp tục nhắc mỗi ngày tối đa số ngày này (đến khi bấm Đã thay ủy quyền khác); 0 = dừng nhắc khi hết hạn'],
+  ['NHAC_GIO', '7', 'Giờ gửi email nhắc (0–23). Đổi giờ xong chạy lại menu Cài đặt giấy ủy quyền'],
+  ['VAI_TRO_NHAP', 'Trưởng phòng, Phó phòng', 'Vai trò tải lên, kiểm tra và nhập giấy ủy quyền – chỉ phòng mình'],
+  ['VAI_TRO_THAY', 'Trưởng phòng, Phó phòng', 'Vai trò bấm "Đã thay ủy quyền khác" – chỉ phòng mình'],
+  ['VAI_TRO_XEM', 'Trưởng phòng, Phó phòng, GDV', 'Vai trò xem bảng giấy ủy quyền và file PDF – chỉ phòng mình'],
+  ['VAI_TRO_XEM_TAT_CA', '', 'Vai trò xem giấy ủy quyền của tất cả các phòng (để trống = không ai)'],
+  ['MIEN_EMAIL', 'vietinbank.vn', 'Chỉ gửi email tới địa chỉ thuộc tên miền này'],
+  ['DUNG_AI', 'Có', 'Có/Không: dùng AI (Claude) phân tích file PDF. Không = cán bộ nhập tay thông tin'],
+  ['MODEL_KIEM_TRA', 'claude-sonnet-5-5', 'Mô hình Claude dùng phân tích giấy ủy quyền (cần ANTHROPIC_API_KEY)'],
+  ['DUNG_LUONG_TOI_DA_MB', '10', 'Dung lượng tối đa file PDF tải lên (MB)'],
+  ['TEN_CHI_NHANH', 'Chi nhánh Tây Tiền Giang', 'Tên chi nhánh trên email']
+];
+// Bộ tiêu chí ban đầu – rút từ Mẫu Giấy/Hợp đồng ủy quyền doanh nghiệp (thư mục TaiLieuLuat). Mức độ: Bắt buộc | Lưu ý
+const UQ_TIEUCHI_BAN_DAU = [
+  ['TC01', 'Hình thức', 'Văn bản lập thành văn bản, có tên loại (Giấy ủy quyền/Hợp đồng ủy quyền), có số, ngày lập; nội dung giao dịch tại VietinBank', 'Khoản 1 Điều 119, khoản 1 Điều 138 BLDS 2015', 'Bắt buộc'],
+  ['TC02', 'Bên ủy quyền', 'Bên ủy quyền là doanh nghiệp có tên, mã số doanh nghiệp/MST, địa chỉ trụ sở rõ ràng', 'Khoản 1 Điều 138 BLDS 2015', 'Bắt buộc'],
+  ['TC03', 'Thẩm quyền người ký', 'Người ký bên ủy quyền là người đại diện theo pháp luật với chức danh phù hợp loại hình (Chủ tịch HĐTV/HĐQT, Chủ tịch công ty, Giám đốc/Tổng giám đốc, chủ DNTN); nếu là người được ủy quyền thì phải dẫn văn bản ủy quyền gốc cho phép ủy quyền lại', 'Điều 137 BLDS 2015; Điều 12, khoản 3 Điều 54, khoản 3 Điều 79, khoản 2 Điều 137 Luật Doanh nghiệp 2020 (sửa đổi 2025)', 'Bắt buộc'],
+  ['TC04', 'Người được ủy quyền', 'Có họ tên, chức danh (nếu có) và mục giấy tờ pháp lý của từng người được ủy quyền (số có thể đã được che)', 'Khoản 3 Điều 134, khoản 3 Điều 138 BLDS 2015', 'Bắt buộc'],
+  ['TC05', 'Phạm vi ủy quyền', 'Phạm vi ủy quyền cụ thể, rõ ràng; nội dung không đánh dấu là không ủy quyền; không ủy quyền "toàn quyền" chung chung', 'Khoản 1 Điều 141 BLDS 2015', 'Bắt buộc'],
+  ['TC06', 'Thời hạn', 'Ghi cụ thể ngày bắt đầu và ngày kết thúc; không ghi "không thời hạn". Không ghi thời hạn thì hiệu lực 01 năm kể từ ngày xác lập', 'Điều 140, Điều 563, Điều 147, Điều 148 BLDS 2015', 'Bắt buộc'],
+  ['TC07', 'Quyền đơn phương chấm dứt', 'Không có điều khoản "không hủy ngang" hoặc loại trừ quyền đơn phương chấm dứt ủy quyền', 'Điều 569 BLDS 2015', 'Lưu ý'],
+  ['TC08', 'Ủy quyền lại', 'Ghi rõ được hay không được ủy quyền lại; nếu được thì không vượt phạm vi ban đầu, hình thức phù hợp', 'Điều 564 BLDS 2015', 'Lưu ý'],
+  ['TC09', 'Chữ ký, con dấu', 'Có chữ ký người đại diện theo pháp luật và dấu doanh nghiệp (nếu có) đóng trên chữ ký; hợp đồng ủy quyền phải có đủ chữ ký hai bên', 'Khoản 1 Điều 119, khoản 4 Điều 400 BLDS 2015; Điều 43 Luật Doanh nghiệp 2020', 'Bắt buộc'],
+  ['TC10', 'Tín dụng, bảo đảm', 'Nếu ủy quyền vay vốn, thế chấp, bảo lãnh: có giới hạn giá trị và dẫn nghị quyết/quyết định của HĐTV/HĐQT/chủ sở hữu khi Điều lệ yêu cầu', 'Khoản 1 Điều 141 BLDS 2015; Điều lệ doanh nghiệp', 'Lưu ý'],
+  ['TC11', 'Tự giao dịch', 'Không cho phép người được ủy quyền giao dịch với chính mình hoặc bên thứ ba mà mình cũng đại diện', 'Khoản 3 Điều 141 BLDS 2015', 'Lưu ý'],
+  ['TC12', 'Tính rõ ràng', 'Không tẩy xóa, sửa chữa; phương án không chọn đã gạch bỏ; nếu song ngữ ghi rõ bản tiếng Việt được ưu tiên', 'Khoản 1 Điều 121 BLDS 2015', 'Lưu ý'],
+  ['TC13', 'Thay thế văn bản cũ', 'Ghi nhận nếu văn bản này thay thế văn bản ủy quyền trước (số, ngày) để chuyển trạng thái giấy cũ', 'Đoạn 2 khoản 1 Điều 569 BLDS 2015', 'Lưu ý'],
+  ['TC14', 'Người nước ngoài', 'Người được ủy quyền là người nước ngoài: có hộ chiếu, thẻ tạm trú/giấy tờ cư trú', 'Thông tư 17/2024/TT-NHNN (sửa đổi bởi TT 25/2025/TT-NHNN)', 'Lưu ý'],
+  ['TC15', 'Che thông tin nhạy cảm', 'Số CCCD/hộ chiếu, ngày cấp, nơi cấp, nơi thường trú, số điện thoại của các cá nhân đã được che trước khi tải lên', 'Luật Bảo vệ dữ liệu cá nhân 2025; quy định nội bộ', 'Lưu ý']
+];
+
+/** Menu: tạo/cập nhật file cấu hình giấy ủy quyền, đăng ký I008, cài lịch nhắc hạn. Chạy lại an toàn. */
+function caiDatUyQuyen() {
+  const ui = SpreadsheetApp.getUi(), props = PropertiesService.getScriptProperties();
+  let f = null;
+  try { f = props.getProperty('UQ_SHEET_ID') ? SpreadsheetApp.openById(props.getProperty('UQ_SHEET_ID')) : null; } catch (e) { f = null; }
+  const isNew = !f;
+  if (isNew) { f = SpreadsheetApp.create(UQ_FILE_NAME); f.setSpreadsheetTimeZone(TZ); props.setProperty('UQ_SHEET_ID', f.getId()); taoFileUyQuyen_(f); }
+  const changes = capNhatUyQuyen_(f);
+  CacheService.getScriptCache().remove('uq_cfg');
+  const cfg = uqConfig_(true);
+  const folders = uqThuMuc_(f, cfg);
+  const n8 = dangKyUngDung_(UQ_APP, UQ_TEN, 'Tải giấy ủy quyền (PDF đã che thông tin), AI kiểm tra, bảng theo dõi thời hạn, nhắc hạn, chuyển trạng thái đã thay thế', UQ_VT_MO);
+  const trig = caiLichNhacUyQuyen_(cfg);
+  lamMoiBoNhoDem(true);
+  const warn = uqKiemTra_(cfg);
+  ui.alert(UQ_TEN,
+    (isNew ? 'Đã tạo file "' + UQ_FILE_NAME + '" ở thư mục gốc Drive. Hãy kéo file vào thư mục KhongGianSoNoiBo (không chia sẻ cho người khác).\n\n' : 'File cấu hình đã có, giữ nguyên dữ liệu.\n\n') +
+    (changes.length ? 'Đã cập nhật cấu hình: ' + changes.join('; ') + '.\n\n' : '') + folders +
+    (n8 ? 'Đã đăng ký ' + UQ_APP + ' – ' + UQ_TEN + ' (tick sẵn cho Trưởng phòng, Phó phòng, GDV).\n' : '') +
+    trig + '\nLink file cấu hình: ' + f.getUrl() + (warn ? '\n\n' + warn : '') +
+    '\n\nTiếp theo: điền email Trưởng/Phó phòng ở UQ_Phong; Triển khai → Quản lý triển khai → Phiên bản mới.', ui.ButtonSet.OK);
+}
+function taoFileUyQuyen_(f) {
+  const style = (s, w) => { s.setFrozenRows(1); s.getRange(1, 1, 1, s.getLastColumn()).setFontWeight('bold').setFontColor('#FFFFFF').setBackground('#005993').setWrap(true);
+    (w || []).forEach((x, i) => s.setColumnWidth(i + 1, x)); };
+  const ch = f.getSheets()[0]; ch.setName(UQ_SH.CAUHINH);
+  ch.getRange(1, 1, 1, 3).setValues([['Tham số', 'Giá trị', 'Ý nghĩa']]);
+  ch.getRange(2, 2, UQ_CAUHINH_BAN_DAU.length, 1).setNumberFormat('@');
+  ch.getRange(2, 1, UQ_CAUHINH_BAN_DAU.length, 3).setValues(UQ_CAUHINH_BAN_DAU);
+  style(ch, [200, 300, 560]);
+  const ph = f.insertSheet(UQ_SH.PHONG);
+  ph.getRange(1, 1, 1, 7).setValues([['Phòng', 'Tiền tố mã', 'Email nhận nhắc hạn (Trưởng/Phó phòng)', 'Email CC', 'Đang dùng', 'ID thư mục lưu file (tự tạo)', 'Ghi chú']]);
+  ph.getRange('A2:B').setNumberFormat('@'); ph.getRange('F2:F').setNumberFormat('@');
+  ph.getRange(2, 1, UQ_PHONG_BAN_DAU.length, 2).setValues(UQ_PHONG_BAN_DAU);
+  ph.getRange(2, 5, 30, 1).insertCheckboxes(); ph.getRange(2, 5, UQ_PHONG_BAN_DAU.length, 1).setValue(true);
+  style(ph, [140, 90, 320, 240, 80, 300, 220]);
+  const tc = f.insertSheet(UQ_SH.TIEUCHI);
+  tc.getRange(1, 1, 1, 6).setValues([['Mã', 'Nhóm', 'Tiêu chí kiểm tra', 'Căn cứ', 'Mức độ (Bắt buộc/Lưu ý)', 'Đang dùng']]);
+  tc.getRange(2, 1, UQ_TIEUCHI_BAN_DAU.length, 5).setValues(UQ_TIEUCHI_BAN_DAU).setWrap(true);
+  tc.getRange(2, 6, 60, 1).insertCheckboxes(); tc.getRange(2, 6, UQ_TIEUCHI_BAN_DAU.length, 1).setValue(true);
+  tc.getRange(2, 5, 60, 1).setDataValidation(SpreadsheetApp.newDataValidation().requireValueInList(['Bắt buộc', 'Lưu ý'], true).build());
+  style(tc, [70, 170, 480, 360, 130, 80]);
+  const so = f.insertSheet(UQ_SH.SO);
+  so.getRange(1, 1, 1, UQ_NCOL).setValues([UQ_HEAD]);
+  so.getRange('A2:D').setNumberFormat('@'); so.getRange('G2:G').setNumberFormat('@'); so.getRange('V2:V').setNumberFormat('@');
+  ['E', 'O', 'P'].forEach(c => so.getRange(c + '2:' + c).setNumberFormat('dd/mm/yyyy'));
+  ['X', 'AA'].forEach(c => so.getRange(c + '2:' + c).setNumberFormat('dd/mm/yyyy hh:mm'));
+  style(so, [130, 120, 120, 110, 95, 240, 120, 170, 140, 220, 160, 320, 160, 120, 95, 95, 160, 110, 300, 200, 160, 120, 170, 130, 110, 170, 130, 200, 130]);
+  const tch = f.insertSheet(UQ_SH.TUCHOI);
+  tch.getRange(1, 1, 1, 7).setValues([['Thời gian', 'Phòng', 'Cán bộ', 'Tên doanh nghiệp', 'Số văn bản', 'Kết quả AI', 'Lý do từ chối']]);
+  tch.getRange('A2:A').setNumberFormat('dd/mm/yyyy hh:mm');
+  style(tch, [130, 120, 180, 260, 120, 110, 360]);
+  const hd = f.insertSheet(UQ_SH.HD); hd.setColumnWidth(1, 920);
+  const lines = ['HƯỚNG DẪN – THEO DÕI GIẤY ỦY QUYỀN (I008) – Không Gian Số Nội Bộ', '',
+    'UQ_CauHinh: số ngày nhắc trước hạn, số ngày nhắc sau hạn, giờ gửi, vai trò nhập/thay/xem, bật/tắt AI. Sửa cột Giá trị; có hiệu lực sau tối đa 1 phút.',
+    'UQ_Phong: mỗi phòng một dòng (tên trùng sheet PhongBan). Điền email Trưởng/Phó phòng (@vietinbank.vn) nhận nhắc hạn. Cột ID thư mục do hệ thống tự tạo.',
+    'UQ_TieuChi: bộ tiêu chí AI dùng để kiểm tra. Sửa nội dung/căn cứ khi luật hoặc quy định nội bộ thay đổi; bỏ tick Đang dùng thay vì xóa. Có tiêu chí "Bắt buộc" chưa đạt → kết luận Chưa phù hợp.',
+    'UQ_So: sổ giấy ủy quyền do ứng dụng ghi. Có thể sửa sai sót ở các cột thông tin; không sửa cột Mã, ID file, Trạng thái.',
+    'UQ_TuChoi: nhật ký giấy bị từ chối nhập (file không được lưu).',
+    'Bảo mật: file này và thư mục ' + UQ_FOLDER_NAME + ' KHÔNG chia sẻ cho người khác; cán bộ xem file qua ứng dụng theo phân quyền.',
+    'Sau khi đổi giờ gửi email nhắc: chạy lại menu Không Gian Số → Cài đặt / cập nhật Giấy ủy quyền.'];
+  hd.getRange(1, 1, lines.length, 1).setValues(lines.map(x => [x]));
+  hd.getRange(1, 1).setFontWeight('bold').setFontSize(13).setFontColor('#005993');
+}
+/** Bổ sung tham số/tiêu chí/phòng mới cho file tạo bằng bản cũ (không ghi đè nội dung anh đã sửa) */
+function capNhatUyQuyen_(f) {
+  const out = [];
+  const ch = f.getSheetByName(UQ_SH.CAUHINH);
+  if (ch) { const keys = ch.getDataRange().getValues().map(r => String(r[0]).trim());
+    UQ_CAUHINH_BAN_DAU.forEach(r => { if (!keys.includes(r[0])) { ch.appendRow(r); out.push('thêm tham số ' + r[0]); } }); }
+  const tc = f.getSheetByName(UQ_SH.TIEUCHI);
+  if (tc) { const keys = tc.getDataRange().getValues().map(r => String(r[0]).trim());
+    UQ_TIEUCHI_BAN_DAU.forEach(r => { if (!keys.includes(r[0])) { tc.appendRow(r.concat([true])); out.push('thêm tiêu chí ' + r[0]); } }); }
+  const so = f.getSheetByName(UQ_SH.SO);
+  if (so && so.getMaxColumns() < UQ_NCOL) { so.insertColumnsAfter(so.getMaxColumns(), UQ_NCOL - so.getMaxColumns()); so.getRange(1, 1, 1, UQ_NCOL).setValues([UQ_HEAD]); out.push('bổ sung cột sổ'); }
+  return out;
+}
+/** Tạo thư mục gốc + thư mục từng phòng (không chia sẻ) và ghi ID vào UQ_Phong */
+function uqThuMuc_(f, cfg) {
+  const props = PropertiesService.getScriptProperties();
+  let root = null;
+  try { root = props.getProperty('UQ_FOLDER_ID') ? DriveApp.getFolderById(props.getProperty('UQ_FOLDER_ID')) : null; } catch (e) { root = null; }
+  if (!root) { root = DriveApp.createFolder(UQ_FOLDER_NAME); props.setProperty('UQ_FOLDER_ID', root.getId()); }
+  const ph = f.getSheetByName(UQ_SH.PHONG), v = ph.getRange(2, 1, Math.max(ph.getLastRow() - 1, 1), 6).getValues(), out = [];
+  v.forEach((r, i) => {
+    const pb = String(r[0]).trim(); if (!pb) return;
+    let ok = false; try { ok = !!String(r[5]).trim() && !!DriveApp.getFolderById(String(r[5]).trim()); } catch (e) { ok = false; }
+    if (!ok) { const sub = root.createFolder(pb); ph.getRange(i + 2, 6).setValue(sub.getId()); out.push(pb); }
+  });
+  if (!root.getFoldersByName('_ChoXuLy').hasNext()) root.createFolder('_ChoXuLy');
+  CacheService.getScriptCache().remove('uq_cfg');
+  return 'Thư mục lưu file: ' + root.getName() + (out.length ? ' (tạo mới cho ' + out.join(', ') + ')' : '') + '.\n';
+}
+function caiLichNhacUyQuyen_(cfg) {
+  try {
+    ScriptApp.getProjectTriggers().filter(t => t.getHandlerFunction() === 'nhacHanUyQuyen').forEach(t => ScriptApp.deleteTrigger(t));
+    ScriptApp.newTrigger('nhacHanUyQuyen').timeBased().everyDays(1).atHour(cfg.nhacGio).inTimezone(TZ).create();
+    return 'Email nhắc hạn ủy quyền: hằng ngày, khoảng ' + cfg.nhacGio + ' giờ (từ ' + cfg.soNgayNhac + ' ngày trước hạn' + (cfg.nhacSauHan ? ', tối đa ' + cfg.nhacSauHan + ' ngày sau hạn' : '') + ').\n';
+  } catch (e) { return 'LƯU Ý: chưa cài được lịch email nhắc (' + e.message + ').\n'; }
+}
+function uqKiemTra_(cfg) {
+  const msg = [], roles = Object.keys(rolePerms_()), pbs = phongBanMap_();
+  [['VAI_TRO_NHAP', cfg.vtNhap], ['VAI_TRO_THAY', cfg.vtThay], ['VAI_TRO_XEM', cfg.vtXem], ['VAI_TRO_XEM_TAT_CA', cfg.vtXemAll]].forEach(([k, l]) =>
+    l.filter(r => !roles.includes(r)).forEach(r => msg.push('- ' + k + ': vai trò "' + r + '" không có trong sheet VaiTro.')));
+  cfg.phong.filter(p => p.on).forEach(p => {
+    if (!pbs[p.pb]) msg.push('- UQ_Phong: "' + p.pb + '" không có trong sheet PhongBan.');
+    if (!p.emails.length) msg.push('- ' + p.pb + ': chưa có email nhận nhắc hạn.');
+    p.emailBad.forEach(x => msg.push('- ' + p.pb + ': email "' + x + '" không thuộc @' + cfg.mien + ', sẽ bị bỏ qua.'));
+  });
+  if (cfg.dungAi && !PropertiesService.getScriptProperties().getProperty('ANTHROPIC_API_KEY')) msg.push('- Chưa có ANTHROPIC_API_KEY: ứng dụng chuyển sang nhập tay.');
+  if (!cfg.tieuChi.length) msg.push('- UQ_TieuChi: không có tiêu chí đang dùng.');
+  return msg.length ? 'LƯU Ý cấu hình giấy ủy quyền:\n' + msg.join('\n') : '';
+}
+
+/* ---------- Cấu hình (bộ nhớ đệm 60 giây) ---------- */
+function uqFile_() {
+  const id = PropertiesService.getScriptProperties().getProperty('UQ_SHEET_ID');
+  if (!id) throw new Error('uq_not_setup');
+  return SpreadsheetApp.openById(id);
+}
+function uqConfig_(fresh) {
+  const cache = CacheService.getScriptCache();
+  if (!fresh) { const hit = cache.get('uq_cfg'); if (hit) return JSON.parse(hit); }
+  const f = uqFile_(), list = s => String(s || '').split(/[,;]/).map(x => x.trim()).filter(Boolean);
+  const rows = name => { const sh = f.getSheetByName(name); return sh && sh.getLastRow() > 1 ? sh.getDataRange().getValues().slice(1) : []; };
+  const kv = {}; rows(UQ_SH.CAUHINH).forEach(r => { if (String(r[0]).trim()) kv[String(r[0]).trim()] = String(r[1]).trim(); });
+  const yes = v => /^(c[oó]|yes|true|1|x)$/i.test(String(v || '').trim());
+  const num = (v, d, lo, hi) => { const x = parseInt(v, 10); return isNaN(x) ? d : Math.max(lo, Math.min(hi, x)); };
+  const mien = (kv.MIEN_EMAIL || 'vietinbank.vn').replace(/^@/, '').toLowerCase();
+  const okMail = e => new RegExp('^[^@\\s]+@' + mien.replace(/\./g, '\\.') + '$', 'i').test(e);
+  const phong = rows(UQ_SH.PHONG).filter(r => String(r[0]).trim()).map(r => { const em = list(r[2]), cc = list(r[3]);
+    return { pb: String(r[0]).trim(), prefix: String(r[1] || '').trim().toUpperCase() || 'UQ', emails: em.filter(okMail), cc: cc.filter(okMail),
+      emailBad: em.concat(cc).filter(e => !okMail(e)), on: r[4] !== false, folder: String(r[5] || '').trim() }; });
+  const tieuChi = rows(UQ_SH.TIEUCHI).filter(r => String(r[0]).trim() && String(r[2]).trim() && r[5] !== false).map(r => ({
+    ma: String(r[0]).trim(), nhom: String(r[1] || '').trim(), noiDung: String(r[2]).trim(), canCu: String(r[3] || '').trim(), batBuoc: !/l[ưu]u\s*[yý]/i.test(String(r[4] || '')) }));
+  const cfg = { soNgayNhac: num(kv.SO_NGAY_NHAC, 10, 1, 365), nhacSauHan: num(kv.NHAC_SAU_HAN, 30, 0, 365), nhacGio: num(kv.NHAC_GIO, 7, 0, 23),
+    vtNhap: list(kv.VAI_TRO_NHAP || 'Trưởng phòng, Phó phòng'), vtThay: list(kv.VAI_TRO_THAY || 'Trưởng phòng, Phó phòng'),
+    vtXem: list(kv.VAI_TRO_XEM || 'Trưởng phòng, Phó phòng, GDV'), vtXemAll: list(kv.VAI_TRO_XEM_TAT_CA), mien,
+    dungAi: kv.DUNG_AI === undefined ? true : yes(kv.DUNG_AI), model: kv.MODEL_KIEM_TRA || 'claude-sonnet-5-5',
+    maxMb: num(kv.DUNG_LUONG_TOI_DA_MB, 10, 1, 20), tenCN: kv.TEN_CHI_NHANH || 'Chi nhánh Tây Tiền Giang', phong, tieuChi };
+  try { cache.put('uq_cfg', JSON.stringify(cfg), 60); } catch (e) {}
+  return cfg;
+}
+function uqRole_(u, cfg) {
+  const on = cfg.phong.filter(p => p.on), mine = on.find(p => p.pb === u.pb);
+  const canNhap = !!mine && cfg.vtNhap.includes(u.vt), canThay = !!mine && cfg.vtThay.includes(u.vt);
+  const xemAll = cfg.vtXemAll.includes(u.vt);
+  const scope = xemAll ? on.map(p => p.pb) : (mine && (canNhap || canThay || cfg.vtXem.includes(u.vt)) ? [u.pb] : []);
+  return { canNhap, canThay, scope, myPb: mine ? u.pb : '', viewAll: scope.length > 1 };
+}
+function uqFilterApps_(u, apps) {
+  if (!apps.includes(UQ_APP)) return apps;
+  let r; try { r = uqRole_(u, uqConfig_()); } catch (e) { return apps.filter(a => a !== UQ_APP); }
+  return r.scope.length ? apps : apps.filter(a => a !== UQ_APP);
+}
+function uqGuard_(b) {
+  const v = checkToken_(b.token); if (v.error) return v;
+  if (!userApps_(v.user).includes(UQ_APP)) return { error: 'forbidden' };
+  let cfg; try { cfg = uqConfig_(); } catch (e) { return { error: 'not_configured', message: 'Chưa cài đặt ứng dụng giấy ủy quyền.' }; }
+  const role = uqRole_(v.user, cfg);
+  if (!role.scope.length) return { error: 'forbidden', message: 'Phòng của tài khoản chưa áp dụng theo dõi giấy ủy quyền hoặc vai trò chưa được xem.' };
+  return { user: v.user, cfg, role };
+}
+
+/* ---------- Ngày tháng ---------- */
+/** 'dd/mm/yyyy' | Date | 'yyyy-mm-dd' → 'yyyy-mm-dd' (rỗng nếu không hợp lệ) */
+function uqYmd_(d) {
+  if (d instanceof Date && !isNaN(d)) return Utilities.formatDate(d, TZ, 'yyyy-MM-dd');
+  const s = String(d || '').trim(); let m = s.match(/^(\d{4})-(\d{1,2})-(\d{1,2})/), y, mo, da;
+  if (m) { y = +m[1]; mo = +m[2]; da = +m[3]; } else { m = s.match(/^(\d{1,2})[\/.\-](\d{1,2})[\/.\-](\d{4})$/); if (!m) return ''; da = +m[1]; mo = +m[2]; y = +m[3]; }
+  const t = new Date(Date.UTC(y, mo - 1, da));
+  if (t.getUTCFullYear() !== y || t.getUTCMonth() !== mo - 1 || t.getUTCDate() !== da || y < 1990 || y > 2100) return '';
+  return y + '-' + String(mo).padStart(2, '0') + '-' + String(da).padStart(2, '0');
+}
+const uqDmy_ = ymd => ymd ? ymd.slice(8, 10) + '/' + ymd.slice(5, 7) + '/' + ymd.slice(0, 4) : '';
+const uqDate_ = ymd => { if (!ymd) return ''; const [y, m, d] = ymd.split('-').map(Number); return new Date(y, m - 1, d); };
+/** Thời hạn 01 năm theo Điều 140, 563, 148 BLDS: kết thúc vào ngày, tháng tương ứng của năm sau (29/02 → 28/02) */
+function uqCongMotNam_(ymd) {
+  if (!ymd) return '';
+  const [y, m, d] = ymd.split('-').map(Number), last = new Date(Date.UTC(y + 1, m, 0)).getUTCDate();
+  return (y + 1) + '-' + String(m).padStart(2, '0') + '-' + String(Math.min(d, last)).padStart(2, '0');
+}
+
+/* ---------- Đọc sổ ---------- */
+function uqSheet_() { const sh = uqFile_().getSheetByName(UQ_SH.SO); if (!sh) throw new Error('uq_not_setup'); return sh; }
+function uqRows_(sh, today) {
+  const last = sh.getLastRow(); if (last < 2) return [];
+  const v = sh.getRange(2, 1, last - 1, UQ_NCOL).getValues(), s = x => String(x == null ? '' : x).trim();
+  const ts = x => x instanceof Date ? Utilities.formatDate(x, TZ, 'dd/MM/yyyy HH:mm') : s(x);
+  return v.map((r, i) => {
+    if (!s(r[UC.MA])) return null;
+    const den = uqYmd_(r[UC.DEN]), tt = s(r[UC.TT]) || UQ_ST.HL;
+    const conLai = den ? taDays(today, den) : null;
+    return { row: i + 2, ma: s(r[UC.MA]), pb: s(r[UC.PB]), loai: s(r[UC.LOAI]), soVb: s(r[UC.SO_VB]), ngayLap: uqYmd_(r[UC.NGAY_LAP]), tenDN: s(r[UC.TEN_DN]), mst: s(r[UC.MST]),
+      nuq: s(r[UC.NUQ]), nuqCd: s(r[UC.NUQ_CD]), nduq: s(r[UC.NDUQ]), nduqCd: s(r[UC.NDUQ_CD]), phamVi: s(r[UC.PHAM_VI]), ptKy: s(r[UC.PT_KY]), uqLai: s(r[UC.UQ_LAI]),
+      tu: uqYmd_(r[UC.TU]), den, cachTh: s(r[UC.CACH_TH]), kqAi: s(r[UC.KQ_AI]), aiTomTat: s(r[UC.AI_TOM_TAT]), lyDo: s(r[UC.LY_DO]), ghiChu: s(r[UC.GHI_CHU]),
+      coFile: !!s(r[UC.FILE_ID]), fileId: s(r[UC.FILE_ID]), nhapBoi: s(r[UC.NHAP_BOI]).replace(/\s*\(9\d{4}\)\s*$/, ''), nhapLuc: ts(r[UC.NHAP_LUC]), tt,
+      thayBoi: s(r[UC.THAY_BOI]).replace(/\s*\(9\d{4}\)\s*$/, ''), thayLuc: ts(r[UC.THAY_LUC]), thayGhiChu: s(r[UC.THAY_GHI_CHU]), thayBang: s(r[UC.THAY_BANG]), conLai };
+  }).filter(Boolean);
+}
+/** Trạng thái hiển thị: Đã thay thế | Đã hết hạn | Sắp hết hạn | Còn hiệu lực | Không xác định ngày */
+function uqTrangThai_(x, cfg) {
+  if (x.tt === UQ_ST.THAY) return 'Đã thay thế';
+  if (x.conLai === null) return 'Không xác định ngày';
+  if (x.conLai < 0) return 'Đã hết hạn';
+  if (x.conLai <= cfg.soNgayNhac) return 'Sắp hết hạn';
+  return 'Còn hiệu lực';
+}
+/** Sắp xếp: đã hết hạn & gần hết hạn nhất lên trên, không xác định ngày xuống cuối */
+function uqSort_(a, b) { const ka = a.conLai === null ? 1e9 : a.conLai, kb = b.conLai === null ? 1e9 : b.conLai; return ka - kb || a.tenDN.localeCompare(b.tenDN); }
+function uqOut_(x, cfg) { const o = Object.assign({}, x); delete o.row; delete o.fileId; o.trangThai = uqTrangThai_(x, cfg); return o; }
+function uqPublicCfg_(cfg) {
+  const aiOn = cfg.dungAi && !!PropertiesService.getScriptProperties().getProperty('ANTHROPIC_API_KEY');
+  return { soNgayNhac: cfg.soNgayNhac, nhacSauHan: cfg.nhacSauHan, maxMb: cfg.maxMb, aiOn, tieuChi: cfg.tieuChi, phong: cfg.phong.filter(p => p.on).map(p => ({ pb: p.pb, coEmail: p.emails.length > 0 })) };
+}
+
+/* ---------- API ---------- */
+/** view: 'theodoi' (đang theo dõi) | 'dathay' (đã thay thế – tra cứu) */
+function apiUqLoad_(b) {
+  const g = uqGuard_(b); if (g.error) return g;
+  const { user, cfg, role } = g, today = Utilities.formatDate(new Date(), TZ, 'yyyy-MM-dd');
+  const view = b.view === 'dathay' ? 'dathay' : 'theodoi';
+  let rows; try { rows = uqRows_(uqSheet_(), today).filter(x => role.scope.includes(x.pb)); } catch (e) { return { error: 'not_configured', message: 'Sổ giấy ủy quyền chưa được cài đặt.' }; }
+  const dem = { theoDoi: 0, sapHet: 0, hetHan: 0, khongNgay: 0, daThay: 0 };
+  rows.forEach(x => { if (x.tt === UQ_ST.THAY) { dem.daThay++; return; } dem.theoDoi++; const t = uqTrangThai_(x, cfg);
+    if (t === 'Sắp hết hạn') dem.sapHet++; else if (t === 'Đã hết hạn') dem.hetHan++; else if (t === 'Không xác định ngày') dem.khongNgay++; });
+  const k = x => { const m = String(x.thayLuc || '').match(/^(\d{2})\/(\d{2})\/(\d{4}) ?(\d{2}:\d{2})?/); return m ? m[3] + m[2] + m[1] + (m[4] || '') : ''; };
+  const list = view === 'dathay' ? rows.filter(x => x.tt === UQ_ST.THAY).sort((a, c) => k(c).localeCompare(k(a)))
+    : rows.filter(x => x.tt !== UQ_ST.THAY).sort(uqSort_);
+  return { ok: true, today, view, me: user.hoTen, role: { canNhap: role.canNhap, canThay: role.canThay, scope: role.scope, myPb: role.myPb, viewAll: role.viewAll },
+    cfg: uqPublicCfg_(cfg), dem, items: list.map(x => uqOut_(x, cfg)) };
+}
+
+const UQ_AI_PROMPT = [
+  'Bạn là chuyên viên pháp chế ngân hàng tại VietinBank, kiểm tra giấy ủy quyền/hợp đồng ủy quyền của DOANH NGHIỆP giao dịch tại ngân hàng theo pháp luật Việt Nam.',
+  'Đọc file PDF (có thể là bản scan, một số thông tin cá nhân đã được che – đó là bình thường, không coi là thiếu).',
+  'Trả về DUY NHẤT một đối tượng JSON, không giải thích thêm, theo mẫu:',
+  '{"loaiVanBan":"Giấy ủy quyền|Hợp đồng ủy quyền|Khác","soVanBan":"","ngayLap":"dd/mm/yyyy","tenDoanhNghiep":"","maSoDN":"",',
+  '"nguoiUyQuyen":{"hoTen":"","chucDanh":""},"nguoiDuocUyQuyen":[{"hoTen":"","chucDanh":""}],',
+  '"phamVi":["mỗi nội dung được ủy quyền (đã đánh dấu) một dòng ngắn"],"phuongThucKy":"","uyQuyenLai":"Không được|Được|Không ghi",',
+  '"hieuLucTu":"dd/mm/yyyy","hieuLucDen":"dd/mm/yyyy","cachThoiHan":"co_ngay|khong_ghi|den_khi_thay_the|theo_giao_dich","thayTheVanBan":"số, ngày văn bản cũ được thay thế nếu có",',
+  '"conThongTinNhayCam":true/false,"kiemTra":[{"ma":"TC01","ketQua":"dat|chua_dat|khong_xac_dinh","nhanXet":"tối đa 30 từ, nêu cụ thể"}],"tomTat":"tối đa 60 từ: các điểm chưa phù hợp/cần lưu ý"}',
+  'Quy tắc:',
+  '- Ngày theo dd/mm/yyyy; không có thì để "". Không suy đoán thông tin không có trong văn bản.',
+  '- TUYỆT ĐỐI không chép số CCCD/CMND/hộ chiếu, ngày cấp, nơi cấp, địa chỉ cá nhân, số điện thoại vào bất kỳ trường nào.',
+  '- Số tài khoản chỉ ghi 4 số cuối dạng ***1234.',
+  '- conThongTinNhayCam = true nếu trong file còn đọc được số CCCD/hộ chiếu hoặc số điện thoại của cá nhân chưa bị che.',
+  '- kiemTra: đánh giá ĐỦ và ĐÚNG THỨ TỰ các tiêu chí được cung cấp, dùng đúng mã. "khong_xac_dinh" khi văn bản không đủ thông tin để kết luận.',
+  '- Tiêu chí về chữ ký/con dấu: chỉ nhận xét có hay không thấy chữ ký, dấu trên bản scan; không khẳng định thật/giả.',
+  '- Văn bản không phải ủy quyền của doanh nghiệp: loaiVanBan = "Khác" và nêu trong tomTat.'
+].join('\n');
+
+/** Bước 1: nhận PDF (đã che), lưu tạm, gửi AI phân tích theo bộ tiêu chí; trả kết quả + giấy cũ có thể bị thay thế */
+function apiUqAi_(b) {
+  const g = uqGuard_(b); if (g.error) return g;
+  const { user, cfg, role } = g;
+  if (!role.canNhap) return { error: 'forbidden', message: 'Vai trò của tài khoản không được nhập giấy ủy quyền.' };
+  if (b.daChe !== true) return { error: 'invalid', message: 'Xác nhận đã che thông tin nhạy cảm trước khi tải lên.' };
+  const data = String(b.pdf || '').replace(/^data:application\/pdf;base64,/, '');
+  if (data.length < 500 || !/^[A-Za-z0-9+/=]+$/.test(data.slice(0, 300))) return { error: 'invalid', message: 'File không hợp lệ. Chọn file PDF.' };
+  if (data.length * 0.75 > cfg.maxMb * 1048576) return { error: 'invalid', message: 'File vượt quá ' + cfg.maxMb + ' MB.' };
+  const bytes = Utilities.base64Decode(data);
+  if (String.fromCharCode.apply(null, bytes.slice(0, 5)) !== '%PDF-') return { error: 'invalid', message: 'File không phải PDF.' };
+  // Lưu tạm vào _ChoXuLy (tiếp tục nhập → chuyển sang thư mục phòng; từ chối/quá 1 ngày → xóa)
+  const root = DriveApp.getFolderById(PropertiesService.getScriptProperties().getProperty('UQ_FOLDER_ID'));
+  const tmpF = root.getFoldersByName('_ChoXuLy').hasNext() ? root.getFoldersByName('_ChoXuLy').next() : root.createFolder('_ChoXuLy');
+  const tenFile = String(b.name || 'giay-uy-quyen.pdf').replace(/[\\\/:*?"<>|]/g, '_').slice(0, 120);
+  const tmp = tmpF.createFile(Utilities.newBlob(bytes, 'application/pdf', tenFile)).setDescription('UQ tạm · ' + role.myPb + ' · ' + user.id);
+  const out = { ok: true, tmpId: tmp.getId(), tieuChi: cfg.tieuChi, ai: false };
+  const key = PropertiesService.getScriptProperties().getProperty('ANTHROPIC_API_KEY');
+  if (!cfg.dungAi || !key) { out.message = 'AI đang tắt – nhập thông tin theo văn bản.'; return out; }
+  const props = PropertiesService.getScriptProperties();
+  const lim = aiLimit_(props); if (lim) { out.message = lim.error === 'daily_limit' ? 'Đã hết lượt AI trong ngày – nhập tay.' : 'AI đang bận – nhập tay hoặc thử lại.'; return out; }
+  const tcText = cfg.tieuChi.map(t => t.ma + ' [' + (t.batBuoc ? 'Bắt buộc' : 'Lưu ý') + '] ' + t.nhom + ': ' + t.noiDung + ' (Căn cứ: ' + t.canCu + ')').join('\n');
+  const r = aiFetch_(key, { model: cfg.model, max_tokens: 3000, temperature: 0, system: UQ_AI_PROMPT,
+    messages: [{ role: 'user', content: [{ type: 'document', source: { type: 'base64', media_type: 'application/pdf', data } },
+      { type: 'text', text: 'Ngày kiểm tra: ' + Utilities.formatDate(new Date(), TZ, 'dd/MM/yyyy') + '.\nCác tiêu chí cần đánh giá:\n' + tcText } ] }] });
+  if (r.error) { log_(user.id, user.hoTen, 'Lỗi AI kiểm tra ủy quyền', UQ_APP, r.detail, ''); out.message = r.message + ' Có thể nhập tay.'; return out; }
+  let v = null; try { const a = r.text.indexOf('{'), z = r.text.lastIndexOf('}'); v = JSON.parse(r.text.slice(a, z + 1)); } catch (e) { v = null; }
+  if (!v) { out.message = 'AI không đọc được văn bản. Kiểm tra file hoặc nhập tay.'; return out; }
+  const kq = uqKetQua_(v, cfg);
+  Object.assign(out, { ai: true, fields: uqFieldsFromAi_(v), kiemTra: kq.list, ketLuan: kq.ketLuan, tomTat: uqSach_(v.tomTat, 400), nhayCam: v.conThongTinNhayCam === true,
+    thayTheVanBan: uqSach_(v.thayTheVanBan, 120) });
+  out.trung = uqTrung_(out.fields, role.myPb);
+  log_(user.id, user.hoTen, 'AI kiểm tra giấy ủy quyền', UQ_APP, role.myPb + ' · ' + kq.ketLuan + (out.nhayCam ? ' · còn thông tin nhạy cảm' : ''), '');
+  return out;
+}
+/** Bỏ ký tự lạ, che chuỗi số dài (phòng khi AI chép nhầm số giấy tờ) */
+/** Che dãy số dài (CCCD 12 số, số tài khoản…) – chỉ giữ 4 số cuối */
+function uqCheSo_(s) { return String(s == null ? '' : s).replace(/\d[\d .-]{7,}\d/g, m => { const d = m.replace(/\D/g, ''); return d.length >= 9 ? '***' + d.slice(-4) : m; }); }
+function uqSach_(s, n) { return uqCheSo_(s).replace(/[\u0000-\u001f]/g, ' ').trim().slice(0, n || 200); }
+function uqFieldsFromAi_(v) {
+  const nd = Array.isArray(v.nguoiDuocUyQuyen) ? v.nguoiDuocUyQuyen : [];
+  const cach = { co_ngay: UQ_TH.NGAY, khong_ghi: UQ_TH.LUAT, den_khi_thay_the: UQ_TH.THAY, theo_giao_dich: UQ_TH.GD }[String(v.cachThoiHan || '')] || UQ_TH.NGAY;
+  const f = { loai: /h[ợo]p đ[ồo]ng/i.test(v.loaiVanBan || '') ? 'Hợp đồng ủy quyền' : /gi[ấa]y/i.test(v.loaiVanBan || '') ? 'Giấy ủy quyền' : uqSach_(v.loaiVanBan, 40) || 'Giấy ủy quyền',
+    soVb: uqSach_(v.soVanBan, 60), ngayLap: uqYmd_(v.ngayLap), tenDN: uqSach_(v.tenDoanhNghiep, 200), mst: String(v.maSoDN || '').replace(/[^\d\-]/g, '').slice(0, 20),
+    nuq: uqSach_(v.nguoiUyQuyen && v.nguoiUyQuyen.hoTen, 80), nuqCd: uqSach_(v.nguoiUyQuyen && v.nguoiUyQuyen.chucDanh, 80),
+    nduq: nd.map(x => uqSach_(x && x.hoTen, 80)).filter(Boolean).join('; '), nduqCd: nd.map(x => uqSach_(x && x.chucDanh, 60) || '—').join('; '),
+    phamVi: (Array.isArray(v.phamVi) ? v.phamVi : [v.phamVi]).map(x => uqSach_(x, 200)).filter(Boolean).join('\n').slice(0, 1500),
+    ptKy: uqSach_(v.phuongThucKy, 200), uqLai: uqSach_(v.uyQuyenLai, 40), tu: uqYmd_(v.hieuLucTu), den: uqYmd_(v.hieuLucDen), cachTh: cach };
+  if (!f.tu && f.ngayLap) f.tu = f.ngayLap;
+  if (!f.den && cach === UQ_TH.LUAT) f.den = uqCongMotNam_(f.ngayLap || f.tu);
+  return f;
+}
+/** Kết luận do máy chủ tính từ kết quả từng tiêu chí: Bắt buộc chưa đạt → Chưa phù hợp; Bắt buộc không xác định hoặc Lưu ý chưa đạt → Cần xem lại */
+function uqKetQua_(v, cfg) {
+  const got = {}; (Array.isArray(v.kiemTra) ? v.kiemTra : []).forEach(k => { if (k && k.ma) got[String(k.ma).trim().toUpperCase()] = k; });
+  const list = cfg.tieuChi.map(t => { const k = got[t.ma.toUpperCase()] || {}, kq = ['dat', 'chua_dat', 'khong_xac_dinh'].includes(k.ketQua) ? k.ketQua : 'khong_xac_dinh';
+    return { ma: t.ma, nhom: t.nhom, noiDung: t.noiDung, canCu: t.canCu, batBuoc: t.batBuoc, ketQua: kq, nhanXet: uqSach_(k.nhanXet, 300) }; });
+  const bbKo = list.some(x => x.batBuoc && x.ketQua === 'chua_dat'), bbKxd = list.some(x => x.batBuoc && x.ketQua === 'khong_xac_dinh'), luuY = list.some(x => !x.batBuoc && x.ketQua === 'chua_dat');
+  return { list, ketLuan: bbKo ? UQ_KQ.KO : (bbKxd || luuY) ? UQ_KQ.XEM : UQ_KQ.OK };
+}
+const uqKey_ = s => taKhongDau(String(s || '')).toLowerCase().replace(/[^a-z0-9]/g, '');
+/** Giấy đang theo dõi cùng doanh nghiệp (MST hoặc tên) trong phòng – gợi ý chuyển sang Đã thay thế */
+function uqTrung_(f, pb) {
+  const today = Utilities.formatDate(new Date(), TZ, 'yyyy-MM-dd'), mst = String(f.mst || '').replace(/\D/g, ''), ten = uqKey_(f.tenDN);
+  if (!mst && !ten) return [];
+  return uqRows_(uqSheet_(), today).filter(x => x.pb === pb && x.tt !== UQ_ST.THAY && ((mst && x.mst.replace(/\D/g, '') === mst) || (ten && uqKey_(x.tenDN) === ten)))
+    .map(x => ({ ma: x.ma, soVb: x.soVb, nduq: x.nduq, den: x.den, cachTh: x.cachTh }));
+}
+function uqTmpFile_(id, user) {
+  if (!/^[\w-]{20,}$/.test(String(id || ''))) return null;
+  try { const f = DriveApp.getFileById(id); const d = String(f.getDescription() || ''); return d.indexOf('UQ tạm') === 0 && d.endsWith(' · ' + user.id) && !f.isTrashed() ? f : null; } catch (e) { return null; }
+}
+/** Bước 2a: Tiếp tục nhập – ghi sổ, chuyển file sang thư mục phòng, (tùy chọn) chuyển giấy cũ sang Đã thay thế */
+function apiUqAdd_(b) {
+  const g = uqGuard_(b); if (g.error) return g;
+  const { user, cfg, role } = g;
+  if (!role.canNhap) return { error: 'forbidden', message: 'Vai trò của tài khoản không được nhập giấy ủy quyền.' };
+  const p = cfg.phong.find(x => x.on && x.pb === role.myPb), f = b.fields || {}, s = (x, n) => uqSach_(x, n);
+  const rec = { loai: s(f.loai, 40) || 'Giấy ủy quyền', soVb: s(f.soVb, 60), ngayLap: uqYmd_(f.ngayLap), tenDN: s(f.tenDN, 200), mst: String(f.mst || '').replace(/[^\d\-]/g, '').slice(0, 20),
+    nuq: s(f.nuq, 80), nuqCd: s(f.nuqCd, 80), nduq: s(f.nduq, 300), nduqCd: s(f.nduqCd, 200), phamVi: uqCheSo_(f.phamVi).slice(0, 1500),
+    ptKy: s(f.ptKy, 200), uqLai: s(f.uqLai, 40), tu: uqYmd_(f.tu), den: uqYmd_(f.den), cachTh: Object.values(UQ_TH).includes(f.cachTh) ? f.cachTh : UQ_TH.NGAY, ghiChu: s(b.ghiChu, 300) };
+  if (rec.cachTh === UQ_TH.LUAT && !rec.den) rec.den = uqCongMotNam_(rec.ngayLap || rec.tu);
+  if (rec.cachTh === UQ_TH.THAY || rec.cachTh === UQ_TH.GD) rec.den = rec.den || '';
+  const err = [];
+  if (!rec.tenDN) err.push('tên doanh nghiệp'); if (!rec.nuq) err.push('người ủy quyền'); if (!rec.nduq) err.push('người được ủy quyền');
+  if (!rec.phamVi.trim()) err.push('phạm vi ủy quyền');
+  if (rec.cachTh === UQ_TH.NGAY && !rec.den) err.push('ngày hết hiệu lực');
+  if (err.length) return { error: 'invalid', message: 'Còn thiếu: ' + err.join(', ') + '.' };
+  if (rec.tu && rec.den && rec.den < rec.tu) return { error: 'invalid', message: 'Ngày hết hiệu lực trước ngày bắt đầu.' };
+  const kqAi = [UQ_KQ.OK, UQ_KQ.XEM, UQ_KQ.KO].includes(b.ketLuan) ? b.ketLuan : 'Nhập tay (không dùng AI)';
+  const lyDo = s(b.lyDo, 300);
+  if ((kqAi === UQ_KQ.KO || kqAi === UQ_KQ.XEM) && lyDo.length < 5) return { error: 'invalid', message: 'Kết quả kiểm tra "' + kqAi + '": ghi lý do vẫn nhập (tối thiểu 5 ký tự).' };
+  const tmp = uqTmpFile_(b.tmpId, user);
+  if (!tmp) return { error: 'invalid', message: 'Không tìm thấy file vừa tải lên (có thể đã quá hạn). Tải lại file.' };
+  const thay = Array.isArray(b.thayMa) ? b.thayMa.map(String).slice(0, 10) : [];
+  const lock = LockService.getScriptLock();
+  try { lock.waitLock(15000); } catch (e) { return { error: 'busy', message: 'Hệ thống đang bận, thử lại sau vài giây.' }; }
+  let ma = '';
+  try {
+    const sh = uqSheet_(), now = new Date(), today = Utilities.formatDate(now, TZ, 'yyyy-MM-dd'), rows = uqRows_(sh, today);
+    const base = 'UQ-' + p.prefix + '-' + Utilities.formatDate(now, TZ, 'yyMMdd') + '-', used = new Set(rows.map(x => x.ma));
+    let k = 1; while (used.has(base + String(k).padStart(2, '0'))) k++; ma = base + String(k).padStart(2, '0');
+    let folder; try { folder = DriveApp.getFolderById(p.folder); } catch (e) { return { error: 'not_configured', message: 'Chưa có thư mục lưu file của ' + p.pb + '. Quản trị chạy lại menu cài đặt.' }; }
+    tmp.moveTo(folder); tmp.setName(ma + ' - ' + rec.tenDN.replace(/[\\\/:*?"<>|]/g, '_').slice(0, 80) + '.pdf').setDescription('UQ · ' + p.pb + ' · ' + ma);
+    const row = new Array(UQ_NCOL).fill('');
+    Object.assign(row, { [UC.MA]: ma, [UC.PB]: p.pb, [UC.LOAI]: rec.loai, [UC.SO_VB]: rec.soVb, [UC.NGAY_LAP]: uqDate_(rec.ngayLap), [UC.TEN_DN]: rec.tenDN, [UC.MST]: rec.mst,
+      [UC.NUQ]: rec.nuq, [UC.NUQ_CD]: rec.nuqCd, [UC.NDUQ]: rec.nduq, [UC.NDUQ_CD]: rec.nduqCd, [UC.PHAM_VI]: rec.phamVi, [UC.PT_KY]: rec.ptKy, [UC.UQ_LAI]: rec.uqLai,
+      [UC.TU]: uqDate_(rec.tu), [UC.DEN]: uqDate_(rec.den), [UC.CACH_TH]: rec.cachTh, [UC.KQ_AI]: kqAi, [UC.AI_TOM_TAT]: s(b.tomTat, 500), [UC.LY_DO]: lyDo, [UC.GHI_CHU]: rec.ghiChu,
+      [UC.FILE_ID]: tmp.getId(), [UC.NHAP_BOI]: user.hoTen + ' (' + user.id + ')', [UC.NHAP_LUC]: now, [UC.TT]: UQ_ST.HL });
+    sh.getRange(sh.getLastRow() + 1, 1, 1, UQ_NCOL).setValues([row]);
+    rows.filter(x => thay.includes(x.ma) && x.pb === p.pb && x.tt !== UQ_ST.THAY).forEach(x => {
+      sh.getRange(x.row, UC.TT + 1, 1, 5).setValues([[UQ_ST.THAY, user.hoTen + ' (' + user.id + ')', now, 'Thay bằng giấy mới khi nhập', ma]]); });
+    log_(user.id, user.hoTen, 'Nhập giấy ủy quyền', UQ_APP, p.pb + ' · ' + ma + ' · ' + kqAi + (thay.length ? ' · thay ' + thay.join(', ') : ''), '');
+  } finally { lock.releaseLock(); }
+  return Object.assign(apiUqLoad_({ token: b.token }), { added: ma });
+}
+/** Bước 2b: Từ chối nhập – ghi nhật ký, xóa file tạm */
+function apiUqReject_(b) {
+  const g = uqGuard_(b); if (g.error) return g;
+  const { user, role } = g;
+  if (!role.canNhap) return { error: 'forbidden' };
+  const tmp = uqTmpFile_(b.tmpId, user); if (tmp) tmp.setTrashed(true);
+  const lyDo = uqSach_(b.lyDo, 300) || 'Không phù hợp theo kết quả kiểm tra';
+  uqFile_().getSheetByName(UQ_SH.TUCHOI).appendRow([new Date(), role.myPb, user.hoTen + ' (' + user.id + ')', uqSach_(b.tenDN, 200), uqSach_(b.soVb, 60), uqSach_(b.ketLuan, 40) || '—', lyDo]);
+  log_(user.id, user.hoTen, 'Từ chối nhập giấy ủy quyền', UQ_APP, role.myPb + ' · ' + uqSach_(b.tenDN, 80) + ' · ' + lyDo, '');
+  return { ok: true };
+}
+/** Nút "Đã thay ủy quyền khác" – chỉ Trưởng/Phó phòng, giấy của phòng mình */
+function apiUqReplace_(b) {
+  const g = uqGuard_(b); if (g.error) return g;
+  const { user, role } = g;
+  if (!role.canThay) return { error: 'forbidden', message: 'Chỉ Trưởng/Phó phòng được chuyển trạng thái đã thay thế.' };
+  const lock = LockService.getScriptLock();
+  try { lock.waitLock(10000); } catch (e) { return { error: 'busy', message: 'Hệ thống đang bận, thử lại sau vài giây.' }; }
+  try {
+    const sh = uqSheet_(), rows = uqRows_(sh, Utilities.formatDate(new Date(), TZ, 'yyyy-MM-dd'));
+    const x = rows.find(r => r.ma === String(b.ma || '') && r.pb === role.myPb);
+    if (!x) return { error: 'invalid', message: 'Không tìm thấy giấy ủy quyền trong sổ của phòng.' };
+    if (x.tt === UQ_ST.THAY) return { error: 'invalid', message: 'Giấy này đã ở trạng thái đã thay thế.' };
+    const moi = String(b.thayBang || '').trim(), ok = !moi || rows.some(r => r.ma === moi && r.pb === role.myPb && r.ma !== x.ma);
+    if (!ok) return { error: 'invalid', message: 'Mã giấy thay thế không có trong sổ của phòng.' };
+    sh.getRange(x.row, UC.TT + 1, 1, 5).setValues([[UQ_ST.THAY, user.hoTen + ' (' + user.id + ')', new Date(), uqSach_(b.ghiChu, 300), moi]]);
+    log_(user.id, user.hoTen, 'Đã thay ủy quyền khác', UQ_APP, x.pb + ' · ' + x.ma + (moi ? ' → ' + moi : '') + (b.ghiChu ? ' · ' + uqSach_(b.ghiChu, 100) : ''), '');
+  } finally { lock.releaseLock(); }
+  return Object.assign(apiUqLoad_({ token: b.token, view: b.view }), { replaced: String(b.ma) });
+}
+/** Xem file PDF của 1 giấy (trả base64) – theo phạm vi xem */
+function apiUqFile_(b) {
+  const g = uqGuard_(b); if (g.error) return g;
+  const { user, role } = g;
+  const x = uqRows_(uqSheet_(), Utilities.formatDate(new Date(), TZ, 'yyyy-MM-dd')).find(r => r.ma === String(b.ma || '') && role.scope.includes(r.pb));
+  if (!x || !x.fileId) return { error: 'invalid', message: 'Không có file cho giấy này.' };
+  let blob; try { blob = DriveApp.getFileById(x.fileId).getBlob(); } catch (e) { return { error: 'invalid', message: 'Không mở được file (có thể đã bị xóa khỏi Drive).' }; }
+  log_(user.id, user.hoTen, 'Xem file giấy ủy quyền', UQ_APP, x.pb + ' · ' + x.ma, '');
+  return { ok: true, ma: x.ma, name: x.ma + '.pdf', pdf: Utilities.base64Encode(blob.getBytes()) };
+}
+
+/** Lịch hằng ngày: mỗi phòng 1 email liệt kê giấy sắp hết hạn (≤ SO_NGAY_NHAC ngày) và đã hết hạn (≤ NHAC_SAU_HAN ngày); dọn file tạm quá 1 ngày */
+function nhacHanUyQuyen(e) {
+  const cfg = uqConfig_(true), manual = !(e && e.triggerUid), today = Utilities.formatDate(new Date(), TZ, 'yyyy-MM-dd'), report = [];
+  const rows = uqRows_(uqSheet_(), today).filter(x => x.tt !== UQ_ST.THAY && x.conLai !== null && x.conLai <= cfg.soNgayNhac && x.conLai >= -cfg.nhacSauHan).sort(uqSort_);
+  cfg.phong.filter(p => p.on).forEach(p => {
+    const l = rows.filter(x => x.pb === p.pb);
+    if (!l.length) { report.push(p.pb + ': không có giấy sắp hết hạn'); return; }
+    if (!p.emails.length) { report.push(p.pb + ': ' + l.length + ' giấy, chưa có email nhận'); return; }
+    const sap = l.filter(x => x.conLai >= 0).length, het = l.length - sap;
+    const conLaiTxt = x => x.conLai > 0 ? 'Còn ' + x.conLai + ' ngày' : x.conLai === 0 ? 'Hết hạn hôm nay' : 'Đã hết hạn ' + (-x.conLai) + ' ngày';
+    const td = 'border:1px solid #c9d6e2;padding:6px;vertical-align:top';
+    const body = l.map((x, i) => '<tr><td style="' + td + ';text-align:center">' + (i + 1) + '</td><td style="' + td + '"><b>' + taEsc(x.tenDN) + '</b>' + (x.mst ? '<br>MST ' + taEsc(x.mst) : '') +
+      '<br><small>' + taEsc(x.loai) + (x.soVb ? ' số ' + taEsc(x.soVb) : '') + (x.ngayLap ? ' ngày ' + uqDmy_(x.ngayLap) : '') + ' · mã ' + taEsc(x.ma) + '</small></td>' +
+      '<td style="' + td + '">' + taEsc(x.nuq) + (x.nuqCd ? '<br><small>' + taEsc(x.nuqCd) + '</small>' : '') + '</td><td style="' + td + '">' + taEsc(x.nduq) + '</td>' +
+      '<td style="' + td + '">' + taEsc(x.phamVi).replace(/\n/g, '<br>') + '</td><td style="' + td + ';white-space:nowrap">' + (x.tu ? uqDmy_(x.tu) + ' –<br>' : '') + uqDmy_(x.den) + '</td>' +
+      '<td style="' + td + ';white-space:nowrap;font-weight:bold;color:' + (x.conLai < 0 ? '#9B0E35' : '#8a5300') + '">' + conLaiTxt(x) + '</td></tr>').join('');
+    try {
+      MailApp.sendEmail({ to: p.emails.join(','), cc: p.cc.join(','), name: 'Không Gian Số Nội Bộ',
+        subject: '[Giấy ủy quyền] ' + p.pb + ': ' + (sap ? sap + ' giấy sắp hết hạn' : '') + (sap && het ? ', ' : '') + (het ? het + ' giấy đã hết hạn' : ''),
+        htmlBody: '<p>Kính gửi Lãnh đạo ' + taEsc(p.pb) + ',</p><p>Các giấy ủy quyền dưới đây ' + (sap ? 'sắp hết hạn trong ' + cfg.soNgayNhac + ' ngày tới' : '') + (sap && het ? ' hoặc ' : '') + (het ? 'đã hết hạn' : '') +
+          '. Đề nghị liên hệ doanh nghiệp bổ sung văn bản ủy quyền mới; khi đã nhận văn bản mới, nhập vào ứng dụng và bấm <b>Đã thay ủy quyền khác</b> tại Không Gian Số Nội Bộ → Theo dõi giấy ủy quyền.</p>' +
+          '<table style="border-collapse:collapse;font-size:13px;font-family:Arial,sans-serif"><tr style="background:#DEEAF6"><th style="' + td + '">STT</th><th style="' + td + '">Doanh nghiệp / văn bản</th><th style="' + td + '">Người ủy quyền</th><th style="' + td + '">Người được ủy quyền</th><th style="' + td + '">Phạm vi ủy quyền</th><th style="' + td + '">Hiệu lực</th><th style="' + td + '">Thời hạn còn lại</th></tr>' + body + '</table>' +
+          '<p style="color:#888;font-size:12px">Email tự động gửi mỗi ngày từ ' + cfg.soNgayNhac + ' ngày trước hạn' + (cfg.nhacSauHan ? ' đến ' + cfg.nhacSauHan + ' ngày sau hạn' : '') + ' – ' + taEsc(cfg.tenCN) + '.</p>' });
+      report.push(p.pb + ': đã gửi ' + l.length + ' giấy tới ' + p.emails.join(', '));
+    } catch (err) { report.push(p.pb + ': LỖI gửi email ' + err.message); }
+  });
+  // Dọn file tạm quá 1 ngày (file của chính hệ thống ở _ChoXuLy)
+  try { const root = DriveApp.getFolderById(PropertiesService.getScriptProperties().getProperty('UQ_FOLDER_ID')), it = root.getFoldersByName('_ChoXuLy');
+    if (it.hasNext()) { const fs = it.next().getFiles(), lim = Date.now() - 864e5; while (fs.hasNext()) { const f = fs.next(); if (f.getDateCreated().getTime() < lim) f.setTrashed(true); } } } catch (err) {}
+  log_('', 'Hệ thống', 'Nhắc hạn giấy ủy quyền', UQ_APP, report.join(' | ').slice(0, 450), '');
+  if (manual) { try { SpreadsheetApp.getUi().alert('Nhắc hạn giấy ủy quyền', report.join('\n'), SpreadsheetApp.getUi().ButtonSet.OK); } catch (err) {} }
+}

@@ -1,7 +1,7 @@
 # Không Gian Số Nội Bộ · TTG Inside
 
 Bộ tiện ích nội bộ dành cho cán bộ **VietinBank Chi nhánh Tây Tiền Giang**, thiết kế cho điện thoại.
-Phiên bản 1.8.0 – 04/11/2026: Thẻ ATM máy thu thêm bước Chờ hủy theo lô – thẻ quá hạn chuyển thành từng lô riêng, hủy theo từng lô.
+Phiên bản 1.9.0 – 06/11/2026: thêm ứng dụng I008 Theo dõi giấy ủy quyền (AI kiểm tra PDF đã che thông tin, bảng theo dõi thời hạn, nhắc hạn hằng ngày, Đã thay ủy quyền khác).
 
 | Nhóm | Tiện ích | Mô tả |
 |---|---|---|
@@ -177,3 +177,13 @@ Thêm thuộc tính tập lệnh `ANTHROPIC_API_KEY` trong Apps Script (cùng sc
 - Trang chỉ nhớ phiên đăng nhập trong ngày và điểm giao dịch chọn gần nhất trên từng máy (bộ nhớ trình duyệt).
 - File Sheet phân quyền không chia sẻ cho ai; trang chỉ nhận về tên gọi, phòng/ban, vai trò và danh sách ứng dụng của người đang đăng nhập.
 - Không nhập thông tin khách hàng, số tài khoản, CCCD vào các mã QR.
+
+## Theo dõi giấy ủy quyền (I008) – từ v1.9.0
+
+- **Phòng áp dụng:** Phòng DVKH và 5 PGD (sheet `UQ_Phong`). Mỗi phòng chỉ thấy giấy của phòng mình.
+- **Nhập (Trưởng/Phó phòng):** tích xác nhận đã che thông tin nhạy cảm → chọn file PDF → AI (Claude) kiểm tra theo 15 tiêu chí ở `UQ_TieuChi` (BLDS 2015, Luật Doanh nghiệp 2020 sửa đổi 2025, TT 17/2024) → cán bộ sửa thông tin nếu cần → **Tiếp tục nhập** hoặc **Từ chối nhập**. Kết quả "Cần xem lại/Chưa phù hợp" phải ghi lý do vẫn nhập.
+- **Bảng theo dõi:** giấy gần hết hạn nhất ở trên; lọc Sắp hết hạn/Đã hết hạn; "Bảng đầy đủ" xem đủ cột và tải CSV; GDV được xem bảng và file PDF.
+- **Đã thay ủy quyền khác:** chỉ Trưởng/Phó phòng; giấy chuyển sang Đã thay thế, tra cứu ở tab Đã thay thế. Khi nhập giấy mới cùng doanh nghiệp, ứng dụng gợi ý chuyển giấy cũ.
+- **Email nhắc:** hằng ngày từ 10 ngày trước hạn đến 30 ngày sau hạn, gửi email Trưởng/Phó phòng ở `UQ_Phong`.
+- **Lưu trữ:** sổ ở file `KhongGianSoNoiBo_UyQuyen`, file PDF ở thư mục `KhongGianSoNoiBo_UyQuyen_File` theo phòng (không chia sẻ). Không lưu số CCCD; dãy số dài (số tài khoản…) chỉ giữ 4 số cuối.
+- **Quyền Drive:** `appsscript.json` đổi `drive.readonly` → `drive` để lưu file PDF; lần chạy đầu Google hỏi cấp lại quyền.

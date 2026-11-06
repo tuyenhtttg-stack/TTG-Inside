@@ -438,6 +438,71 @@ footer .shell{display:flex;flex-direction:column;align-items:center;gap:6px;padd
   @page{size:A4;margin:12mm}
 }
 #taPrintRoot{display:none}
+/* ===== Theo dõi giấy ủy quyền (I008) ===== */
+.uq .chip[aria-pressed="true"]{background:var(--vtb-xanh-dam);border-color:var(--vtb-xanh-dam);color:#fff}
+.uq .kpis{grid-template-columns:repeat(4,minmax(0,1fr));gap:8px}
+.uq .kpi{padding:10px 8px;cursor:pointer;text-align:left;font:inherit;color:inherit}
+.uq .kpi b{font-size:20px}
+.uq .kpi.warn b{color:#8a5300}.uq .kpi.late b{color:#9B0E35}
+@media (max-width:380px){.uq .kpis{grid-template-columns:1fr 1fr}}
+.uq-guide{background:var(--warn-bg);color:var(--warn-ink);border-radius:12px;padding:12px;font-size:13.5px;line-height:1.45}
+.uq-guide ol{margin:6px 0 0;padding-left:20px;display:flex;flex-direction:column;gap:4px}
+.uq-busy{display:flex;align-items:center;gap:10px;font-size:14px;color:var(--vtb-xanh-dam);font-weight:600;background:var(--vtb-nen-sang);border-radius:12px;padding:12px}
+.uq-spin{width:20px;height:20px;border-radius:50%;border:3px solid var(--vtb-xanh-nhat);border-top-color:var(--vtb-xanh-dam);animation:uqspin .8s linear infinite;flex:none}
+@keyframes uqspin{to{transform:rotate(360deg)}}
+@media (prefers-reduced-motion:reduce){.uq-spin{animation-duration:2.4s}}
+.uq-kl{border-radius:12px;padding:12px;display:flex;flex-direction:column;gap:4px;font-size:13.5px}
+.uq-kl b{font-size:16px}
+.uq-kl.ok{background:var(--ok-bg);color:var(--ok)}.uq-kl.xem{background:var(--warn-bg);color:var(--warn-ink)}.uq-kl.ko{background:#FDE7EC;color:#9B0E35}.uq-kl.tay{background:var(--page);color:var(--muted)}
+.uq-tc{display:flex;flex-direction:column;border:1px solid var(--line);border-radius:12px;overflow:hidden}
+.uq-tc>div{display:grid;grid-template-columns:26px 1fr;gap:8px;padding:9px 10px;border-top:1px solid var(--line);font-size:13px}
+.uq-tc>div:first-child{border-top:0}
+.uq-tc .ic{width:22px;height:22px;border-radius:50%;display:grid;place-items:center;font:700 13px var(--font);margin-top:1px}
+.uq-tc .ic.dat{background:var(--ok-bg);color:var(--ok)}.uq-tc .ic.chua_dat{background:#FDE7EC;color:#9B0E35}.uq-tc .ic.khong_xac_dinh{background:var(--warn-bg);color:var(--warn-ink)}
+.uq-tc b{color:var(--ink);font-size:13.5px}
+.uq-tc .bb{font-size:10.5px;font-weight:700;color:var(--vtb-do);border:1px solid currentColor;border-radius:6px;padding:0 4px;margin-left:4px;vertical-align:1px}
+.uq-tc p{margin:2px 0 0;color:var(--ink)}
+.uq-tc small{display:block;color:var(--muted);font-size:11.5px;margin-top:2px}
+.uq-form{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.uq-form .full{grid-column:1/-1}
+.uq-form .inp{font-size:15px;min-height:44px}
+.uq-form textarea.inp{padding:10px 12px;min-height:84px;resize:vertical;font-weight:500;line-height:1.4}
+@media (max-width:400px){.uq-form{grid-template-columns:1fr}}
+.uq-dup{border:1px solid var(--vtb-xanh-nhat);background:var(--vtb-nen-sang);border-radius:12px;padding:10px 12px;display:flex;flex-direction:column;gap:8px;font-size:13.5px}
+.uq-acts{display:flex;gap:8px;flex-wrap:wrap}
+.uq-acts .btn{flex:1 1 140px}
+.btn.danger{background:var(--surface);color:var(--vtb-do);border-color:var(--vtb-do)}
+/* Bảng dạng danh sách (điện thoại) */
+.uq-tbl{display:flex;flex-direction:column;border:1px solid var(--line);border-radius:12px;overflow:hidden}
+.uq-th,.uq-tr{display:grid;grid-template-columns:76px 1fr;gap:10px;padding:10px;align-items:start}
+.uq-th{background:var(--page);font-size:11.5px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.04em;padding:8px 10px}
+.uq-tr{border-top:1px solid var(--line);cursor:pointer;background:var(--surface);text-align:left;font:inherit;color:inherit;border-left:0;border-right:0;border-bottom:0;width:100%}
+.uq-tr:hover{background:var(--page)}
+.uq-han{display:flex;flex-direction:column;align-items:center;gap:2px;border-radius:10px;padding:6px 4px;background:var(--vtb-nen-sang);color:var(--vtb-xanh-dam);text-align:center}
+.uq-han b{font:700 18px/1 var(--font);font-variant-numeric:tabular-nums}
+.uq-han small{font-size:10.5px;font-weight:600;line-height:1.2}
+.uq-han.warn{background:var(--warn-bg);color:#8a5300}.uq-han.late{background:#FDE7EC;color:#9B0E35}.uq-han.none{background:#EEF1F4;color:#6B7A88}.uq-han.thay{background:#EEF1F4;color:#6B7A88}
+.uq-tx{display:flex;flex-direction:column;gap:3px;min-width:0}
+.uq-tx b{font-size:14.5px;color:var(--ink);overflow-wrap:anywhere}
+.uq-tx span{font-size:12.5px;color:var(--muted);overflow-wrap:anywhere}
+.uq-tx .act{margin-top:4px}
+.uq-tx .act .btn{min-height:36px;font-size:13px;padding:0 10px}
+/* Lớp phủ chi tiết / bảng đầy đủ */
+.uq-ov{position:fixed;inset:0;z-index:50;background:rgba(13,43,69,.45);display:flex;justify-content:center}
+.uq-ov[hidden]{display:none!important}
+.uq-sheet{background:var(--page);width:100%;max-width:480px;display:flex;flex-direction:column;min-height:0}
+.uq-ov.wide .uq-sheet{max-width:none}
+.uq-bar{display:flex;align-items:center;gap:8px;background:var(--surface);padding:calc(10px + env(safe-area-inset-top,0px)) 12px 10px;border-bottom:1px solid var(--line)}
+.uq-bar b{flex:1;min-width:0;font-size:15px;color:var(--vtb-xanh-dam);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.uq-body{flex:1;overflow:auto;padding:12px;-webkit-overflow-scrolling:touch;display:flex;flex-direction:column;gap:12px}
+.uq-dl{display:grid;grid-template-columns:118px 1fr;gap:6px 10px;font-size:13.5px;margin:0}
+.uq-dl dt{color:var(--muted);font-weight:600}
+.uq-dl dd{margin:0;overflow-wrap:anywhere;white-space:pre-line}
+.uq-full{border-collapse:collapse;font-size:12.5px;background:var(--surface);min-width:1100px}
+.uq-full th{position:sticky;top:0;background:#DEEAF6;color:var(--ink);text-align:left;padding:7px 6px;border:1px solid var(--line);font-size:12px}
+.uq-full td{padding:6px;border:1px solid var(--line);vertical-align:top;white-space:pre-line}
+.uq-full td.n{text-align:center;white-space:nowrap;font-weight:700}
+.uq-full tr.late td.n{color:#9B0E35}.uq-full tr.warn td.n{color:#8a5300}
 :root{padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
 </style>
 </head>
@@ -784,6 +849,54 @@ footer .shell{display:flex;flex-direction:column;align-items:center;gap:6px;padd
  </div>
 </section>
 
+<!-- ============ THEO DÕI GIẤY ỦY QUYỀN (I008) ============ -->
+<section class="view uq" id="v-uy-quyen" hidden>
+ <div class="stack">
+  <div class="card">
+    <div class="ta-top">
+      <h2>Theo dõi giấy ủy quyền</h2>
+      <button class="btn sm ghost" id="uqReload"><svg viewBox="0 0 24 24"><path d="M20 11a8 8 0 1 0-2.3 5.7M20 4v7h-7"/></svg>Làm mới</button>
+    </div>
+    <span class="scope" id="uqScope"></span>
+    <span class="upd" id="uqUpd" role="status">Đang tải…</span>
+    <div class="callout warn" id="uqErr" hidden></div>
+  </div>
+  <div class="kpis" id="uqKpis"></div>
+
+  <div class="card" id="uqEnter" hidden>
+    <h2>Nhập giấy ủy quyền</h2>
+    <div class="uq-guide">
+      <b>Trước khi tải lên: che thông tin nhạy cảm trên file PDF</b>
+      <ol>
+        <li><b>Che:</b> số CCCD/hộ chiếu, ngày cấp, nơi cấp, nơi thường trú, số điện thoại của người ủy quyền và người được ủy quyền.</li>
+        <li><b>Giữ nguyên để kiểm tra:</b> tên doanh nghiệp, mã số doanh nghiệp, họ tên, chức danh, phạm vi, thời hạn, chữ ký, con dấu.</li>
+        <li><b>Cách che:</b> dùng công cụ che/xóa vùng (redact) trên PDF hoặc dán băng che trước khi scan. Không chỉ tô màu bút dạ – máy scan vẫn đọc được.</li>
+        <li>Scan rõ, đủ các trang, một file PDF cho một văn bản (tối đa <span id="uqMaxMb">10</span> MB).</li>
+      </ol>
+    </div>
+    <label class="check"><input type="checkbox" id="uqDaChe"><span>Tôi đã che thông tin nhạy cảm trên file trước khi tải lên</span></label>
+    <button class="btn" type="button" id="uqPickBtn" disabled><svg class="i" viewBox="0 0 24 24" style="stroke:#fff"><path d="M12 16V4M7 9l5-5 5 5"/><path d="M5 16v3a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-3"/></svg>Chọn file PDF giấy ủy quyền</button>
+    <input type="file" accept="application/pdf,.pdf" id="uqFile" hidden>
+    <p class="hint" id="uqAiHint" style="margin:0"></p>
+    <div class="uq-busy" id="uqBusy" hidden><span class="uq-spin"></span><span id="uqBusyTx">Đang tải file và phân tích…</span></div>
+    <div class="stack" id="uqRes" hidden style="gap:12px"></div>
+  </div>
+
+  <div class="card" id="uqListCard">
+    <div class="ta-top"><h2 id="uqListTitle">Giấy ủy quyền đang theo dõi</h2>
+      <button class="btn sm ghost" id="uqFullBtn" title="Xem đủ các cột">Bảng đầy đủ</button></div>
+    <div class="seg" role="tablist" id="uqView">
+      <button role="tab" aria-selected="true" data-v="theodoi">Đang theo dõi</button>
+      <button role="tab" aria-selected="false" data-v="dathay">Đã thay thế</button>
+    </div>
+    <div class="chips" id="uqChips"></div>
+    <div class="ta-search"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="M20 20l-4-4"/></svg>
+      <input class="inp" id="uqQ" type="search" autocomplete="off" placeholder="Tên doanh nghiệp, MST, tên người (không cần dấu)"></div>
+    <div class="uq-tbl" id="uqTbl"></div>
+  </div>
+ </div>
+</section>
+
 <!-- ============ BẢN TIN SÁNG (I005) ============ -->
 <section class="view" id="v-bantin" hidden>
  <div class="stack">
@@ -894,7 +1007,7 @@ footer .shell{display:flex;flex-direction:column;align-items:center;gap:6px;padd
 /* =====================================================================
    CẤU HÌNH — chỉnh tại đây khi triển khai
    ===================================================================== */
-const APP_VERSION='1.8.0 · 04/11/2026';
+const APP_VERSION='1.9.0 · 06/11/2026';
 // Tên bộ công cụ (song ngữ)
 const SUITE={vi:'Không Gian Số Nội Bộ',en:'TTG Inside'};
 
@@ -913,6 +1026,7 @@ const ICONS={
   news:'<svg class="i" viewBox="0 0 24 24"><rect x="3" y="4" width="15" height="16" rx="2"/><path d="M18 8h3v10a2 2 0 0 1-2 2h-1M7 8h7M7 12h7M7 16h4"/></svg>',
   card:'<svg class="i" viewBox="0 0 24 24"><rect x="2.5" y="5" width="19" height="14" rx="2"/><path d="M2.5 9.5h19M6 15h4"/><path d="M15 15h3"/></svg>',
   cardchart:'<svg class="i" viewBox="0 0 24 24"><rect x="2.5" y="4" width="13" height="9" rx="1.5"/><path d="M2.5 7.5h13"/><path d="M8 20h13M11 20v-4M15 20v-6M19 20v-8"/></svg>',
+  doccheck:'<svg class="i" viewBox="0 0 24 24"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h5"/><path d="M14 3v5h5M14 3l5 5v4"/><path d="M8 12h6M8 16h3"/><path d="M15 18.5l2 2 4-4.5"/></svg>',
   ledger:'<svg class="i" viewBox="0 0 24 24"><rect x="4" y="3" width="16" height="18" rx="2"/><path d="M8 8h8M8 12h5M8 16h3"/><path d="M15.5 14.5l1.5 1.5 3-3"/></svg>'
 };
 const TOOLKIT=[
@@ -926,6 +1040,9 @@ const TOOLKIT=[
   ,{id:'the',vi:'Thẻ ATM',en:'ATM Cards',tools:[
     {id:'the-atm',app:'I006',title:'Quản lý thẻ ATM bị máy thu',desc:'Chụp thẻ để nhập tự động, sổ thẻ theo phòng, trả thẻ và in phiếu BM09.',icon:'card'},
     {id:'the-baocao',app:'I007',title:'Báo cáo thẻ ATM máy thu',desc:'Thẻ tồn, đã trả, quá hạn cần hủy; rà soát và hủy thẻ.',icon:'cardchart'}
+  ]}
+  ,{id:'uq',vi:'Pháp lý',en:'Legal',tools:[
+    {id:'uy-quyen',app:'I008',title:'Theo dõi giấy ủy quyền',desc:'Tải giấy ủy quyền, AI kiểm tra theo luật, theo dõi thời hạn và nhắc hạn qua email.',icon:'doccheck'}
   ]}
   ,{id:'cp',vi:'Chi phí',en:'Expenses',tools:[
     {id:'cp-nhatky',app:'I003',title:'Quản lý chi phí',desc:'Hạn mức phê duyệt còn lại theo thời gian thực, nhập và tra cứu các khoản đã duyệt.',icon:'ledger'},
@@ -978,8 +1095,8 @@ const canUse=t=>!!S&&S.apps.includes(t.app);
 const xh=()=>S?.user?.xungHo||'anh/chị';
 
 /** Gọi máy chủ Apps Script (text/plain để tránh CORS preflight) */
-async function api(action,data={},signal){
-  const ctl=new AbortController(),timer=setTimeout(()=>ctl.abort(),25000);
+async function api(action,data={},signal,ms){
+  const ctl=new AbortController(),timer=setTimeout(()=>ctl.abort(),ms||25000);
   signal?.addEventListener('abort',()=>ctl.abort());
   try{const r=await fetch(API_URL,{method:'POST',headers:{'Content-Type':'text/plain;charset=utf-8'},body:JSON.stringify({action,...data}),signal:ctl.signal});return await r.json()}
   catch(e){return{error:signal?.aborted?'cancelled':'network'}}
@@ -1757,6 +1874,273 @@ if(!IN_FRAME)uid.focus?.();
 const standalone=matchMedia('(display-mode: standalone)').matches||navigator.standalone;
 if(!IN_FRAME&&!standalone&&store.get('tipHidden')!=='1')$('#installTip').hidden=false;
 $('#tipClose').onclick=()=>{$('#installTip').hidden=true;store.set('tipHidden','1')};
+
+/* =====================================================================
+   THEO DÕI GIẤY ỦY QUYỀN (I008)
+   ===================================================================== */
+const UQ={d:null,view:'theodoi',filter:'',q:'',ai:null,busy:false};
+const UQ_TH={NGAY:'Ghi trên văn bản',LUAT:'Theo luật (01 năm)',THAY:'Đến khi có văn bản thay thế',GD:'Theo giao dịch cụ thể'};
+const uqApi=(action,data={},ms)=>DEMO?uqDemo(action,data):api(action,{token:S?.token,...data},null,ms);
+const uqDmy=s=>s&&/^\d{4}-\d{2}-\d{2}$/.test(s)?s.slice(8,10)+'/'+s.slice(5,7)+'/'+s.slice(0,4):(s||'');
+const uqMotNam=s=>{if(!s)return'';const[y,m,d]=s.split('-').map(Number),last=new Date(Date.UTC(y+1,m,0)).getUTCDate();return`${y+1}-${String(m).padStart(2,'0')}-${String(Math.min(d,last)).padStart(2,'0')}`};
+const uqKey=s=>taKhongDau(String(s||'')).toLowerCase();
+/** Ô "hạn" bên trái mỗi dòng */
+function uqHan(x){
+  if(x.tt==='Đã thay thế')return`<span class="uq-han thay"><b>✓</b><small>Đã thay</small></span>`;
+  if(x.conLai===null||x.conLai===undefined)return`<span class="uq-han none"><b>—</b><small>${x.cachTh===UQ_TH.THAY?'Đến khi thay':'Chưa có ngày'}</small></span>`;
+  const n=x.conLai,c=n<0?'late':n<=(UQ.d?.cfg.soNgayNhac||10)?'warn':'';
+  return`<span class="uq-han ${c}"><b>${n<0?-n:n===0?'0':n}</b><small>${n<0?'ngày quá hạn':n===0?'hết hạn hôm nay':'ngày còn lại'}</small></span>`;
+}
+function uqErr(r){taErrShow($('#uqErr'),r)}
+
+async function uqLoad(){
+  $('#uqErr').hidden=true;$('#uqUpd').textContent='Đang tải…';
+  const r=await uqApi('uq_load',{view:UQ.view});
+  if(!r.ok){$('#uqUpd').textContent='';uqErr(r);return}
+  UQ.d=r;uqRender();
+}
+function uqRender(){
+  const d=UQ.d,ro=d.role,c=d.cfg,dm=d.dem;
+  $('#uqScope').textContent=ro.viewAll?'Tất cả phòng áp dụng':ro.scope[0]||'';
+  $('#uqUpd').textContent='Cập nhật lúc '+new Intl.DateTimeFormat('vi-VN',{timeZone:'Asia/Ho_Chi_Minh',hour:'2-digit',minute:'2-digit',second:'2-digit'}).format(new Date())+(DEMO?' · dữ liệu xem thử':'');
+  const k=(f,l,v,cls)=>`<button class="kpi ${cls||''}" data-f="${f}"><span>${l}</span><b>${fmtN(v)}</b></button>`;
+  $('#uqKpis').innerHTML=k('','Đang theo dõi',dm.theoDoi)+k('sap','Sắp hết hạn',dm.sapHet,dm.sapHet?'warn':'')+k('het','Đã hết hạn',dm.hetHan,dm.hetHan?'late':'')+k('thay','Đã thay thế',dm.daThay);
+  $('#uqKpis').querySelectorAll('[data-f]').forEach(b=>b.onclick=()=>{const f=b.dataset.f;
+    if(f==='thay'){uqSetView('dathay')}else{UQ.filter=f;if(UQ.view!=='theodoi')uqSetView('theodoi');else uqRenderList()}
+    $('#uqListCard').scrollIntoView({behavior:'smooth',block:'start'})});
+  $('#uqEnter').hidden=!ro.canNhap;$('#uqMaxMb').textContent=c.maxMb;
+  $('#uqAiHint').textContent=c.aiOn&&!DEMO?'File được gửi tới AI (Claude) để kiểm tra theo bộ tiêu chí; kết quả chỉ để tham khảo, cán bộ quyết định nhập hay từ chối.':DEMO?'Xem thử: chọn một file PDF bất kỳ để xem kết quả kiểm tra mẫu (không gửi file đi).':'AI đang tắt: sau khi chọn file, cán bộ nhập thông tin theo văn bản.';
+  uqRenderList();
+}
+function uqSetView(v){UQ.view=v;UQ.filter='';$('#uqView').querySelectorAll('button').forEach(b=>b.setAttribute('aria-selected',b.dataset.v===v));uqLoad()}
+$('#uqView').querySelectorAll('button').forEach(b=>b.onclick=()=>uqSetView(b.dataset.v));
+$('#uqQ').addEventListener('input',e=>{UQ.q=e.target.value;uqRenderList()});
+function uqList(){
+  const d=UQ.d;if(!d)return[];const q=uqKey(UQ.q).trim(),ws=q.split(/\s+/).filter(Boolean);
+  return d.items.filter(x=>{
+    if(UQ.view==='theodoi'){if(UQ.filter==='sap'&&x.trangThai!=='Sắp hết hạn')return false;if(UQ.filter==='het'&&x.trangThai!=='Đã hết hạn')return false;if(UQ.filter==='none'&&x.trangThai!=='Không xác định ngày')return false}
+    if(!ws.length)return true;const hay=uqKey([x.tenDN,x.mst,x.nuq,x.nduq,x.soVb,x.ma,x.pb].join(' '));return ws.every(w=>hay.includes(w))});
+}
+function uqRenderList(){
+  const d=UQ.d;if(!d)return;const ro=d.role,th=UQ.view==='theodoi';
+  $('#uqListTitle').textContent=th?'Giấy ủy quyền đang theo dõi':'Giấy ủy quyền đã thay thế';
+  $('#uqChips').hidden=!th;
+  if(th)$('#uqChips').innerHTML=[['','Tất cả'],['sap','Sắp hết hạn'],['het','Đã hết hạn'],['none','Không xác định ngày']].map(([f,l])=>`<button class="chip" aria-pressed="${UQ.filter===f}" data-f="${f}">${l}</button>`).join('');
+  $('#uqChips').querySelectorAll('[data-f]').forEach(b=>b.onclick=()=>{UQ.filter=b.dataset.f;uqRenderList()});
+  const l=uqList();
+  $('#uqTbl').innerHTML=`<div class="uq-th"><span>${th?'Thời hạn':'Trạng thái'}</span><span>Doanh nghiệp · người được ủy quyền · hiệu lực</span></div>`+
+    (l.length?l.map(x=>`<div class="uq-tr" role="button" tabindex="0" data-ma="${esc(x.ma)}">${uqHan(x)}<div class="uq-tx"><b>${esc(x.tenDN)}</b>
+      <span>${x.mst?'MST '+esc(x.mst)+' · ':''}${esc(x.loai)}${x.soVb?' số '+esc(x.soVb):''}${ro.viewAll?' · '+esc(x.pb):''}</span>
+      <span>Người được ủy quyền: <b style="font-size:12.5px">${esc(x.nduq)}</b></span>
+      <span>${th?`Hiệu lực ${x.tu?esc(uqDmy(x.tu))+' – ':'đến '}${x.den?esc(uqDmy(x.den)):esc(x.cachTh)}`:`Thay ${esc(x.thayLuc.slice(0,10))} bởi ${esc(x.thayBoi)}${x.thayBang?' · bằng '+esc(x.thayBang):''}`}</span>
+      ${th&&ro.canThay&&x.pb===ro.myPb?`<span class="act"><button class="btn sm ghost" data-thay="${esc(x.ma)}">Đã thay ủy quyền khác</button></span>`:''}</div></div>`).join('')
+    :`<div class="ta-empty" style="padding:18px">${d.items.length?'Không có giấy phù hợp bộ lọc.':th?'Chưa có giấy ủy quyền nào đang theo dõi.':'Chưa có giấy đã thay thế.'}</div>`);
+  $('#uqTbl').querySelectorAll('.uq-tr').forEach(el=>{const open=()=>uqDetail(d.items.find(x=>x.ma===el.dataset.ma));
+    el.onclick=e=>{if(e.target.closest('[data-thay]'))return;open()};el.onkeydown=e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();open()}}});
+  $('#uqTbl').querySelectorAll('[data-thay]').forEach(b=>b.onclick=e=>{e.stopPropagation();uqDetail(d.items.find(x=>x.ma===b.dataset.thay),true)});
+  $('#uqFullBtn').disabled=!l.length;
+}
+
+/* ---------- Lớp phủ: chi tiết / bảng đầy đủ ---------- */
+let uqOv=null;
+function uqOverlay(title,wide){
+  if(!uqOv){uqOv=document.createElement('div');uqOv.className='uq-ov';uqOv.setAttribute('role','dialog');uqOv.setAttribute('aria-modal','true');
+    uqOv.innerHTML='<div class="uq-sheet"><div class="uq-bar"><button class="btn ghost sm" id="uqOvClose">Đóng</button><b id="uqOvTitle"></b><span id="uqOvExtra"></span></div><div class="uq-body" id="uqOvBody"></div></div>';
+    document.body.append(uqOv);$('#uqOvClose').onclick=uqClose;uqOv.addEventListener('click',e=>{if(e.target===uqOv)uqClose()});
+    addEventListener('keydown',e=>{if(e.key==='Escape'&&uqOv&&!uqOv.hidden)uqClose()})}
+  uqOv.classList.toggle('wide',!!wide);$('#uqOvTitle').textContent=title;$('#uqOvExtra').innerHTML='';uqOv.hidden=false;document.body.style.overflow='hidden';return $('#uqOvBody');
+}
+function uqClose(){if(uqOv){uqOv.hidden=true;document.body.style.overflow=''}}
+function uqDetail(x,focusThay){
+  if(!x)return;const ro=UQ.d.role,th=x.tt!=='Đã thay thế',canThay=th&&ro.canThay&&x.pb===ro.myPb;
+  const body=uqOverlay(x.tenDN||x.ma);
+  const row=(k,v)=>v?`<dt>${k}</dt><dd>${esc(v)}</dd>`:'';
+  const others=UQ.d.items.filter(z=>z.ma!==x.ma&&z.pb===x.pb&&z.tt!=='Đã thay thế').sort((a,b)=>(uqKey(b.tenDN)===uqKey(x.tenDN))-(uqKey(a.tenDN)===uqKey(x.tenDN)));
+  body.innerHTML=`<div class="card" style="gap:10px"><div style="display:flex;gap:12px;align-items:center">${uqHan(x)}<div class="uq-tx"><b>${esc(x.tenDN)}</b><span>${esc(x.trangThai||x.tt)} · mã ${esc(x.ma)}</span></div></div>
+    <dl class="uq-dl">${row('Phòng',x.pb)}${row('Loại văn bản',x.loai+(x.soVb?' số '+x.soVb:''))}${row('Ngày lập',uqDmy(x.ngayLap))}${row('Mã số DN/MST',x.mst)}
+      ${row('Người ủy quyền',x.nuq+(x.nuqCd?' – '+x.nuqCd:''))}${row('Người được ủy quyền',x.nduq+(x.nduqCd&&!/^[—;\s]+$/.test(x.nduqCd)?'\n('+x.nduqCd+')':''))}
+      ${row('Phạm vi',x.phamVi)}${row('Phương thức ký',x.ptKy)}${row('Ủy quyền lại',x.uqLai)}
+      ${row('Hiệu lực',(x.tu?uqDmy(x.tu)+' – ':'')+(x.den?uqDmy(x.den):'—'))}${row('Cách xác định',x.cachTh)}
+      ${row('Kết quả kiểm tra',x.kqAi)}${row('Điểm cần lưu ý',x.aiTomTat)}${row('Lý do vẫn nhập',x.lyDo)}${row('Ghi chú',x.ghiChu)}
+      ${row('Người nhập',x.nhapBoi+(x.nhapLuc?' · '+x.nhapLuc:''))}${!th?row('Đã thay thế',x.thayLuc+' · '+x.thayBoi+(x.thayBang?' · bằng '+x.thayBang:'')+(x.thayGhiChu?'\n'+x.thayGhiChu:'')):''}</dl>
+    ${x.coFile?'<button class="btn ghost" id="uqViewPdf">Xem file PDF</button>':''}</div>
+    ${canThay?`<div class="card" id="uqThayBox" style="gap:10px"><h2 style="font-size:16px">Đã thay ủy quyền khác</h2>
+      <p class="lead" style="margin:0">Giấy này chuyển sang trạng thái <b>Đã thay thế</b>, không còn nhắc hạn; vẫn tra cứu được ở mục Đã thay thế.</p>
+      ${others.length?`<div class="field"><label for="uqThayBang">Thay bằng giấy (nếu đã nhập)</label><select class="inp" id="uqThayBang"><option value="">— Không chọn —</option>${others.map(z=>`<option value="${esc(z.ma)}">${esc(z.ma)} · ${esc(z.tenDN.slice(0,40))}${z.den?' · đến '+uqDmy(z.den):''}</option>`).join('')}</select></div>`:''}
+      <div class="field"><label for="uqThayNote">Ghi chú</label><input class="inp" id="uqThayNote" maxlength="300" placeholder="VD: DN gửi giấy ủy quyền mới số 07/2026/GUQ"></div>
+      <span class="hint bad" id="uqThayErr" role="alert" hidden></span>
+      <button class="btn" id="uqThayBtn">Xác nhận đã thay ủy quyền khác</button></div>`:''}`;
+  if($('#uqViewPdf'))$('#uqViewPdf').onclick=()=>uqOpenPdf(x.ma);
+  if(canThay){
+    $('#uqThayBtn').onclick=async()=>{const b=$('#uqThayBtn'),e=$('#uqThayErr');e.hidden=true;
+      if(!confirm(`Chuyển giấy ủy quyền của ${x.tenDN} sang "Đã thay thế"?`))return;
+      b.disabled=true;b.textContent='Đang cập nhật…';
+      const r=await uqApi('uq_replace',{ma:x.ma,ghiChu:$('#uqThayNote').value.trim(),thayBang:$('#uqThayBang')?.value||'',view:UQ.view});
+      b.disabled=false;b.textContent='Xác nhận đã thay ủy quyền khác';
+      if(!r.ok){taErrShow(e,r);return}UQ.d=r;uqRender();uqClose();toast('Đã chuyển sang Đã thay thế: '+x.tenDN)};
+    if(focusThay)requestAnimationFrame(()=>{$('#uqThayBox').scrollIntoView({block:'start'});$('#uqThayNote').focus({preventScroll:true})});
+  }
+}
+async function uqOpenPdf(ma){
+  if(DEMO){toast('Xem thử: không có file thật.');return}
+  const w=window.open('','_blank');if(w)w.document.write('<p style="font:16px sans-serif;padding:20px">Đang mở file…</p>');
+  const r=await uqApi('uq_file',{ma},60000);
+  if(!r.ok){if(w)w.close();toast(r.message||'Không mở được file.');return}
+  const bin=atob(r.pdf),u8=new Uint8Array(bin.length);for(let i=0;i<bin.length;i++)u8[i]=bin.charCodeAt(i);
+  const url=URL.createObjectURL(new Blob([u8],{type:'application/pdf'}));
+  if(w)w.location.href=url;else{const a=document.createElement('a');a.href=url;a.download=r.name;document.body.append(a);a.click();a.remove()}
+  setTimeout(()=>URL.revokeObjectURL(url),120000);
+}
+/** Bảng đầy đủ các cột (xem trên máy tính, tải CSV) */
+$('#uqFullBtn').onclick=()=>{
+  const l=uqList(),th=UQ.view==='theodoi',ro=UQ.d.role;
+  const body=uqOverlay((th?'Giấy ủy quyền đang theo dõi':'Giấy ủy quyền đã thay thế')+` (${l.length})`,true);
+  $('#uqOvExtra').innerHTML='<button class="btn sm" id="uqCsv">Tải Excel (CSV)</button>';
+  const cols=[['STT',(x,i)=>i+1],['Thời hạn',x=>x.tt==='Đã thay thế'?'Đã thay':x.conLai==null?'—':x.conLai<0?`Quá ${-x.conLai} ngày`:`Còn ${x.conLai} ngày`],
+    ...(ro.viewAll?[['Phòng',x=>x.pb]]:[]),['Doanh nghiệp',x=>x.tenDN],['MST',x=>x.mst],['Văn bản',x=>x.loai+(x.soVb?' số '+x.soVb:'')+(x.ngayLap?' ngày '+uqDmy(x.ngayLap):'')],
+    ['Người ủy quyền',x=>x.nuq+(x.nuqCd?' – '+x.nuqCd:'')],['Người được ủy quyền',x=>x.nduq],['Phạm vi ủy quyền',x=>x.phamVi],['Hiệu lực từ',x=>uqDmy(x.tu)],['Hiệu lực đến',x=>x.den?uqDmy(x.den):x.cachTh],
+    ['Kết quả kiểm tra',x=>x.kqAi],['Người nhập',x=>x.nhapBoi],...(th?[]:[['Thay thế',x=>x.thayLuc+' · '+x.thayBoi+(x.thayBang?' · bằng '+x.thayBang:'')]]),['Mã',x=>x.ma]];
+  body.innerHTML=`<div style="overflow:auto;flex:1;min-height:0"><table class="uq-full"><thead><tr>${cols.map(c=>`<th>${c[0]}</th>`).join('')}</tr></thead><tbody>${l.map((x,i)=>`<tr class="${x.conLai!=null&&x.tt!=='Đã thay thế'?(x.conLai<0?'late':x.conLai<=UQ.d.cfg.soNgayNhac?'warn':''):''}">${cols.map((c,j)=>`<td${j===1?' class="n"':''}>${esc(c[1](x,i))}</td>`).join('')}</tr>`).join('')}</tbody></table></div>`;
+  $('#uqCsv').onclick=()=>taCsv(`GiayUyQuyen_${UQ.view}_${UQ.d.today}.csv`,cols.map(c=>c[0]),l.map((x,i)=>cols.map(c=>c[1](x,i))));
+};
+
+/* ---------- Nhập: chọn file → AI kiểm tra → tiếp tục / từ chối ---------- */
+$('#uqDaChe').onchange=e=>{$('#uqPickBtn').disabled=!e.target.checked};
+$('#uqPickBtn').onclick=()=>{if(!$('#uqDaChe').checked){toast('Xác nhận đã che thông tin nhạy cảm trước.');return}$('#uqFile').value='';$('#uqFile').click()};
+$('#uqFile').onchange=async e=>{
+  const f=e.target.files[0];if(!f)return;const mb=UQ.d?.cfg.maxMb||10;
+  if(!/pdf$/i.test(f.type)&&!/\.pdf$/i.test(f.name)){toast('Chọn file PDF.');return}
+  if(f.size>mb*1048576){toast(`File ${(f.size/1048576).toFixed(1).replace('.',',')} MB vượt quá ${mb} MB. Giảm độ phân giải scan rồi thử lại.`);return}
+  const data=await new Promise((ok,no)=>{const rd=new FileReader();rd.onload=()=>ok(String(rd.result).split(',')[1]);rd.onerror=no;rd.readAsDataURL(f)});
+  $('#uqRes').hidden=true;$('#uqBusy').hidden=false;$('#uqPickBtn').disabled=true;
+  $('#uqBusyTx').textContent=UQ.d?.cfg.aiOn?'Đang tải file và AI kiểm tra (khoảng 20–60 giây)…':'Đang tải file…';
+  const r=await uqApi('uq_ai',{pdf:data,name:f.name,daChe:true},150000);
+  $('#uqBusy').hidden=true;$('#uqPickBtn').disabled=!$('#uqDaChe').checked;
+  if(!r.ok){uqErr(r);toast(r.message||'Không tải được file.');return}
+  UQ.ai=r;uqRenderRes(r);
+};
+function uqRenderRes(r){
+  const f=r.fields||{loai:'Giấy ủy quyền',cachTh:UQ_TH.NGAY},box=$('#uqRes');box.hidden=false;
+  const kl=r.ai?r.ketLuan:'',cls={'Phù hợp':'ok','Cần xem lại':'xem','Chưa phù hợp':'ko'}[kl]||'tay';
+  const ord={chua_dat:0,khong_xac_dinh:1,dat:2},ic={dat:'✓',chua_dat:'✕',khong_xac_dinh:'?'},lb={dat:'Đạt',chua_dat:'Chưa đạt',khong_xac_dinh:'Không xác định'};
+  const tc=(r.kiemTra||[]).slice().sort((a,b)=>ord[a.ketQua]-ord[b.ketQua]||a.ma.localeCompare(b.ma));
+  const nOk=tc.filter(x=>x.ketQua==='dat').length;
+  const inp=(id,l,v,o={})=>`<div class="field${o.full?' full':''}"><label for="uqF_${id}">${l}${o.req?' <i>*</i>':''}</label>${o.area?`<textarea class="inp" id="uqF_${id}" maxlength="${o.max||300}">${esc(v||'')}</textarea>`:`<input class="inp" id="uqF_${id}" type="${o.type||'text'}" value="${esc(v||'')}" maxlength="${o.max||200}"${o.mode?` inputmode="${o.mode}"`:''}>`}</div>`;
+  const sel=(id,l,v,opts,o={})=>`<div class="field${o.full?' full':''}"><label for="uqF_${id}">${l}</label><select class="inp" id="uqF_${id}">${opts.map(x=>`<option${x===v?' selected':''}>${esc(x)}</option>`).join('')}</select></div>`;
+  box.innerHTML=`
+    ${r.nhayCam?`<div class="uq-kl ko"><b>File còn thông tin nhạy cảm chưa che</b><span>AI đọc được số CCCD/hộ chiếu hoặc số điện thoại cá nhân. Nên bấm <b>Từ chối nhập</b>, che lại rồi tải lên lại.</span></div>`:''}
+    <div class="uq-kl ${cls}"><b>${r.ai?'Kết quả kiểm tra: '+esc(kl):'Nhập thông tin theo văn bản'}</b><span>${r.ai?(esc(r.tomTat||'')||'Không có điểm cần lưu ý.')+` (${nOk}/${tc.length} tiêu chí đạt)`:esc(r.message||'AI không phân tích được file này.')}</span>
+      ${r.ai?'<span style="font-size:12px;opacity:.85">Kết quả AI chỉ để tham khảo; cán bộ đối chiếu bản chính và quy định nội bộ trước khi quyết định.</span>':''}</div>
+    ${tc.length?`<details class="ta-grp"${kl!=='Phù hợp'?' open':''}><summary>Chi tiết ${tc.length} tiêu chí kiểm tra <span class="badge">${tc.length-nOk} cần xem</span>${CHEV}</summary><div class="uq-tc" style="margin:8px">
+      ${tc.map(x=>`<div><span class="ic ${x.ketQua}" title="${lb[x.ketQua]}">${ic[x.ketQua]}</span><span><b>${esc(x.ma)} · ${esc(x.nhom)}</b>${x.batBuoc?'<span class="bb">BẮT BUỘC</span>':''}
+        <p>${lb[x.ketQua]}${x.nhanXet?': '+esc(x.nhanXet):''}</p><small>${esc(x.noiDung)} — ${esc(x.canCu)}</small></span></div>`).join('')}</div></details>`:''}
+    <h2 style="font-size:16px;margin:4px 0 0">Thông tin ghi vào sổ ${r.ai?'<span class="hint" style="font-weight:400">(AI đã điền – kiểm tra, sửa nếu sai)</span>':''}</h2>
+    <div class="uq-form">
+      ${sel('loai','Loại văn bản',f.loai,['Giấy ủy quyền','Hợp đồng ủy quyền'])}${inp('soVb','Số văn bản',f.soVb,{max:60})}
+      ${inp('tenDN','Tên doanh nghiệp',f.tenDN,{req:1,full:1})}
+      ${inp('mst','Mã số DN/MST',f.mst,{max:20,mode:'numeric'})}${inp('ngayLap','Ngày lập',f.ngayLap,{type:'date'})}
+      ${inp('nuq','Người ủy quyền',f.nuq,{req:1,max:80})}${inp('nuqCd','Chức danh',f.nuqCd,{max:80})}
+      ${inp('nduq','Người được ủy quyền',f.nduq,{req:1,max:300})}${inp('nduqCd','Chức danh',f.nduqCd,{max:200})}
+      ${inp('phamVi','Phạm vi ủy quyền',f.phamVi,{req:1,area:1,full:1,max:1500})}
+      ${inp('ptKy','Phương thức ký',f.ptKy)}${inp('uqLai','Ủy quyền lại',f.uqLai,{max:40})}
+      ${sel('cachTh','Cách xác định thời hạn',f.cachTh||UQ_TH.NGAY,Object.values(UQ_TH),{full:1})}
+      ${inp('tu','Hiệu lực từ ngày',f.tu,{type:'date'})}${inp('den','Hiệu lực đến ngày',f.den,{type:'date'})}
+      <p class="hint full" id="uqDenHint" style="margin:-4px 0 0"></p>
+      ${inp('ghiChu','Ghi chú',f.ghiChu||'',{full:1,max:300})}
+    </div>
+    ${(r.trung||[]).length?`<div class="uq-dup"><b>Phòng đang theo dõi ${r.trung.length} giấy ủy quyền của doanh nghiệp này${r.thayTheVanBan?' (văn bản ghi thay thế: '+esc(r.thayTheVanBan)+')':''}</b>
+      ${r.trung.map(x=>`<label class="check"><input type="checkbox" class="uqThay" value="${esc(x.ma)}" checked><span>${esc(x.ma)}${x.soVb?' · số '+esc(x.soVb):''} · ${esc(x.nduq)} · ${x.den?'đến '+uqDmy(x.den):esc(x.cachTh)}<br><small class="hint">Chuyển sang Đã thay thế khi nhập giấy mới</small></span></label>`).join('')}</div>`:''}
+    <div class="field"><label for="uqLyDo" id="uqLyDoL"></label><textarea class="inp" id="uqLyDo" maxlength="300" style="padding:10px 12px;min-height:64px;font-weight:500"></textarea></div>
+    <span class="hint bad" id="uqResErr" role="alert" hidden></span>
+    <div class="uq-acts"><button class="btn" id="uqAddBtn">Tiếp tục nhập</button><button class="btn danger" id="uqRejBtn">Từ chối nhập</button></div>`;
+  const needWhy=kl==='Cần xem lại'||kl==='Chưa phù hợp';
+  $('#uqLyDoL').innerHTML=needWhy?'Lý do vẫn nhập <i>*</i> <span class="hint" style="font-weight:400">(bắt buộc khi kết quả "'+esc(kl)+'"; khi từ chối ghi lý do từ chối)</span>':'Lý do từ chối <span class="hint" style="font-weight:400">(nếu từ chối nhập)</span>';
+  const denHint=()=>{const c=$('#uqF_cachTh').value,h=$('#uqDenHint');
+    if(c===UQ_TH.LUAT){const base=$('#uqF_ngayLap').value||$('#uqF_tu').value;if(base)$('#uqF_den').value=uqMotNam(base);h.textContent='Văn bản không ghi thời hạn: hiệu lực 01 năm kể từ ngày xác lập (Điều 140, 563 BLDS 2015) – kiểm tra lại ngày.'}
+    else if(c===UQ_TH.THAY)h.textContent='Không nhắc hạn theo ngày; giấy được đánh dấu "Không xác định ngày" để theo dõi riêng.';
+    else if(c===UQ_TH.GD)h.textContent='Thời hạn tính đến khi chấm dứt giao dịch (Điều 140 BLDS). Nhập ngày dự kiến nếu có.';
+    else h.textContent=''};
+  ['#uqF_cachTh','#uqF_ngayLap','#uqF_tu'].forEach(s=>$(s).addEventListener('change',denHint));denHint();
+  $('#uqAddBtn').onclick=uqAdd;$('#uqRejBtn').onclick=uqReject;
+  box.scrollIntoView({behavior:'smooth',block:'start'});
+}
+function uqFields(){const g=id=>$('#uqF_'+id).value.trim();return{loai:g('loai'),soVb:g('soVb'),ngayLap:g('ngayLap'),tenDN:g('tenDN'),mst:g('mst'),nuq:g('nuq'),nuqCd:g('nuqCd'),nduq:g('nduq'),nduqCd:g('nduqCd'),
+  phamVi:g('phamVi'),ptKy:g('ptKy'),uqLai:g('uqLai'),cachTh:g('cachTh'),tu:g('tu'),den:g('den')}}
+async function uqAdd(){
+  const r=UQ.ai,f=uqFields(),err=$('#uqResErr'),kl=r.ai?r.ketLuan:'',lyDo=$('#uqLyDo').value.trim();err.hidden=true;
+  const miss=[['tenDN','tên doanh nghiệp'],['nuq','người ủy quyền'],['nduq','người được ủy quyền'],['phamVi','phạm vi ủy quyền']].filter(([k])=>!f[k]).map(x=>x[1]);
+  if(f.cachTh===UQ_TH.NGAY&&!f.den)miss.push('ngày hết hiệu lực');
+  if(miss.length){err.textContent='Còn thiếu: '+miss.join(', ')+'.';err.hidden=false;return}
+  if(f.tu&&f.den&&f.den<f.tu){err.textContent='Ngày hết hiệu lực trước ngày bắt đầu.';err.hidden=false;return}
+  if((kl==='Cần xem lại'||kl==='Chưa phù hợp')&&lyDo.length<5){err.textContent=`Kết quả "${kl}": ghi lý do vẫn nhập.`;err.hidden=false;$('#uqLyDo').focus();return}
+  if(kl==='Chưa phù hợp'&&!confirm('AI kết luận "Chưa phù hợp". Vẫn nhập giấy ủy quyền này vào sổ?'))return;
+  const thayMa=[...document.querySelectorAll('.uqThay:checked')].map(x=>x.value);
+  const b=$('#uqAddBtn');b.disabled=true;$('#uqRejBtn').disabled=true;b.textContent='Đang lưu…';
+  const res=await uqApi('uq_add',{tmpId:r.tmpId,fields:f,ketLuan:kl,tomTat:r.tomTat||'',lyDo,ghiChu:$('#uqF_ghiChu').value.trim(),thayMa},60000);
+  b.disabled=false;$('#uqRejBtn').disabled=false;b.textContent='Tiếp tục nhập';
+  if(!res.ok){taErrShow(err,res);return}
+  uqReset();UQ.view='theodoi';UQ.filter='';$('#uqView').querySelectorAll('button').forEach(x=>x.setAttribute('aria-selected',x.dataset.v==='theodoi'));
+  UQ.d=res;uqRender();toast(`Đã nhập ${res.added}`+(thayMa.length?` và chuyển ${thayMa.length} giấy cũ sang Đã thay thế`:''));
+  const el=document.querySelector(`.uq-tr[data-ma="${res.added}"]`);if(el)el.scrollIntoView({behavior:'smooth',block:'center'});
+}
+async function uqReject(){
+  const r=UQ.ai;if(!confirm('Từ chối nhập giấy ủy quyền này? File vừa tải lên sẽ bị xóa.'))return;
+  const b=$('#uqRejBtn');b.disabled=true;b.textContent='Đang xử lý…';
+  const res=await uqApi('uq_reject',{tmpId:r.tmpId,tenDN:$('#uqF_tenDN').value.trim(),soVb:$('#uqF_soVb').value.trim(),ketLuan:r.ai?r.ketLuan:'',lyDo:$('#uqLyDo').value.trim()});
+  b.disabled=false;b.textContent='Từ chối nhập';
+  if(!res.ok){taErrShow($('#uqResErr'),res);return}
+  uqReset();toast('Đã từ chối nhập, file không được lưu.');
+}
+function uqReset(){UQ.ai=null;$('#uqRes').hidden=true;$('#uqRes').innerHTML='';$('#uqFile').value='';$('#uqDaChe').checked=false;$('#uqPickBtn').disabled=true}
+$('#uqReload').onclick=uqLoad;
+window.addEventListener('ttg:view',e=>{if(e.detail==='uy-quyen')uqLoad()});
+
+/* ---------- Xem thử (không có máy chủ) ---------- */
+let UQ_DEMO=null;
+const UQ_DEMO_TC=[['TC01','Hình thức','Lập bằng văn bản, có tên loại, số, ngày lập','Khoản 1 Điều 119, khoản 1 Điều 138 BLDS 2015',1],['TC02','Bên ủy quyền','Doanh nghiệp có tên, mã số, địa chỉ','Khoản 1 Điều 138 BLDS 2015',1],
+  ['TC03','Thẩm quyền người ký','Người ký là người đại diện theo pháp luật, chức danh phù hợp loại hình','Điều 137 BLDS; Điều 12, 54, 79, 137 LDN 2020',1],['TC04','Người được ủy quyền','Họ tên, chức danh, giấy tờ pháp lý','Khoản 3 Điều 134, khoản 3 Điều 138 BLDS',1],
+  ['TC05','Phạm vi ủy quyền','Phạm vi cụ thể, rõ ràng','Khoản 1 Điều 141 BLDS',1],['TC06','Thời hạn','Ghi ngày bắt đầu, kết thúc cụ thể','Điều 140, 563 BLDS',1],['TC07','Quyền đơn phương chấm dứt','Không ghi "không hủy ngang"','Điều 569 BLDS',0],
+  ['TC08','Ủy quyền lại','Ghi rõ được/không được ủy quyền lại','Điều 564 BLDS',0],['TC09','Chữ ký, con dấu','Chữ ký người đại diện, dấu doanh nghiệp','Điều 119, 400 BLDS; Điều 43 LDN',1],['TC10','Tín dụng, bảo đảm','Giới hạn giá trị, nghị quyết nếu Điều lệ yêu cầu','Khoản 1 Điều 141 BLDS',0],
+  ['TC11','Tự giao dịch','Không giao dịch với chính mình','Khoản 3 Điều 141 BLDS',0],['TC12','Tính rõ ràng','Không tẩy xóa, gạch bỏ phương án không chọn','Khoản 1 Điều 121 BLDS',0],['TC13','Thay thế văn bản cũ','Ghi nhận văn bản được thay thế','Điều 569 BLDS',0],
+  ['TC14','Người nước ngoài','Hộ chiếu, thẻ tạm trú','TT 17/2024/TT-NHNN',0],['TC15','Che thông tin nhạy cảm','Đã che CCCD, địa chỉ, điện thoại','Luật BVDLCN 2025',0]].map(([ma,nhom,noiDung,canCu,bb])=>({ma,nhom,noiDung,canCu,batBuoc:!!bb}));
+function uqDemoInit(){
+  const t=new Date(Date.now()+7*3600e3).toISOString().slice(0,10),add=(k)=>{const d=new Date(t+'T00:00:00Z');d.setUTCDate(d.getUTCDate()+k);return d.toISOString().slice(0,10)};
+  const mk=(i,tenDN,mst,nuq,nuqCd,nduq,phamVi,tu,den,cachTh,kq,extra={})=>Object.assign({ma:'UQ-DV-26'+String(1001+i).slice(1)+'-01',pb:'Phòng DVKH',loai:'Giấy ủy quyền',soVb:(i+3)+'/2026/GUQ',ngayLap:tu,tenDN,mst,nuq,nuqCd,nduq,nduqCd:'Kế toán trưởng',
+    phamVi,ptKy:'Ký độc lập',uqLai:'Không được',tu,den,cachTh,kqAi:kq,aiTomTat:kq==='Phù hợp'?'':'Chưa ghi giới hạn giá trị giao dịch tín dụng.',lyDo:kq==='Phù hợp'?'':'Đã đối chiếu bản chính, DN cam kết bổ sung',ghiChu:'',coFile:true,
+    nhapBoi:'Phó phòng DVKH (xem thử)',nhapLuc:uqDmy(tu)+' 09:15',tt:'Đang theo dõi',thayBoi:'',thayLuc:'',thayGhiChu:'',thayBang:''},extra);
+  UQ_DEMO={today:t,items:[
+    mk(1,'Công ty TNHH Thương mại Mẫu An Phú','1201000001','Nguyễn Văn A','Giám đốc','Trần Thị B','Ký chứng từ, thanh toán trên tài khoản ***1234\nNhận sổ phụ, chứng từ',add(-368),add(-3),UQ_TH.NGAY,'Phù hợp'),
+    mk(2,'Công ty CP Thực phẩm Mẫu Bình Minh','1201000002','Lê Văn C','Chủ tịch HĐQT','Phạm Thị D; Võ Văn E','Đăng ký, sử dụng ngân hàng điện tử\nKý chứng từ thanh toán',add(-363),add(2),UQ_TH.NGAY,'Cần xem lại'),
+    mk(3,'HTX Nông nghiệp Mẫu Tân Thạnh','1201000003','Huỳnh Văn G','Giám đốc','Đặng Thị H','Gửi, rút tiền gửi có kỳ hạn',add(-357),add(8),UQ_TH.NGAY,'Phù hợp'),
+    mk(4,'Công ty TNHH MTV Mẫu Cửu Long','1201000004','Bùi Văn K','Chủ tịch công ty','Ngô Thị L','Ký chứng từ, thanh toán\nKý xác nhận số dư',add(-320),add(45),UQ_TH.LUAT,'Phù hợp'),
+    mk(5,'Công ty CP Xây dựng Mẫu Mỹ Tho','1201000005','Đỗ Văn M','Tổng giám đốc','Lý Thị N','Đề nghị cấp tín dụng tối đa 2.000.000.000 đ/khoản\nKý hợp đồng tín dụng',add(-30),add(335),UQ_TH.NGAY,'Phù hợp'),
+    mk(6,'Doanh nghiệp tư nhân Mẫu Phú Quý','1201000006','Mai Văn P','Chủ doanh nghiệp','Mai Thị Q','Ký chứng từ, thanh toán',add(-90),'',UQ_TH.THAY,'Cần xem lại'),
+    mk(7,'Công ty TNHH Mẫu An Phú cũ','1201000007','Nguyễn Văn A','Giám đốc','Trần Văn R','Ký chứng từ',add(-700),add(-300),UQ_TH.NGAY,'Phù hợp',{tt:'Đã thay thế',thayBoi:'Phó phòng DVKH (xem thử)',thayLuc:uqDmy(add(-310))+' 10:02',thayGhiChu:'DN gửi giấy mới số 2/2025/GUQ',thayBang:''})]};
+}
+async function uqDemo(action,d){
+  await new Promise(x=>setTimeout(x,action==='uq_ai'?1600:300));if(!UQ_DEMO)uqDemoInit();const D=UQ_DEMO,me='Tuyến (xem thử)',now=D.today,cfg={soNgayNhac:10,nhacSauHan:30,maxMb:10,aiOn:true,tieuChi:UQ_DEMO_TC,phong:[{pb:'Phòng DVKH',coEmail:true}]};
+  const conLai=x=>x.den?Math.round((Date.parse(x.den)-Date.parse(now))/864e5):null;
+  const st=x=>x.tt==='Đã thay thế'?'Đã thay thế':x.conLai===null?'Không xác định ngày':x.conLai<0?'Đã hết hạn':x.conLai<=10?'Sắp hết hạn':'Còn hiệu lực';
+  const out=view=>{D.items.forEach(x=>{x.conLai=conLai(x);x.trangThai=st(x)});const dem={theoDoi:0,sapHet:0,hetHan:0,khongNgay:0,daThay:0};
+    D.items.forEach(x=>{if(x.tt==='Đã thay thế'){dem.daThay++;return}dem.theoDoi++;if(x.trangThai==='Sắp hết hạn')dem.sapHet++;else if(x.trangThai==='Đã hết hạn')dem.hetHan++;else if(x.trangThai==='Không xác định ngày')dem.khongNgay++});
+    const items=view==='dathay'?D.items.filter(x=>x.tt==='Đã thay thế'):D.items.filter(x=>x.tt!=='Đã thay thế').sort((a,b)=>(a.conLai??1e9)-(b.conLai??1e9));
+    return{ok:true,today:now,view:view||'theodoi',me,role:{canNhap:true,canThay:true,scope:['Phòng DVKH'],myPb:'Phòng DVKH',viewAll:false},cfg,dem,items:JSON.parse(JSON.stringify(items))}};
+  if(action==='uq_load')return out(d.view);
+  if(action==='uq_ai'){const kq={TC03:['chua_dat','Người ký ghi chức danh "Phó Giám đốc" – không phải người đại diện theo pháp luật, không dẫn văn bản ủy quyền gốc.'],TC07:['chua_dat','Có điều khoản "ủy quyền không hủy ngang".'],TC09:['khong_xac_dinh','Bản scan mờ, không thấy rõ dấu trên chữ ký.'],TC10:['chua_dat','Ủy quyền vay vốn nhưng không ghi giới hạn giá trị.']};
+    return{ok:true,ai:true,tmpId:'demo-'+Date.now(),tieuChi:cfg.tieuChi,ketLuan:'Chưa phù hợp',nhayCam:false,thayTheVanBan:'3/2025/GUQ ngày 05/11/2025',
+      tomTat:'Người ký không phải người đại diện theo pháp luật; có điều khoản không hủy ngang; ủy quyền vay vốn chưa ghi giới hạn giá trị.',
+      kiemTra:cfg.tieuChi.map(t=>({...t,ketQua:(kq[t.ma]||['dat'])[0],nhanXet:(kq[t.ma]||['','Đạt yêu cầu.'])[1]})),
+      fields:{loai:'Giấy ủy quyền',soVb:'12/2026/GUQ',ngayLap:now,tenDN:'Công ty CP Thực phẩm Mẫu Bình Minh',mst:'1201000002',nuq:'Lê Văn C',nuqCd:'Phó Giám đốc',nduq:'Phạm Thị D',nduqCd:'Kế toán trưởng',
+        phamVi:'Ký chứng từ, thanh toán trên tài khoản ***5678\nĐề nghị cấp tín dụng, ký hợp đồng tín dụng',ptKy:'Ký độc lập',uqLai:'Không được',tu:now,den:uqMotNam(now),cachTh:UQ_TH.NGAY},
+      trung:D.items.filter(x=>x.mst==='1201000002'&&x.tt!=='Đã thay thế').map(x=>({ma:x.ma,soVb:x.soVb,nduq:x.nduq,den:x.den,cachTh:x.cachTh}))}}
+  if(action==='uq_add'){const f=d.fields,base='UQ-DV-'+now.slice(2).replace(/-/g,'')+'-';let k=1;while(D.items.some(x=>x.ma===base+String(k).padStart(2,'0')))k++;const ma=base+String(k).padStart(2,'0');
+    D.items.push({ma,pb:'Phòng DVKH',...f,kqAi:d.ketLuan||'Nhập tay (không dùng AI)',aiTomTat:d.tomTat,lyDo:d.lyDo,ghiChu:d.ghiChu,coFile:true,nhapBoi:me,nhapLuc:uqDmy(now)+' '+new Date().toTimeString().slice(0,5),tt:'Đang theo dõi',thayBoi:'',thayLuc:'',thayGhiChu:'',thayBang:''});
+    D.items.filter(x=>d.thayMa.includes(x.ma)).forEach(x=>Object.assign(x,{tt:'Đã thay thế',thayBoi:me,thayLuc:uqDmy(now),thayGhiChu:'Thay bằng giấy mới khi nhập',thayBang:ma}));
+    return Object.assign(out('theodoi'),{added:ma})}
+  if(action==='uq_reject')return{ok:true};
+  if(action==='uq_replace'){const x=D.items.find(z=>z.ma===d.ma);Object.assign(x,{tt:'Đã thay thế',thayBoi:me,thayLuc:uqDmy(now)+' '+new Date().toTimeString().slice(0,5),thayGhiChu:d.ghiChu,thayBang:d.thayBang});return Object.assign(out(d.view),{replaced:d.ma})}
+  return{error:'invalid',message:'Xem thử: không có file thật.'};
+}
 
 /* ===== Vẽ QR & thẻ in ===== */
 function makeQR(text,levels=['Q','M','L']){
