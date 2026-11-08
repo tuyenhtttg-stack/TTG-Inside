@@ -1,7 +1,7 @@
 # Không Gian Số Nội Bộ · TTG Inside
 
 Bộ tiện ích nội bộ dành cho cán bộ **VietinBank Chi nhánh Tây Tiền Giang**, thiết kế cho điện thoại.
-Phiên bản 1.9.0 – 06/11/2026: thêm ứng dụng I008 Theo dõi giấy ủy quyền (AI kiểm tra PDF đã che thông tin, bảng theo dõi thời hạn, nhắc hạn hằng ngày, Đã thay ủy quyền khác).
+Phiên bản 1.9.1 – 07/11/2026: sửa lỗi AI không đọc được giấy ủy quyền dài (kết quả bị cắt). Bản 1.9.0: thêm ứng dụng I008 Theo dõi giấy ủy quyền (AI kiểm tra PDF đã che thông tin, bảng theo dõi thời hạn, nhắc hạn hằng ngày, Đã thay ủy quyền khác).
 
 | Nhóm | Tiện ích | Mô tả |
 |---|---|---|

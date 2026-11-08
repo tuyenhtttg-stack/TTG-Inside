@@ -1,6 +1,6 @@
 /**
  * KHÔNG GIAN SỐ NỘI BỘ (TTG Inside) – Máy chủ phân quyền
- * VietinBank Chi nhánh Tây Tiền Giang · phiên bản 1.9.0 · 06/11/2026
+ * VietinBank Chi nhánh Tây Tiền Giang · phiên bản 1.9.1 · 07/11/2026
  *
  * Script này GẮN VỚI file Google Sheet phân quyền (Tiện ích mở rộng → Apps Script), làm 2 việc:
  *   1. Menu quản trị + tự tick quyền theo vai trò ngay trong Sheet.
@@ -593,7 +593,8 @@ function aiFetch_(key, payload) {
     const code = res.getResponseCode(), body = res.getContentText();
     if (code === 200) {
       const j = JSON.parse(body);
-      return { text: (j.content || []).filter(c => c.type === 'text').map(c => c.text).join('') };
+      const tu = (j.content || []).find(c => c.type === 'tool_use');
+      return { text: (j.content || []).filter(c => c.type === 'text').map(c => c.text).join(''), tool: tu ? tu.input : null, stop: j.stop_reason || '' };
     }
     let type = '', msg = '';
     try { const j = JSON.parse(body); type = (j.error && j.error.type) || ''; msg = (j.error && j.error.message) || ''; } catch (e) { msg = body.slice(0, 200); }
@@ -2391,12 +2392,12 @@ function apiUqLoad_(b) {
 const UQ_AI_PROMPT = [
   'Bạn là chuyên viên pháp chế ngân hàng tại VietinBank, kiểm tra giấy ủy quyền/hợp đồng ủy quyền của DOANH NGHIỆP giao dịch tại ngân hàng theo pháp luật Việt Nam.',
   'Đọc file PDF (có thể là bản scan, một số thông tin cá nhân đã được che – đó là bình thường, không coi là thiếu).',
-  'Trả về DUY NHẤT một đối tượng JSON, không giải thích thêm, theo mẫu:',
-  '{"loaiVanBan":"Giấy ủy quyền|Hợp đồng ủy quyền|Khác","soVanBan":"","ngayLap":"dd/mm/yyyy","tenDoanhNghiep":"","maSoDN":"",',
+  'Ghi kết quả bằng công cụ ghi_ket_qua (các trường như mẫu dưới). Viết ngắn gọn để không vượt độ dài cho phép:',
+  '{"loaiVanBan":"Giấy ủy quyền|Hợp đồng ủy quyền|Văn bản sửa đổi, bổ sung ủy quyền|Khác","soVanBan":"","ngayLap":"dd/mm/yyyy","tenDoanhNghiep":"","maSoDN":"",',
   '"nguoiUyQuyen":{"hoTen":"","chucDanh":""},"nguoiDuocUyQuyen":[{"hoTen":"","chucDanh":""}],',
-  '"phamVi":["mỗi nội dung được ủy quyền (đã đánh dấu) một dòng ngắn"],"phuongThucKy":"","uyQuyenLai":"Không được|Được|Không ghi",',
+  '"phamVi":["mỗi nội dung được ủy quyền một dòng, tối đa 25 từ, tối đa 12 dòng"],"phuongThucKy":"","uyQuyenLai":"Không được|Được|Không ghi",',
   '"hieuLucTu":"dd/mm/yyyy","hieuLucDen":"dd/mm/yyyy","cachThoiHan":"co_ngay|khong_ghi|den_khi_thay_the|theo_giao_dich","thayTheVanBan":"số, ngày văn bản cũ được thay thế nếu có",',
-  '"conThongTinNhayCam":true/false,"kiemTra":[{"ma":"TC01","ketQua":"dat|chua_dat|khong_xac_dinh","nhanXet":"tối đa 30 từ, nêu cụ thể"}],"tomTat":"tối đa 60 từ: các điểm chưa phù hợp/cần lưu ý"}',
+  '"conThongTinNhayCam":true/false,"kiemTra":[{"ma":"TC01","ketQua":"dat|chua_dat|khong_xac_dinh","nhanXet":"tối đa 20 từ, nêu cụ thể"}],"tomTat":"tối đa 60 từ: các điểm chưa phù hợp/cần lưu ý"}',
   'Quy tắc:',
   '- Ngày theo dd/mm/yyyy; không có thì để "". Không suy đoán thông tin không có trong văn bản.',
   '- TUYỆT ĐỐI không chép số CCCD/CMND/hộ chiếu, ngày cấp, nơi cấp, địa chỉ cá nhân, số điện thoại vào bất kỳ trường nào.',
@@ -2404,9 +2405,34 @@ const UQ_AI_PROMPT = [
   '- conThongTinNhayCam = true nếu trong file còn đọc được số CCCD/hộ chiếu hoặc số điện thoại của cá nhân chưa bị che.',
   '- kiemTra: đánh giá ĐỦ và ĐÚNG THỨ TỰ các tiêu chí được cung cấp, dùng đúng mã. "khong_xac_dinh" khi văn bản không đủ thông tin để kết luận.',
   '- Tiêu chí về chữ ký/con dấu: chỉ nhận xét có hay không thấy chữ ký, dấu trên bản scan; không khẳng định thật/giả.',
+  '- Văn bản sửa đổi, bổ sung một giấy ủy quyền trước: loaiVanBan = "Văn bản sửa đổi, bổ sung ủy quyền", ghi văn bản gốc (số, ngày) vào thayTheVanBan; đánh giá theo nội dung sau sửa đổi.',
   '- Văn bản không phải ủy quyền của doanh nghiệp: loaiVanBan = "Khác" và nêu trong tomTat.'
 ].join('\n');
 
+const UQ_TOOL = { name: 'ghi_ket_qua', description: 'Ghi thông tin trích từ văn bản ủy quyền và kết quả kiểm tra theo từng tiêu chí',
+  input_schema: { type: 'object', properties: {
+    loaiVanBan: { type: 'string' }, soVanBan: { type: 'string' }, ngayLap: { type: 'string', description: 'dd/mm/yyyy' }, tenDoanhNghiep: { type: 'string' }, maSoDN: { type: 'string' },
+    nguoiUyQuyen: { type: 'object', properties: { hoTen: { type: 'string' }, chucDanh: { type: 'string' } } },
+    nguoiDuocUyQuyen: { type: 'array', items: { type: 'object', properties: { hoTen: { type: 'string' }, chucDanh: { type: 'string' } } } },
+    phamVi: { type: 'array', items: { type: 'string' } }, phuongThucKy: { type: 'string' }, uyQuyenLai: { type: 'string' },
+    hieuLucTu: { type: 'string' }, hieuLucDen: { type: 'string' }, cachThoiHan: { type: 'string', enum: ['co_ngay', 'khong_ghi', 'den_khi_thay_the', 'theo_giao_dich'] },
+    thayTheVanBan: { type: 'string' }, conThongTinNhayCam: { type: 'boolean' },
+    kiemTra: { type: 'array', items: { type: 'object', properties: { ma: { type: 'string' }, ketQua: { type: 'string', enum: ['dat', 'chua_dat', 'khong_xac_dinh'] }, nhanXet: { type: 'string' } }, required: ['ma', 'ketQua'] } },
+    tomTat: { type: 'string' } },
+    required: ['loaiVanBan', 'tenDoanhNghiep', 'nguoiUyQuyen', 'nguoiDuocUyQuyen', 'phamVi', 'kiemTra', 'tomTat'] } };
+/** Đọc JSON từ chữ AI trả về (bỏ ```json, sửa JSON bị cắt cụt ở cuối) */
+function uqParseJson_(t) {
+  t = String(t || '').replace(/```(?:json)?/gi, ''); const a = t.indexOf('{'); if (a < 0) return null; t = t.slice(a);
+  try { return JSON.parse(t.slice(0, t.lastIndexOf('}') + 1)); } catch (e) {}
+  // Cắt cụt: đóng chuỗi/ngoặc còn mở
+  let st = [], inS = false, esc = false;
+  for (let i = 0; i < t.length; i++) { const c = t[i];
+    if (inS) { if (esc) esc = false; else if (c === '\\') esc = true; else if (c === '"') inS = false; continue; }
+    if (c === '"') inS = true; else if (c === '{' || c === '[') st.push(c); else if (c === '}' || c === ']') { st.pop(); if (!st.length) break; } }
+  let s = t + (inS ? '"' : ''); s = s.replace(/,\s*$/, '').replace(/,\s*"[^"]*"\s*:?\s*$/, '').replace(/([{\[])\s*"[^"]*"\s*:\s*$/, '$1').replace(/\{\s*"[^"]*"\s*$/, '{');
+  for (let i = st.length - 1; i >= 0; i--) s += st[i] === '{' ? '}' : ']';
+  try { return JSON.parse(s); } catch (e) { return null; }
+}
 /** Bước 1: nhận PDF (đã che), lưu tạm, gửi AI phân tích theo bộ tiêu chí; trả kết quả + giấy cũ có thể bị thay thế */
 function apiUqAi_(b) {
   const g = uqGuard_(b); if (g.error) return g;
@@ -2429,12 +2455,15 @@ function apiUqAi_(b) {
   const props = PropertiesService.getScriptProperties();
   const lim = aiLimit_(props); if (lim) { out.message = lim.error === 'daily_limit' ? 'Đã hết lượt AI trong ngày – nhập tay.' : 'AI đang bận – nhập tay hoặc thử lại.'; return out; }
   const tcText = cfg.tieuChi.map(t => t.ma + ' [' + (t.batBuoc ? 'Bắt buộc' : 'Lưu ý') + '] ' + t.nhom + ': ' + t.noiDung + ' (Căn cứ: ' + t.canCu + ')').join('\n');
-  const r = aiFetch_(key, { model: cfg.model, max_tokens: 3000, temperature: 0, system: UQ_AI_PROMPT,
+  const r = aiFetch_(key, { model: cfg.model, max_tokens: 8000, temperature: 0, system: UQ_AI_PROMPT, tools: [UQ_TOOL], tool_choice: { type: 'tool', name: UQ_TOOL.name },
     messages: [{ role: 'user', content: [{ type: 'document', source: { type: 'base64', media_type: 'application/pdf', data } },
       { type: 'text', text: 'Ngày kiểm tra: ' + Utilities.formatDate(new Date(), TZ, 'dd/MM/yyyy') + '.\nCác tiêu chí cần đánh giá:\n' + tcText } ] }] });
   if (r.error) { log_(user.id, user.hoTen, 'Lỗi AI kiểm tra ủy quyền', UQ_APP, r.detail, ''); out.message = r.message + ' Có thể nhập tay.'; return out; }
-  let v = null; try { const a = r.text.indexOf('{'), z = r.text.lastIndexOf('}'); v = JSON.parse(r.text.slice(a, z + 1)); } catch (e) { v = null; }
-  if (!v) { out.message = 'AI không đọc được văn bản. Kiểm tra file hoặc nhập tay.'; return out; }
+  const v = r.tool && typeof r.tool === 'object' && Object.keys(r.tool).length ? r.tool : uqParseJson_(r.text);
+  if (!v || !(v.tenDoanhNghiep || (v.kiemTra || []).length)) {
+    const why = r.stop === 'max_tokens' ? 'kết quả AI quá dài, bị cắt' : r.stop === 'refusal' ? 'AI từ chối xử lý' : !String(r.text || '').trim() && !r.tool ? 'AI không trả nội dung' : 'kết quả AI sai định dạng';
+    log_(user.id, user.hoTen, 'Lỗi AI kiểm tra ủy quyền', UQ_APP, why + ' · stop=' + r.stop + ' · ' + String(r.text || JSON.stringify(r.tool || '')).replace(/\s+/g, ' ').slice(0, 200), '');
+    out.message = 'AI chưa đọc được văn bản (' + why + '). Bấm chọn lại file để thử lần nữa, hoặc nhập tay.'; return out; }
   const kq = uqKetQua_(v, cfg);
   Object.assign(out, { ai: true, fields: uqFieldsFromAi_(v), kiemTra: kq.list, ketLuan: kq.ketLuan, tomTat: uqSach_(v.tomTat, 400), nhayCam: v.conThongTinNhayCam === true,
     thayTheVanBan: uqSach_(v.thayTheVanBan, 120) });
@@ -2449,7 +2478,7 @@ function uqSach_(s, n) { return uqCheSo_(s).replace(/[\u0000-\u001f]/g, ' ').tri
 function uqFieldsFromAi_(v) {
   const nd = Array.isArray(v.nguoiDuocUyQuyen) ? v.nguoiDuocUyQuyen : [];
   const cach = { co_ngay: UQ_TH.NGAY, khong_ghi: UQ_TH.LUAT, den_khi_thay_the: UQ_TH.THAY, theo_giao_dich: UQ_TH.GD }[String(v.cachThoiHan || '')] || UQ_TH.NGAY;
-  const f = { loai: /h[ợo]p đ[ồo]ng/i.test(v.loaiVanBan || '') ? 'Hợp đồng ủy quyền' : /gi[ấa]y/i.test(v.loaiVanBan || '') ? 'Giấy ủy quyền' : uqSach_(v.loaiVanBan, 40) || 'Giấy ủy quyền',
+  const f = { loai: /s[ửu]a đ[ổo]i|b[ổo] sung/i.test(v.loaiVanBan || '') ? 'Văn bản sửa đổi, bổ sung ủy quyền' : /h[ợo]p đ[ồo]ng/i.test(v.loaiVanBan || '') ? 'Hợp đồng ủy quyền' : /gi[ấa]y/i.test(v.loaiVanBan || '') ? 'Giấy ủy quyền' : uqSach_(v.loaiVanBan, 40) || 'Giấy ủy quyền',
     soVb: uqSach_(v.soVanBan, 60), ngayLap: uqYmd_(v.ngayLap), tenDN: uqSach_(v.tenDoanhNghiep, 200), mst: String(v.maSoDN || '').replace(/[^\d\-]/g, '').slice(0, 20),
     nuq: uqSach_(v.nguoiUyQuyen && v.nguoiUyQuyen.hoTen, 80), nuqCd: uqSach_(v.nguoiUyQuyen && v.nguoiUyQuyen.chucDanh, 80),
     nduq: nd.map(x => uqSach_(x && x.hoTen, 80)).filter(Boolean).join('; '), nduqCd: nd.map(x => uqSach_(x && x.chucDanh, 60) || '—').join('; '),
@@ -2485,7 +2514,7 @@ function apiUqAdd_(b) {
   const { user, cfg, role } = g;
   if (!role.canNhap) return { error: 'forbidden', message: 'Vai trò của tài khoản không được nhập giấy ủy quyền.' };
   const p = cfg.phong.find(x => x.on && x.pb === role.myPb), f = b.fields || {}, s = (x, n) => uqSach_(x, n);
-  const rec = { loai: s(f.loai, 40) || 'Giấy ủy quyền', soVb: s(f.soVb, 60), ngayLap: uqYmd_(f.ngayLap), tenDN: s(f.tenDN, 200), mst: String(f.mst || '').replace(/[^\d\-]/g, '').slice(0, 20),
+  const rec = { loai: s(f.loai, 60) || 'Giấy ủy quyền', soVb: s(f.soVb, 60), ngayLap: uqYmd_(f.ngayLap), tenDN: s(f.tenDN, 200), mst: String(f.mst || '').replace(/[^\d\-]/g, '').slice(0, 20),
     nuq: s(f.nuq, 80), nuqCd: s(f.nuqCd, 80), nduq: s(f.nduq, 300), nduqCd: s(f.nduqCd, 200), phamVi: uqCheSo_(f.phamVi).slice(0, 1500),
     ptKy: s(f.ptKy, 200), uqLai: s(f.uqLai, 40), tu: uqYmd_(f.tu), den: uqYmd_(f.den), cachTh: Object.values(UQ_TH).includes(f.cachTh) ? f.cachTh : UQ_TH.NGAY, ghiChu: s(b.ghiChu, 300) };
   if (rec.cachTh === UQ_TH.LUAT && !rec.den) rec.den = uqCongMotNam_(rec.ngayLap || rec.tu);

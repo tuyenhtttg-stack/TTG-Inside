@@ -1007,7 +1007,7 @@ footer .shell{display:flex;flex-direction:column;align-items:center;gap:6px;padd
 /* =====================================================================
    CẤU HÌNH — chỉnh tại đây khi triển khai
    ===================================================================== */
-const APP_VERSION='1.9.0 · 06/11/2026';
+const APP_VERSION='1.9.1 · 07/11/2026';
 // Tên bộ công cụ (song ngữ)
 const SUITE={vi:'Không Gian Số Nội Bộ',en:'TTG Inside'};
 
@@ -2036,7 +2036,7 @@ function uqRenderRes(r){
         <p>${lb[x.ketQua]}${x.nhanXet?': '+esc(x.nhanXet):''}</p><small>${esc(x.noiDung)} — ${esc(x.canCu)}</small></span></div>`).join('')}</div></details>`:''}
     <h2 style="font-size:16px;margin:4px 0 0">Thông tin ghi vào sổ ${r.ai?'<span class="hint" style="font-weight:400">(AI đã điền – kiểm tra, sửa nếu sai)</span>':''}</h2>
     <div class="uq-form">
-      ${sel('loai','Loại văn bản',f.loai,['Giấy ủy quyền','Hợp đồng ủy quyền'])}${inp('soVb','Số văn bản',f.soVb,{max:60})}
+      ${sel('loai','Loại văn bản',f.loai,['Giấy ủy quyền','Hợp đồng ủy quyền','Văn bản sửa đổi, bổ sung ủy quyền'])}${inp('soVb','Số văn bản',f.soVb,{max:60})}
       ${inp('tenDN','Tên doanh nghiệp',f.tenDN,{req:1,full:1})}
       ${inp('mst','Mã số DN/MST',f.mst,{max:20,mode:'numeric'})}${inp('ngayLap','Ngày lập',f.ngayLap,{type:'date'})}
       ${inp('nuq','Người ủy quyền',f.nuq,{req:1,max:80})}${inp('nuqCd','Chức danh',f.nuqCd,{max:80})}
