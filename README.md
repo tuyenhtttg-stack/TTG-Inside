@@ -1,7 +1,7 @@
 # Không Gian Số Nội Bộ · TTG Inside
 
 Bộ tiện ích nội bộ dành cho cán bộ **VietinBank Chi nhánh Tây Tiền Giang**, thiết kế cho điện thoại.
-Phiên bản 1.9.1 – 07/11/2026: sửa lỗi AI không đọc được giấy ủy quyền dài (kết quả bị cắt). Bản 1.9.0: thêm ứng dụng I008 Theo dõi giấy ủy quyền (AI kiểm tra PDF đã che thông tin, bảng theo dõi thời hạn, nhắc hạn hằng ngày, Đã thay ủy quyền khác).
+Phiên bản 2.0.0 – 09/11/2026: thêm I009 Sổ công tác và I010 Quản lý sổ công tác (thay 10 Google Form sổ công tác, chấm công tác phí, xuất PDF, báo cáo ngày 1). Bản 1.9.x: Theo dõi giấy ủy quyền.
 
 | Nhóm | Tiện ích | Mô tả |
 |---|---|---|
@@ -187,3 +187,12 @@ Thêm thuộc tính tập lệnh `ANTHROPIC_API_KEY` trong Apps Script (cùng sc
 - **Email nhắc:** hằng ngày từ 10 ngày trước hạn đến 30 ngày sau hạn, gửi email Trưởng/Phó phòng ở `UQ_Phong`.
 - **Lưu trữ:** sổ ở file `KhongGianSoNoiBo_UyQuyen`, file PDF ở thư mục `KhongGianSoNoiBo_UyQuyen_File` theo phòng (không chia sẻ). Không lưu số CCCD; dãy số dài (số tài khoản…) chỉ giữ 4 số cuối.
 - **Quyền Drive:** `appsscript.json` đổi `drive.readonly` → `drive` để lưu file PDF; lần chạy đầu Google hỏi cấp lại quyền.
+
+## Sổ công tác (I009) và Quản lý sổ công tác (I010) – từ v2.0.0
+
+- **I009 – mọi cán bộ 10 phòng (trừ Ban Giám đốc):** đăng ký công tác (ngày kết thúc không chọn được ngày trước ngày bắt đầu, hỏi lại khi khác ngày; giờ/phút chọn bằng combo, bước 15 phút; nút Sáng/Chiều/Cả ngày; "Lặp lại" chuyến cũ), báo ngay cho Trưởng/Phó phòng qua email, sổ của tôi theo tháng (từ 10/2026), lịch tháng, số ngày lũy kế công tác phí.
+- **I010 – Trưởng/Phó phòng (phòng mình), PGĐ (phòng phụ trách theo `CP_PhuTrach`), Quản trị hệ thống (toàn quyền):** sổ thời gian thực (mới nhất ở trên, tự cập nhật 60 giây), **Từ chối phê duyệt** / khôi phục, lọc theo cán bộ/trạng thái, bảng chấm công tác phí, xuất 2 PDF (Báo cáo sổ công tác và chấm công tác phí; Bảng chấm công công tác phí khổ ngang).
+- **Quy tắc (như skill chấm công tác phí):** tính theo ngày bắt đầu, nhiều lượt cùng ngày tính 1; không tính: mục đích tại chi nhánh, nội dung có "chi nhánh"/"trình ký hồ sơ", xe cơ quan, lượt bị từ chối; đủ điều kiện khi **> 10 ngày** → 1.200.000 đ. Chỉ áp dụng vai trò ở `VAI_TRO_CTP` và cán bộ `PHONG_CTP`.
+- **Hạn khai báo:** đăng ký trước tối đa 7 ngày, khai bù tối đa 3 ngày; sổ tháng khóa sau hết ngày 1 tháng sau.
+- **Email:** gửi ngay; khi hạn mức email trong ngày còn ít hơn `EMAIL_DU_PHONG` (hoặc đặt `CHE_DO_EMAIL` = Theo ca) thì gom gửi 2 ca 11:30 và 17:00. Ngày 1 hằng tháng 18 giờ tự gửi 2 PDF tháng trước cho Trưởng phòng.
+- **Dữ liệu cũ:** menu "Nhập dữ liệu sổ công tác từ Google Form (từ 10/2026)" – ghép tên với CanBo, tên không ghép được hiện ở `SCT_BiDanh` để điền ID rồi chạy lại (không nhập trùng).

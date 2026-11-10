@@ -1,6 +1,6 @@
 /**
  * KHÔNG GIAN SỐ NỘI BỘ (TTG Inside) – Máy chủ phân quyền
- * VietinBank Chi nhánh Tây Tiền Giang · phiên bản 1.9.1 · 07/11/2026
+ * VietinBank Chi nhánh Tây Tiền Giang · phiên bản 2.0.0 · 09/11/2026
  *
  * Script này GẮN VỚI file Google Sheet phân quyền (Tiện ích mở rộng → Apps Script), làm 2 việc:
  *   1. Menu quản trị + tự tick quyền theo vai trò ngay trong Sheet.
@@ -21,6 +21,7 @@
  *   MODEL, DAILY_LIMIT, PER_MINUTE_LIMIT : (giai đoạn 2) như hướng dẫn cũ
  *   BT_FOLDER_ID       : (v1.5.0) ID thư mục BanTin chứa file BanTin_YYYY-MM-DD.json (tự đặt khi chạy Cài đặt Bản tin sáng)
  *   TA_SHEET_ID        : (v1.6.0) ID file cấu hình thẻ ATM KhongGianSoNoiBo_TheATM (tự tạo khi chạy Cài đặt Thẻ ATM máy thu)
+ *   SCT_SHEET_ID, SCT_TMP_ID : (v2.0.0) file sổ công tác và file tạm dựng Bảng chấm công PDF (tự tạo khi chạy Cài đặt Sổ công tác)
  *   UQ_SHEET_ID, UQ_FOLDER_ID : (v1.9.0) file cấu hình + sổ giấy ủy quyền và thư mục lưu PDF (tự tạo khi chạy Cài đặt Giấy ủy quyền)
  * Manifest appsscript.json (v1.9.0) khai báo quyền tối thiểu; Drive cần quyền ghi (drive) để lưu file PDF giấy ủy quyền vào thư mục riêng.
  */
@@ -59,6 +60,9 @@ function onOpen() {
     .addItem('Cài đặt / cập nhật Thẻ ATM máy thu (I006, I007)', 'caiDatTheATM')
     .addItem('Gửi ngay email nhắc hủy thẻ ATM', 'nhacHuyTheATM')
     .addItem('Cài đặt / cập nhật Giấy ủy quyền (I008)', 'caiDatUyQuyen')
+    .addItem('Cài đặt / cập nhật Sổ công tác (I009, I010)', 'caiDatSoCongTac')
+    .addItem('Nhập dữ liệu sổ công tác từ Google Form (từ 10/2026)', 'sctNhapForm')
+    .addItem('Gửi ngay báo cáo sổ công tác tháng trước', 'sctBaoCaoThang')
     .addItem('Gửi ngay email nhắc hạn giấy ủy quyền', 'nhacHanUyQuyen')
     .addItem('Kiểm tra kết nối AI (Claude)', 'kiemTraAI')
     .addItem('Thêm ứng dụng mới…', 'themUngDung')
@@ -338,7 +342,7 @@ function kiemTraDuLieu() {
 }
 
 function lamMoiBoNhoDem(silent) {
-  CacheService.getScriptCache().removeAll([CACHE_KEY, 'ta_cfg', 'uq_cfg']);
+  CacheService.getScriptCache().removeAll([CACHE_KEY, 'ta_cfg', 'uq_cfg', 'sct_cfg', 'cp_cfg']);
   if (silent !== true) SpreadsheetApp.getActive().toast('Ứng dụng sẽ dùng dữ liệu mới ngay lần mở kế tiếp.', 'Không Gian Số');
 }
 
@@ -378,6 +382,13 @@ function doPost(e) {
       case 'uq_reject': return json_(apiUqReject_(body));
       case 'uq_replace': return json_(apiUqReplace_(body));
       case 'uq_file':   return json_(apiUqFile_(body));
+      case 'sct_load':  return json_(apiSctLoad_(body));
+      case 'sct_add':   return json_(apiSctAdd_(body));
+      case 'sct_cancel': return json_(apiSctCancel_(body));
+      case 'sctq_load': return json_(apiSctqLoad_(body));
+      case 'sctq_reject': return json_(sctSetTt_(body, SCT_ST.TC));
+      case 'sctq_restore': return json_(sctSetTt_(body, SCT_ST.OK));
+      case 'sctq_pdf':  return json_(apiSctqPdf_(body));
       default:       return json_({ error: 'bad_request' });
     }
   } catch (err) {
@@ -428,7 +439,7 @@ function apiOpen_(b) {
 
 function session_(u) {
   return { user: { ten: firstName_(u.hoTen), xungHo: u.gt === 'Nữ' ? 'chị' : u.gt === 'Nam' ? 'anh' : 'anh/chị', phongBan: u.pb, maPhongBan: u.maPB || '', loaiPhongBan: u.loaiPB || '', vaiTro: u.vt },
-           apps: uqFilterApps_(u, taFilterApps_(u, userApps_(u))), stats: countVisit_(), ai: !!PropertiesService.getScriptProperties().getProperty('ANTHROPIC_API_KEY') && userApps_(u).includes('I002'),
+           apps: sctFilterApps_(u, uqFilterApps_(u, taFilterApps_(u, userApps_(u)))), stats: countVisit_(), ai: !!PropertiesService.getScriptProperties().getProperty('ANTHROPIC_API_KEY') && userApps_(u).includes('I002'),
            expires: endOfDayIso_() };
 }
 
@@ -584,7 +595,9 @@ function aiHeaders_(key) {
  *  Tự thử lại 1 lần khi quá tải (529/500) hoặc khi mô hình không nhận tham số temperature. */
 function aiFetch_(key, payload) {
   let p = Object.assign({}, payload), last = null;
-  for (let attempt = 0; attempt < 3; attempt++) {
+  const props = PropertiesService.getScriptProperties(), noForce = 'AI_NO_FORCE_TOOL_' + String(p.model || '').replace(/\W/g, '_');
+  if (p.tool_choice && p.tool_choice.type !== 'auto' && props.getProperty(noForce)) p.tool_choice = { type: 'auto' };   // đã biết mô hình không cho ép công cụ
+  for (let attempt = 0; attempt < 4; attempt++) {
     let res;
     try {
       res = UrlFetchApp.fetch('https://api.anthropic.com/v1/messages', { method: 'post', contentType: 'application/json', muteHttpExceptions: true,
@@ -601,6 +614,8 @@ function aiFetch_(key, payload) {
     last = { code, type, msg };
     console.error('Claude API ' + code + ' ' + type + ': ' + msg);
     if (code === 400 && /temperature/i.test(msg) && 'temperature' in p) { p = Object.assign({}, p); delete p.temperature; continue; }
+    // Mô hình không cho ép dùng công cụ (tool_choice tool/any) → để mô hình tự chọn; kết quả dạng chữ vẫn được đọc
+    if (code === 400 && /tool_choice/i.test(msg) && p.tool_choice && p.tool_choice.type !== 'auto') { p = Object.assign({}, p, { tool_choice: { type: 'auto' } }); try { props.setProperty(noForce, '1'); } catch (e) {} continue; }
     if ((code === 529 || code === 500 || code === 503) && attempt < 2) { Utilities.sleep(1500); continue; }
     break;
   }
@@ -612,6 +627,7 @@ function aiErrMsg_(e) {
   if (c === 403) return { error: 'ai_key', message: 'Khóa API không có quyền dùng dịch vụ này (403). Kiểm tra workspace/quyền của khóa trên Claude Console.' };
   if (/credit balance|billing|purchase credits/i.test(m)) return { error: 'ai_billing', message: 'Tài khoản Claude API chưa nạp tiền hoặc đã hết số dư (Billing trên Claude Console).' };
   if (/workspace/i.test(m)) return { error: 'ai_key', message: 'Khóa API chưa gắn workspace: tạo khóa gắn workspace, hoặc thêm thuộc tính ANTHROPIC_WORKSPACE_ID.' };
+  if (c === 400 && /tool|parameter|not supported|invalid_request/i.test(m) && !/model:|not_found/i.test(m)) return { error: 'ai_param', message: 'Dịch vụ AI không nhận tham số gửi kèm (' + m.slice(0, 120) + ').' };
   if (c === 404 || /model/i.test(m)) return { error: 'ai_model', message: 'Mô hình AI không dùng được (' + m.slice(0, 120) + '). Sửa tên mô hình (MODEL_DOC_THE / MODEL_BAO_CAO).' };
   if (c === 429) return { error: 'rate_limited', message: 'Đã vượt giới hạn lượt gọi của tài khoản Claude API, thử lại sau ít phút.' };
   if (c === 529 || c === 500 || c === 503) return { error: 'rate_limited', message: 'Dịch vụ AI đang quá tải, thử lại sau ít phút.' };
@@ -2457,7 +2473,7 @@ function apiUqAi_(b) {
   const tcText = cfg.tieuChi.map(t => t.ma + ' [' + (t.batBuoc ? 'Bắt buộc' : 'Lưu ý') + '] ' + t.nhom + ': ' + t.noiDung + ' (Căn cứ: ' + t.canCu + ')').join('\n');
   const r = aiFetch_(key, { model: cfg.model, max_tokens: 8000, temperature: 0, system: UQ_AI_PROMPT, tools: [UQ_TOOL], tool_choice: { type: 'tool', name: UQ_TOOL.name },
     messages: [{ role: 'user', content: [{ type: 'document', source: { type: 'base64', media_type: 'application/pdf', data } },
-      { type: 'text', text: 'Ngày kiểm tra: ' + Utilities.formatDate(new Date(), TZ, 'dd/MM/yyyy') + '.\nCác tiêu chí cần đánh giá:\n' + tcText } ] }] });
+      { type: 'text', text: 'Ngày kiểm tra: ' + Utilities.formatDate(new Date(), TZ, 'dd/MM/yyyy') + '.\nCác tiêu chí cần đánh giá:\n' + tcText + '\n\nGọi công cụ ghi_ket_qua một lần với toàn bộ kết quả. Nếu không dùng được công cụ, trả về DUY NHẤT đối tượng JSON cùng cấu trúc.' } ] }] });
   if (r.error) { log_(user.id, user.hoTen, 'Lỗi AI kiểm tra ủy quyền', UQ_APP, r.detail, ''); out.message = r.message + ' Có thể nhập tay.'; return out; }
   const v = r.tool && typeof r.tool === 'object' && Object.keys(r.tool).length ? r.tool : uqParseJson_(r.text);
   if (!v || !(v.tenDoanhNghiep || (v.kiemTra || []).length)) {
@@ -2624,4 +2640,626 @@ function nhacHanUyQuyen(e) {
     if (it.hasNext()) { const fs = it.next().getFiles(), lim = Date.now() - 864e5; while (fs.hasNext()) { const f = fs.next(); if (f.getDateCreated().getTime() < lim) f.setTrashed(true); } } } catch (err) {}
   log_('', 'Hệ thống', 'Nhắc hạn giấy ủy quyền', UQ_APP, report.join(' | ').slice(0, 450), '');
   if (manual) { try { SpreadsheetApp.getUi().alert('Nhắc hạn giấy ủy quyền', report.join('\n'), SpreadsheetApp.getUi().ButtonSet.OK); } catch (err) {} }
+}
+
+/* =====================================================================
+ * SỔ CÔNG TÁC (I009) & QUẢN LÝ SỔ CÔNG TÁC, CHẤM CÔNG TÁC PHÍ (I010) – v2.0.0
+ * File: KhongGianSoNoiBo_SoCongTac (thuộc tính SCT_SHEET_ID, tự tạo khi chạy menu cài đặt)
+ *   SCT_CauHinh : tham số (điều kiện công tác phí, hạn khai báo, khóa sổ, email, vai trò…)
+ *   SCT_Phong   : 10 phòng ghi sổ, tên trên báo cáo, mã file, email lãnh đạo nhận thông báo / báo cáo tháng
+ *   SCT_MucDich : danh sách mục đích công tác (tick "Không tính ngày" cho mục đích tại chi nhánh)
+ *   SCT_<năm>   : sổ công tác theo năm của ngày bắt đầu (mỗi dòng 1 lượt đăng ký)
+ *   SCT_NguonForm, SCT_BiDanh : nhập lại dữ liệu Google Form cũ (từ 01/10/2026) và bảng ghép tên → ID
+ * Quy tắc chấm công tác phí (giữ như skill chấm công tác phí):
+ *   - Chỉ tính theo NGÀY BẮT ĐẦU; nhiều lượt cùng ngày tính 1 ngày.
+ *   - Không tính ngày: mục đích có tick "Không tính ngày", nội dung chứa từ khóa loại trừ (chi nhánh, trình ký hồ sơ),
+ *     phương tiện "Xe cơ quan", lượt bị lãnh đạo từ chối. Các lượt này vẫn tính "số lượt khai báo"; lượt đã hủy thì bỏ hẳn.
+ *   - Đủ điều kiện khi số ngày thực tế LỚN HƠN SO_NGAY_TOI_THIEU (10 ngày là chưa đủ); mức chi MUC_CHI.
+ *   - Chỉ áp dụng cho VAI_TRO_CTP và cán bộ thuộc PHONG_CTP; cán bộ khác vẫn ghi sổ.
+ * ===================================================================== */
+const SCT_APP = 'I009', SCT_APP_QL = 'I010', SCT_FILE_NAME = 'KhongGianSoNoiBo_SoCongTac';
+const SCT_SH = { CAUHINH: 'SCT_CauHinh', PHONG: 'SCT_Phong', MUCDICH: 'SCT_MucDich', NGUON: 'SCT_NguonForm', BIDANH: 'SCT_BiDanh', HD: 'HuongDan' };
+const SCT_ST = { OK: 'Phê duyệt', TC: 'Từ chối', HUY: 'Đã hủy' };
+const SC = { MA: 0, DK_LUC: 1, ID: 2, TEN: 3, PB: 4, VT: 5, NGAY_BD: 6, GIO_BD: 7, NGAY_KT: 8, GIO_KT: 9, MUC_DICH: 10, NOI_DUNG: 11, PT: 12,
+             TT: 13, XL_BOI: 14, XL_LUC: 15, XL_LY_DO: 16, NGUON: 17, TEN_GOC: 18, CO: 19, EMAIL: 20, KHOA: 21 };
+const SCT_NCOL = 22;
+const SCT_HEAD = ['Mã', 'Thời điểm đăng ký', 'ID cán bộ', 'Họ và tên', 'Phòng', 'Vai trò', 'Ngày bắt đầu', 'Giờ bắt đầu', 'Ngày kết thúc', 'Giờ kết thúc',
+  'Mục đích', 'Nội dung công tác', 'Phương tiện', 'Trạng thái', 'Người xử lý', 'Thời gian xử lý', 'Lý do', 'Nguồn', 'Tên ghi trên Form cũ', 'Cần kiểm tra', 'Email thông báo', 'Khóa nhập (hệ thống)'];
+const SCT_PHONG_BAN_DAU = [
+  ['PGD Ấp Bắc', 'Phòng Giao dịch Ấp Bắc', 'PGD_Ap_Bac'], ['PGD An Hữu', 'Phòng Giao dịch An Hữu', 'PGD_An_Huu'], ['PGD Cái Bè', 'Phòng Giao dịch Cái Bè', 'PGD_Cai_Be'],
+  ['PGD Hưng Long', 'Phòng Giao dịch Hưng Long', 'PGD_Hung_Long'], ['PGD Long Định', 'Phòng Giao dịch Long Định', 'PGD_Long_Dinh'], ['Phòng TCTH', 'Phòng Tổ chức Tổng hợp', 'Phong_TCTH'],
+  ['Phòng DVKH', 'Phòng Dịch vụ Khách hàng', 'Phong_DVKH'], ['Phòng HTTD', 'Phòng Hỗ trợ Tín dụng', 'Phong_HTTD'], ['Phòng KHDN', 'Phòng Khách hàng Doanh nghiệp', 'Phong_KHDN'],
+  ['Phòng Bán lẻ', 'Phòng Bán lẻ', 'Phong_Ban_Le']];
+// File trả lời Google Form cũ của 10 phòng (thư mục SoCongTac) – dùng để nhập lại lịch sử từ 01/10/2026
+const SCT_NGUON_BAN_DAU = [
+  ['PGD Ấp Bắc', '1hrTb-cEMpmhnYV94PmrXEGjgjq-lwYRrA9y3aGA4GVg'], ['PGD An Hữu', '1H2xM50gekih4TqT8wcHEHFr5WTvvyIVfGMYnoYfxaEY'], ['PGD Cái Bè', '1LYiwacipWjHzYnk3XliJtIg1OYSDcjktOwN8XRlkh0g'],
+  ['PGD Hưng Long', '1RtN7GDFUu_d_B4aeSPcaCJ9wGIGxHLelYT6a-LywlKE'], ['PGD Long Định', '1O_rMRAAnaqpvEVIljRGUGGmT_HcVxyzoWzKx8AIv0qY'], ['Phòng TCTH', '1pBeU42cbN6YWPTd8RkNbR0-I1MPO3JRpyZ10yAUCAaE'],
+  ['Phòng DVKH', '15sM2W02MUUsHsI4pVdSKejaDRYP0VHaKANrkyBIMv_M'], ['Phòng HTTD', '1aoWyvSn_5H2iQPlP6Xf7bEVsuDAVP7hA9tCMGGIffP8'], ['Phòng KHDN', '1BrRRbsyJ23NR7Ak3FmxWuaoPe4ar-BaXR4r3Ofon7BE'],
+  ['Phòng Bán lẻ', '1keJ9i7QEXv_nIUnChlM9hEoYOoXRfq2bsUpFSPtFWnk']];
+const SCT_MUCDICH_BAN_DAU = [
+  ['Thẩm định khách hàng, tài sản', false], ['Xử lý nợ, thu hồi nợ', false], ['Gặp gỡ, tiếp thị khách hàng', false], ['Mở tài khoản, thẻ, ASXH', false],
+  ['Công chứng, đăng ký giao dịch bảo đảm', false], ['Tòa án, thi hành án', false], ['Làm việc với cơ quan, chính quyền', false],
+  ['Học, họp, tập huấn ngoài chi nhánh', false], ['Trình ký hồ sơ, làm việc tại chi nhánh', true], ['Khác', false]];
+const SCT_CAUHINH_BAN_DAU = [
+  ['SO_NGAY_TOI_THIEU', '10', 'Đủ điều kiện chấm công tác phí khi số ngày thực tế LỚN HƠN số này (đúng 10 ngày là chưa đủ)'],
+  ['MUC_CHI', '1200000', 'Số tiền đề nghị chi công tác phí khi đủ điều kiện (đồng)'],
+  ['VAI_TRO_CTP', 'Trưởng phòng, Phó phòng, Cán bộ QHKH, Điện toán, Quản trị hệ thống, Cán bộ HTTD', 'Vai trò thuộc diện chấm công tác phí'],
+  ['PHONG_CTP', 'Phòng TCTH', 'Toàn bộ cán bộ của các phòng này thuộc diện chấm công tác phí'],
+  ['TU_KHOA_LOAI_TRU', 'chi nhánh, trình ký hồ sơ', 'Nội dung công tác chứa các từ này thì không tính ngày (so khớp không dấu, không phân biệt hoa thường)'],
+  ['PHUONG_TIEN', 'Xe cá nhân, Xe cơ quan', 'Danh sách phương tiện cán bộ chọn'],
+  ['PHUONG_TIEN_LOAI_TRU', 'Xe cơ quan', 'Đi bằng phương tiện này thì không tính ngày'],
+  ['DANG_KY_TRUOC', '7', 'Được đăng ký trước tối đa số ngày'],
+  ['KHAI_BU', '3', 'Được khai bù lùi tối đa số ngày'],
+  ['KHOA_SO_NGAY', '1', 'Sổ tháng trước khóa sau hết ngày này của tháng sau (không đăng ký, hủy, từ chối được nữa)'],
+  ['SO_NGAY_TOI_DA_CHUYEN', '30', 'Ngày kết thúc cách ngày bắt đầu tối đa số ngày'],
+  ['KHUNG_GIO', 'Sáng 07:30-11:30; Chiều 13:30-17:30; Cả ngày 07:30-17:30', 'Nút chọn nhanh giờ trên màn hình đăng ký'],
+  ['VAI_TRO_LANH_DAO', 'Trưởng phòng, Phó phòng', 'Xem sổ thời gian thực, từ chối phê duyệt, xuất PDF – phòng mình'],
+  ['VAI_TRO_PGD', 'Phó Giám đốc', 'Xem sổ các phòng phụ trách (theo CP_PhuTrach của ứng dụng chi phí)'],
+  ['VAI_TRO_XEM_TAT_CA', 'Giám đốc, Quản trị hệ thống', 'Xem sổ tất cả các phòng'],
+  ['VAI_TRO_TOAN_QUYEN', 'Quản trị hệ thống', 'Toàn quyền mọi màn hình (từ chối, khôi phục, xuất PDF mọi phòng)'],
+  ['CHE_DO_EMAIL', 'Ngay', 'Ngay: gửi ngay mỗi lượt đăng ký (tự chuyển sang gửi theo ca khi hạn mức email trong ngày còn ít); Theo ca: gom gửi 2 ca'],
+  ['EMAIL_DU_PHONG', '30', 'Khi hạn mức gửi email trong ngày còn ít hơn số này thì chuyển sang gửi theo ca (dành cho email khác)'],
+  ['GIO_CA_SANG', '11:30', 'Giờ gửi ca sáng (gom các lượt chờ gửi)'],
+  ['GIO_CA_CHIEU', '17:00', 'Giờ gửi ca chiều'],
+  ['GIO_BAO_CAO_THANG', '18', 'Giờ (0–23) ngày 1 hằng tháng tự gửi 2 PDF tháng trước cho Trưởng phòng'],
+  ['LICH_SU_TU', '2026-10', 'Tháng sớm nhất xem lại lịch sử (yyyy-mm)'],
+  ['MIEN_EMAIL', 'vietinbank.vn', 'Chỉ gửi email tới địa chỉ thuộc tên miền này'],
+  ['TEN_CHI_NHANH', 'CHI NHÁNH TÂY TIỀN GIANG', 'Dòng thứ 2 khối đơn vị trên báo cáo']
+];
+const SCT_VT_KHONG_GHI = ['Giám đốc', 'Phó Giám đốc'];
+
+/* ---------- Cài đặt ---------- */
+function caiDatSoCongTac() {
+  const ui = SpreadsheetApp.getUi(), props = PropertiesService.getScriptProperties();
+  let f = null;
+  try { f = props.getProperty('SCT_SHEET_ID') ? SpreadsheetApp.openById(props.getProperty('SCT_SHEET_ID')) : null; } catch (e) { f = null; }
+  const isNew = !f;
+  if (isNew) { f = SpreadsheetApp.create(SCT_FILE_NAME); f.setSpreadsheetTimeZone(TZ); props.setProperty('SCT_SHEET_ID', f.getId()); taoFileSoCongTac_(f); }
+  const changes = capNhatSoCongTac_(f);
+  CacheService.getScriptCache().remove('sct_cfg');
+  const cfg = sctConfig_(true), roles = Object.keys(rolePerms_());
+  const n9 = dangKyUngDung_(SCT_APP, 'Sổ công tác', 'Đăng ký công tác, sổ của tôi, số ngày lũy kế chấm công tác phí', roles.filter(r => !SCT_VT_KHONG_GHI.includes(r)));
+  const n10 = dangKyUngDung_(SCT_APP_QL, 'Quản lý sổ công tác', 'Sổ công tác thời gian thực, từ chối phê duyệt, chấm công tác phí, xuất PDF',
+    cfg.vtLanhDao.concat(cfg.vtPgd, cfg.vtToanQuyen).filter((r, i, a) => a.indexOf(r) === i));
+  const trig = caiLichSoCongTac_(cfg);
+  lamMoiBoNhoDem(true);
+  const warn = sctKiemTra_(cfg);
+  ui.alert('Sổ công tác',
+    (isNew ? 'Đã tạo file "' + SCT_FILE_NAME + '" ở thư mục gốc Drive. Hãy kéo file vào thư mục KhongGianSoNoiBo (không chia sẻ).\n\n' : 'File sổ công tác đã có, giữ nguyên dữ liệu.\n\n') +
+    (changes.length ? 'Đã cập nhật: ' + changes.join('; ') + '.\n\n' : '') +
+    (n9 ? 'Đã đăng ký I009 – Sổ công tác (tick sẵn cho mọi vai trò trừ Ban Giám đốc).\n' : '') +
+    (n10 ? 'Đã đăng ký I010 – Quản lý sổ công tác (tick sẵn cho ' + cfg.vtLanhDao.concat(cfg.vtPgd, cfg.vtToanQuyen).join(', ') + ').\n' : '') + trig +
+    '\nLink file: ' + f.getUrl() + (warn ? '\n\n' + warn : '') +
+    '\n\nTiếp theo: điền email ở SCT_Phong; chạy menu "Nhập dữ liệu sổ công tác từ Google Form (từ 10/2026)"; Triển khai → Phiên bản mới.', ui.ButtonSet.OK);
+}
+function taoFileSoCongTac_(f) {
+  const style = (s, w) => { s.setFrozenRows(1); s.getRange(1, 1, 1, s.getLastColumn()).setFontWeight('bold').setFontColor('#FFFFFF').setBackground('#005993').setWrap(true);
+    (w || []).forEach((x, i) => s.setColumnWidth(i + 1, x)); };
+  const ch = f.getSheets()[0]; ch.setName(SCT_SH.CAUHINH);
+  ch.getRange(1, 1, 1, 3).setValues([['Tham số', 'Giá trị', 'Ý nghĩa']]);
+  ch.getRange(2, 2, SCT_CAUHINH_BAN_DAU.length, 1).setNumberFormat('@');
+  ch.getRange(2, 1, SCT_CAUHINH_BAN_DAU.length, 3).setValues(SCT_CAUHINH_BAN_DAU);
+  style(ch, [200, 420, 560]);
+  const ph = f.insertSheet(SCT_SH.PHONG);
+  ph.getRange(1, 1, 1, 8).setValues([['Phòng', 'Tên đầy đủ trên báo cáo', 'Mã file báo cáo', 'Email nhận thông báo đăng ký (Trưởng/Phó phòng)', 'Email nhận báo cáo tháng (Trưởng phòng)', 'Email CC báo cáo tháng', 'Đang dùng', 'Ghi chú']]);
+  ph.getRange(2, 1, SCT_PHONG_BAN_DAU.length, 3).setValues(SCT_PHONG_BAN_DAU);
+  ph.getRange(2, 7, 30, 1).insertCheckboxes(); ph.getRange(2, 7, SCT_PHONG_BAN_DAU.length, 1).setValue(true);
+  style(ph, [130, 230, 130, 330, 260, 220, 80, 200]);
+  const md = f.insertSheet(SCT_SH.MUCDICH);
+  md.getRange(1, 1, 1, 3).setValues([['Mục đích công tác', 'Không tính ngày công tác phí', 'Đang dùng']]);
+  md.getRange(2, 1, SCT_MUCDICH_BAN_DAU.length, 1).setValues(SCT_MUCDICH_BAN_DAU.map(r => [r[0]]));
+  md.getRange(2, 2, 40, 2).insertCheckboxes();
+  md.getRange(2, 2, SCT_MUCDICH_BAN_DAU.length, 2).setValues(SCT_MUCDICH_BAN_DAU.map(r => [r[1], true]));
+  style(md, [330, 190, 90]);
+  const ng = f.insertSheet(SCT_SH.NGUON);
+  ng.getRange(1, 1, 1, 3).setValues([['Phòng', 'ID file trả lời Google Form', 'Lần nhập gần nhất']]);
+  ng.getRange(2, 1, SCT_NGUON_BAN_DAU.length, 2).setValues(SCT_NGUON_BAN_DAU);
+  style(ng, [130, 380, 360]);
+  const bd = f.insertSheet(SCT_SH.BIDANH);
+  bd.getRange(1, 1, 1, 5).setValues([['Tên ghi trên Form', 'Phòng', 'ID cán bộ (anh điền)', 'Họ tên theo CanBo (tự điền)', 'Số lượt']]);
+  bd.getRange('C2:C').setNumberFormat('@');
+  style(bd, [220, 130, 150, 220, 80]);
+  sctYearSheet_(f, new Date().getFullYear(), true);
+  const hd = f.insertSheet(SCT_SH.HD); hd.setColumnWidth(1, 940);
+  const lines = ['HƯỚNG DẪN – SỔ CÔNG TÁC (I009) & QUẢN LÝ SỔ CÔNG TÁC (I010) – Không Gian Số Nội Bộ', '',
+    'SCT_CauHinh: điều kiện chấm công tác phí, hạn khai báo, khóa sổ, cách gửi email, vai trò. Sửa cột Giá trị, có hiệu lực sau tối đa 1 phút.',
+    'SCT_Phong: email Trưởng/Phó phòng nhận thông báo mỗi lượt đăng ký (cột D) và email Trưởng phòng nhận 2 PDF ngày 1 hằng tháng (cột E). Chỉ @vietinbank.vn.',
+    'SCT_MucDich: danh sách mục đích cán bộ chọn. Tick "Không tính ngày" cho mục đích làm việc tại chi nhánh.',
+    'SCT_<năm>: sổ công tác (ứng dụng ghi). Không sửa cột Mã, ID, Khóa nhập. Sửa Trạng thái bằng ứng dụng I010.',
+    'SCT_NguonForm + SCT_BiDanh: menu "Nhập dữ liệu sổ công tác từ Google Form" nhập lại các lượt từ 01/10/2026. Tên không ghép được với CanBo sẽ hiện ở SCT_BiDanh – điền ID cán bộ rồi chạy lại menu (không nhập trùng).',
+    'Ngày 1 hằng tháng lúc GIO_BAO_CAO_THANG giờ: tự gửi cho mỗi phòng 2 PDF tháng trước (Báo cáo sổ công tác và chấm công tác phí; Bảng chấm công công tác phí).',
+    'Đổi giờ gửi ca/giờ báo cáo: chạy lại menu Cài đặt / cập nhật Sổ công tác.'];
+  hd.getRange(1, 1, lines.length, 1).setValues(lines.map(x => [x]));
+  hd.getRange(1, 1).setFontWeight('bold').setFontSize(13).setFontColor('#005993');
+}
+function capNhatSoCongTac_(f) {
+  const out = [], ch = f.getSheetByName(SCT_SH.CAUHINH);
+  if (ch) { const keys = ch.getDataRange().getValues().map(r => String(r[0]).trim());
+    SCT_CAUHINH_BAN_DAU.forEach(r => { if (!keys.includes(r[0])) { ch.appendRow(r); out.push('thêm tham số ' + r[0]); } }); }
+  sctYearSheet_(f, new Date().getFullYear(), true);
+  return out;
+}
+/** Sheet sổ của 1 năm (tạo nếu cần) */
+function sctYearSheet_(f, y, create) {
+  const name = 'SCT_' + y; let sh = f.getSheetByName(name);
+  if (!sh && create) {
+    sh = f.insertSheet(name, 1); sh.getRange(1, 1, 1, SCT_NCOL).setValues([SCT_HEAD]);
+    sh.setFrozenRows(1); sh.getRange(1, 1, 1, SCT_NCOL).setFontWeight('bold').setFontColor('#FFFFFF').setBackground('#005993').setWrap(true);
+    sh.getRange('A2:A').setNumberFormat('@'); sh.getRange('C2:C').setNumberFormat('@'); sh.getRange('H2:H').setNumberFormat('@'); sh.getRange('J2:J').setNumberFormat('@');
+    sh.getRange('B2:B').setNumberFormat('dd/mm/yyyy hh:mm:ss'); sh.getRange('G2:G').setNumberFormat('dd/mm/yyyy'); sh.getRange('I2:I').setNumberFormat('dd/mm/yyyy'); sh.getRange('P2:P').setNumberFormat('dd/mm/yyyy hh:mm');
+    [120, 140, 70, 180, 110, 130, 95, 70, 95, 70, 200, 360, 100, 90, 160, 120, 200, 140, 150, 160, 110, 120].forEach((w, i) => sh.setColumnWidth(i + 1, w));
+  }
+  return sh;
+}
+function caiLichSoCongTac_(cfg) {
+  try {
+    ScriptApp.getProjectTriggers().filter(t => ['sctGuiTheoCa', 'sctBaoCaoThang'].includes(t.getHandlerFunction())).forEach(t => ScriptApp.deleteTrigger(t));
+    [cfg.caSang, cfg.caChieu].forEach(c => ScriptApp.newTrigger('sctGuiTheoCa').timeBased().everyDays(1).atHour(c.h).nearMinute(c.m).inTimezone(TZ).create());
+    ScriptApp.newTrigger('sctBaoCaoThang').timeBased().everyDays(1).atHour(cfg.gioBaoCao).inTimezone(TZ).create();
+    return 'Lịch: gửi email theo ca lúc ' + cfg.caSang.s + ' và ' + cfg.caChieu.s + '; ngày 1 hằng tháng khoảng ' + cfg.gioBaoCao + ' giờ gửi báo cáo tháng trước.\n';
+  } catch (e) { return 'LƯU Ý: chưa cài được lịch (' + e.message + ').\n'; }
+}
+function sctKiemTra_(cfg) {
+  const msg = [], roles = Object.keys(rolePerms_()), pbs = phongBanMap_();
+  [['VAI_TRO_CTP', cfg.vtCtp], ['VAI_TRO_LANH_DAO', cfg.vtLanhDao], ['VAI_TRO_PGD', cfg.vtPgd], ['VAI_TRO_XEM_TAT_CA', cfg.vtXemAll], ['VAI_TRO_TOAN_QUYEN', cfg.vtToanQuyen]].forEach(([k, l]) =>
+    l.filter(r => !roles.includes(r)).forEach(r => msg.push('- ' + k + ': vai trò "' + r + '" không có trong sheet VaiTro.')));
+  cfg.phong.filter(p => p.on).forEach(p => {
+    if (!pbs[p.pb]) msg.push('- SCT_Phong: "' + p.pb + '" không có trong sheet PhongBan.');
+    if (!p.emailTB.length) msg.push('- ' + p.pb + ': chưa có email nhận thông báo đăng ký.');
+    if (!p.emailBC.length) msg.push('- ' + p.pb + ': chưa có email nhận báo cáo tháng.');
+    p.emailBad.forEach(x => msg.push('- ' + p.pb + ': email "' + x + '" không thuộc @' + cfg.mien + ', bị bỏ qua.'));
+  });
+  if (!cfg.mucDich.length) msg.push('- SCT_MucDich: chưa có mục đích đang dùng.');
+  return msg.length ? 'LƯU Ý cấu hình sổ công tác:\n' + msg.join('\n') : '';
+}
+
+/* ---------- Cấu hình ---------- */
+function sctFile_() { const id = PropertiesService.getScriptProperties().getProperty('SCT_SHEET_ID'); if (!id) throw new Error('sct_not_setup'); return SpreadsheetApp.openById(id); }
+function sctConfig_(fresh) {
+  const cache = CacheService.getScriptCache();
+  if (!fresh) { const hit = cache.get('sct_cfg'); if (hit) return JSON.parse(hit); }
+  const f = sctFile_(), list = s => String(s || '').split(/[,;]/).map(x => x.trim()).filter(Boolean);
+  const rows = name => { const sh = f.getSheetByName(name); return sh && sh.getLastRow() > 1 ? sh.getDataRange().getValues().slice(1) : []; };
+  const kv = {}; rows(SCT_SH.CAUHINH).forEach(r => { if (String(r[0]).trim()) kv[String(r[0]).trim()] = String(r[1]).trim(); });
+  const num = (v, d, lo, hi) => { const x = parseInt(String(v).replace(/\D/g, ''), 10); return isNaN(x) ? d : Math.max(lo, Math.min(hi, x)); };
+  const hm = (v, d) => { const m = String(v || d).match(/(\d{1,2})[:h.](\d{2})/) || String(d).match(/(\d{1,2})[:h.](\d{2})/); const h = Math.min(23, +m[1]), mi = Math.min(59, +m[2]);
+    return { h, m: mi, s: String(h).padStart(2, '0') + ':' + String(mi).padStart(2, '0') }; };
+  const mien = (kv.MIEN_EMAIL || 'vietinbank.vn').replace(/^@/, '').toLowerCase();
+  const okMail = e => new RegExp('^[^@\\s]+@' + mien.replace(/\./g, '\\.') + '$', 'i').test(e);
+  const phong = rows(SCT_SH.PHONG).filter(r => String(r[0]).trim()).map(r => { const a = list(r[3]), b = list(r[4]), c = list(r[5]);
+    return { pb: String(r[0]).trim(), ten: String(r[1] || r[0]).trim(), ma: String(r[2] || '').trim() || taKhongDau(String(r[0])).replace(/\W+/g, '_'),
+      emailTB: a.filter(okMail), emailBC: b.filter(okMail), emailCC: c.filter(okMail), emailBad: a.concat(b, c).filter(e => !okMail(e)), on: r[6] !== false }; });
+  const mdRows = rows(SCT_SH.MUCDICH).filter(r => String(r[0]).trim() && r[2] !== false);
+  const khung = String(kv.KHUNG_GIO || 'Sáng 07:30-11:30; Chiều 13:30-17:30; Cả ngày 07:30-17:30').split(';').map(s => s.trim().match(/^(.+?)\s+(\d{1,2}:\d{2})\s*-\s*(\d{1,2}:\d{2})$/)).filter(Boolean)
+    .map(m => ({ ten: m[1], tu: m[2].padStart(5, '0'), den: m[3].padStart(5, '0') }));
+  let phuTrach = {}; try { phuTrach = cpConfig_().phuTrach || {}; } catch (e) { phuTrach = {}; }
+  const lsm = String(kv.LICH_SU_TU || '2026-10').match(/^(\d{4})-(\d{1,2})/);
+  const cfg = { soNgayToiThieu: num(kv.SO_NGAY_TOI_THIEU, 10, 0, 31), mucChi: num(kv.MUC_CHI, 1200000, 0, 1e9),
+    vtCtp: list(kv.VAI_TRO_CTP), pbCtp: list(kv.PHONG_CTP), tuKhoa: list(kv.TU_KHOA_LOAI_TRU || 'chi nhánh, trình ký hồ sơ'),
+    phuongTien: list(kv.PHUONG_TIEN || 'Xe cá nhân, Xe cơ quan'), ptLoaiTru: list(kv.PHUONG_TIEN_LOAI_TRU || 'Xe cơ quan'),
+    dkTruoc: num(kv.DANG_KY_TRUOC, 7, 0, 60), khaiBu: num(kv.KHAI_BU, 3, 0, 31), khoaSoNgay: num(kv.KHOA_SO_NGAY, 1, 1, 28), toiDaChuyen: num(kv.SO_NGAY_TOI_DA_CHUYEN, 30, 0, 90),
+    khungGio: khung, vtLanhDao: list(kv.VAI_TRO_LANH_DAO || 'Trưởng phòng, Phó phòng'), vtPgd: list(kv.VAI_TRO_PGD || 'Phó Giám đốc'),
+    vtXemAll: list(kv.VAI_TRO_XEM_TAT_CA || 'Giám đốc, Quản trị hệ thống'), vtToanQuyen: list(kv.VAI_TRO_TOAN_QUYEN || 'Quản trị hệ thống'),
+    cheDo: /ca/i.test(kv.CHE_DO_EMAIL || '') ? 'ca' : 'ngay', duPhong: num(kv.EMAIL_DU_PHONG, 30, 0, 1500),
+    caSang: hm(kv.GIO_CA_SANG, '11:30'), caChieu: hm(kv.GIO_CA_CHIEU, '17:00'), gioBaoCao: num(kv.GIO_BAO_CAO_THANG, 18, 0, 23),
+    lichSuTu: lsm ? lsm[1] + '-' + String(lsm[2]).padStart(2, '0') : '2026-10', mien, tenCN: kv.TEN_CHI_NHANH || 'CHI NHÁNH TÂY TIỀN GIANG',
+    phong, mucDich: mdRows.map(r => String(r[0]).trim()), mdLoaiTru: mdRows.filter(r => r[1] === true).map(r => String(r[0]).trim()), phuTrach };
+  try { cache.put('sct_cfg', JSON.stringify(cfg), 60); } catch (e) {}
+  return cfg;
+}
+/** Quyền: ghi sổ (cán bộ 10 phòng), diện chấm công tác phí, phạm vi quản lý, toàn quyền (QT) */
+function sctRole_(u, cfg) {
+  const on = cfg.phong.filter(p => p.on), mine = on.find(p => p.pb === u.pb), all = on.map(p => p.pb);
+  const full = cfg.vtToanQuyen.includes(u.vt);
+  const canGhi = !!mine && !SCT_VT_KHONG_GHI.includes(u.vt);
+  const ctp = canGhi && (cfg.vtCtp.includes(u.vt) || cfg.pbCtp.includes(u.pb));
+  let scope = [];
+  if (full || cfg.vtXemAll.includes(u.vt)) scope = all;
+  else if (cfg.vtPgd.includes(u.vt)) scope = all.filter(pb => cfg.phuTrach[pb] === u.id);
+  else if (mine && cfg.vtLanhDao.includes(u.vt)) scope = [u.pb];
+  const tuChoi = full ? all : (mine && cfg.vtLanhDao.includes(u.vt) ? [u.pb] : []);
+  return { canGhi, ctp, scope, tuChoi, full, myPb: mine ? u.pb : '' };
+}
+function sctFilterApps_(u, apps) {
+  if (!apps.includes(SCT_APP) && !apps.includes(SCT_APP_QL)) return apps;
+  let r; try { r = sctRole_(u, sctConfig_()); } catch (e) { return apps.filter(a => a !== SCT_APP && a !== SCT_APP_QL); }
+  return apps.filter(a => (a !== SCT_APP || r.canGhi) && (a !== SCT_APP_QL || r.scope.length));
+}
+function sctGuard_(b, app) {
+  const v = checkToken_(b.token); if (v.error) return v;
+  if (!userApps_(v.user).includes(app)) return { error: 'forbidden' };
+  let cfg; try { cfg = sctConfig_(); } catch (e) { return { error: 'not_configured', message: 'Chưa cài đặt sổ công tác.' }; }
+  const role = sctRole_(v.user, cfg);
+  if (app === SCT_APP && !role.canGhi) return { error: 'forbidden', message: 'Tài khoản không thuộc các phòng ghi sổ công tác.' };
+  if (app === SCT_APP_QL && !role.scope.length) return { error: 'forbidden', message: 'Tài khoản chưa được phân phạm vi xem sổ công tác.' };
+  return { user: v.user, cfg, role };
+}
+
+/* ---------- Ngày giờ ---------- */
+const sctToday_ = () => Utilities.formatDate(new Date(), TZ, 'yyyy-MM-dd');
+const sctAdd_ = (ymd, k) => { const [y, m, d] = ymd.split('-').map(Number), t = new Date(Date.UTC(y, m - 1, d + k)); return t.toISOString().slice(0, 10); };
+const sctDmy_ = ymd => ymd ? ymd.slice(8, 10) + '/' + ymd.slice(5, 7) + '/' + ymd.slice(0, 4) : '';
+const sctDate_ = ymd => { const [y, m, d] = ymd.split('-').map(Number); return new Date(y, m - 1, d); };
+function sctHm_(v) {
+  if (v instanceof Date && !isNaN(v)) return Utilities.formatDate(v, TZ, 'HH:mm');
+  const m = String(v || '').trim().match(/^(\d{1,2})[:h.](\d{2})/); if (!m || +m[1] > 23 || +m[2] > 59) return '';
+  return String(+m[1]).padStart(2, '0') + ':' + m[2];
+}
+/** Ngày khóa sổ của tháng chứa ymd: hết ngày KHOA_SO_NGAY của tháng sau */
+function sctLockDay_(ymd, cfg) { const [y, m] = ymd.split('-').map(Number), ny = m === 12 ? y + 1 : y, nm = m === 12 ? 1 : m + 1; return ny + '-' + String(nm).padStart(2, '0') + '-' + String(cfg.khoaSoNgay).padStart(2, '0'); }
+const sctLocked_ = (ymd, today, cfg) => today > sctLockDay_(ymd, cfg);
+/** Khoảng ngày bắt đầu được phép đăng ký */
+function sctWindow_(today, cfg) {
+  let min = sctAdd_(today, -cfg.khaiBu);
+  const firstOpen = +today.slice(8, 10) <= cfg.khoaSoNgay ? sctAdd_(today.slice(0, 8) + '01', -1).slice(0, 8) + '01' : today.slice(0, 8) + '01';
+  if (min < firstOpen) min = firstOpen;
+  return { min, max: sctAdd_(today, cfg.dkTruoc) };
+}
+const sctNorm_ = s => taKhongDau(String(s || '')).toLowerCase().replace(/\s+/g, ' ').trim();
+
+/* ---------- Đọc sổ ---------- */
+/** Đọc các lượt có ngày bắt đầu trong [from, to] (yyyy-mm-dd) */
+function sctRows_(f, from, to) {
+  const out = [], s = x => String(x == null ? '' : x).trim();
+  for (let y = +from.slice(0, 4); y <= +to.slice(0, 4); y++) {
+    const sh = sctYearSheet_(f, y, false); if (!sh || sh.getLastRow() < 2) continue;
+    const v = sh.getRange(2, 1, sh.getLastRow() - 1, SCT_NCOL).getValues();
+    v.forEach((r, i) => {
+      if (!s(r[SC.MA])) return;
+      const bd = uqYmd_(r[SC.NGAY_BD]); if (!bd || bd < from || bd > to) return;
+      out.push({ sheet: sh.getName(), row: i + 2, ma: s(r[SC.MA]), dkLuc: r[SC.DK_LUC] instanceof Date ? Utilities.formatDate(r[SC.DK_LUC], TZ, "yyyy-MM-dd'T'HH:mm:ss") : s(r[SC.DK_LUC]),
+        id: s(r[SC.ID]), ten: s(r[SC.TEN]), pb: s(r[SC.PB]), vt: s(r[SC.VT]), bd, gioBd: sctHm_(r[SC.GIO_BD]), kt: uqYmd_(r[SC.NGAY_KT]) || bd, gioKt: sctHm_(r[SC.GIO_KT]),
+        mucDich: s(r[SC.MUC_DICH]), noiDung: s(r[SC.NOI_DUNG]), pt: s(r[SC.PT]), tt: s(r[SC.TT]) || SCT_ST.OK, xlBoi: s(r[SC.XL_BOI]).replace(/\s*\(9\d{4}\)\s*$/, ''),
+        xlLuc: r[SC.XL_LUC] instanceof Date ? Utilities.formatDate(r[SC.XL_LUC], TZ, 'dd/MM/yyyy HH:mm') : s(r[SC.XL_LUC]), lyDo: s(r[SC.XL_LY_DO]),
+        nguon: s(r[SC.NGUON]), co: s(r[SC.CO]), email: s(r[SC.EMAIL]), khoa: s(r[SC.KHOA]) });
+    });
+  }
+  return out;
+}
+/** Lý do không tính ngày ('' = được tính) – thứ tự như skill: mục đích, nội dung, phương tiện; thêm: bị từ chối */
+function sctLoaiTru_(x, cfg) {
+  if (x.tt === SCT_ST.TC) return 'Lãnh đạo từ chối';
+  if (x.mucDich && cfg.mdLoaiTru.includes(x.mucDich)) return 'Tại chi nhánh';
+  const nd = sctNorm_(x.noiDung);
+  const k = cfg.tuKhoa.find(t => nd.includes(sctNorm_(t))); if (k) return /chi nhanh/.test(sctNorm_(k)) ? 'Tại chi nhánh' : /trinh ky/.test(sctNorm_(k)) ? 'Trình ký hồ sơ' : k;
+  const pt = sctNorm_(x.pt), p = cfg.ptLoaiTru.find(t => pt.includes(sctNorm_(t))); if (p) return 'Đi ' + p.toLowerCase();
+  return '';
+}
+function sctCtpOf_(x, users, cfg) {
+  const u = users[x.id]; const vt = u ? u.vt : x.vt, pb = u ? u.pb : x.pb;
+  return cfg.vtCtp.includes(vt) || cfg.pbCtp.includes(pb);
+}
+/** Tổng hợp 1 tháng theo cán bộ: lượt (không gồm đã hủy), ngày thực tế, đủ điều kiện */
+function sctTongHop_(rows, cfg, users) {
+  const m = {};
+  rows.filter(x => x.tt !== SCT_ST.HUY).forEach(x => {
+    const k = x.id || ('?' + sctNorm_(x.ten)), e = m[k] = m[k] || { id: x.id, ten: (users[x.id] && users[x.id].hoTen) || x.ten, pb: x.pb, ctp: sctCtpOf_(x, users, cfg), luot: [], ngay: {} };
+    const why = sctLoaiTru_(x, cfg); e.luot.push(Object.assign({}, x, { loaiTru: why }));
+    if (!why) e.ngay[x.bd] = 1;
+  });
+  return Object.values(m).map(e => { const ngay = Object.keys(e.ngay).sort(); e.luot.sort((a, b) => (a.bd + a.gioBd).localeCompare(b.bd + b.gioBd));
+    return Object.assign(e, { ngay, soLuot: e.luot.length, soNgay: ngay.length, du: e.ctp && ngay.length > cfg.soNgayToiThieu, tien: e.ctp && ngay.length > cfg.soNgayToiThieu ? cfg.mucChi : 0 }); })
+    .sort((a, b) => a.ten.localeCompare(b.ten, 'vi'));
+}
+function sctMonthRange_(ym) { const [y, m] = ym.split('-').map(Number), last = new Date(Date.UTC(y, m, 0)).getUTCDate(); return [ym + '-01', ym + '-' + String(last).padStart(2, '0')]; }
+function sctMonths_(cfg, today) { const out = []; let [y, m] = cfg.lichSuTu.split('-').map(Number); const [ty, tm] = today.split('-').map(Number);
+  while (y < ty || (y === ty && m <= tm)) { out.push(y + '-' + String(m).padStart(2, '0')); m++; if (m > 12) { m = 1; y++; } } return out.reverse(); }
+const sctOut_ = (x, cfg, today) => ({ ma: x.ma, dkLuc: x.dkLuc, id: x.id, ten: x.ten, pb: x.pb, bd: x.bd, gioBd: x.gioBd, kt: x.kt, gioKt: x.gioKt, mucDich: x.mucDich, noiDung: x.noiDung,
+  pt: x.pt, tt: x.tt, xlBoi: x.xlBoi, xlLuc: x.xlLuc, lyDo: x.lyDo, nguon: x.nguon, co: x.co, email: x.email, loaiTru: sctLoaiTru_(x, cfg), khoa: sctLocked_(x.bd, today, cfg) });
+function sctPublicCfg_(cfg, today) {
+  const w = sctWindow_(today, cfg);
+  return { soNgayToiThieu: cfg.soNgayToiThieu, mucChi: cfg.mucChi, mucDich: cfg.mucDich, mdLoaiTru: cfg.mdLoaiTru, phuongTien: cfg.phuongTien, ptLoaiTru: cfg.ptLoaiTru,
+    tuKhoa: cfg.tuKhoa, khungGio: cfg.khungGio, minNgay: w.min, maxNgay: w.max, toiDaChuyen: cfg.toiDaChuyen, khoaSoNgay: cfg.khoaSoNgay, months: sctMonths_(cfg, today) };
+}
+
+/* ---------- API I009: cán bộ ---------- */
+function apiSctLoad_(b) {
+  const g = sctGuard_(b, SCT_APP); if (g.error) return g;
+  const { user, cfg, role } = g, today = sctToday_(), months = sctMonths_(cfg, today);
+  const ym = months.includes(String(b.thang || '')) ? String(b.thang) : today.slice(0, 7);
+  const [from, to] = sctMonthRange_(ym);
+  let rows; try { rows = sctRows_(sctFile_(), from, to).filter(x => x.id === user.id); } catch (e) { return { error: 'not_configured', message: 'Sổ công tác chưa được cài đặt.' }; }
+  const th = sctTongHop_(rows, cfg, { [user.id]: user })[0] || { soLuot: 0, soNgay: 0, ngay: [], du: false };
+  rows.sort((a, c) => (c.bd + c.gioBd).localeCompare(a.bd + a.gioBd));
+  return { ok: true, today, thang: ym, me: { ten: user.hoTen, pb: user.pb, vt: user.vt, ctp: role.ctp }, cfg: sctPublicCfg_(cfg, today),
+    tong: { soLuot: th.soLuot, soNgay: th.soNgay, ngay: th.ngay, du: !!th.du, tien: th.tien || 0 }, items: rows.map(x => sctOut_(x, cfg, today)),
+    ganDay: sctGanDay_(user.id, today, cfg) };
+}
+/** 6 chuyến gần nhất (khác nội dung) để "Lặp lại" */
+function sctGanDay_(id, today, cfg) {
+  try { const l = sctRows_(sctFile_(), sctAdd_(today, -45), sctAdd_(today, cfg.dkTruoc)).filter(x => x.id === id && x.tt !== SCT_ST.HUY).sort((a, c) => c.dkLuc.localeCompare(a.dkLuc));
+    const seen = {}, out = []; l.forEach(x => { const k = sctNorm_(x.mucDich + '|' + x.noiDung); if (!seen[k] && out.length < 6) { seen[k] = 1; out.push({ mucDich: x.mucDich, noiDung: x.noiDung, pt: x.pt, gioBd: x.gioBd, gioKt: x.gioKt }); } });
+    return out; } catch (e) { return []; }
+}
+function apiSctAdd_(b) {
+  const g = sctGuard_(b, SCT_APP); if (g.error) return g;
+  const { user, cfg } = g, today = sctToday_(), w = sctWindow_(today, cfg);
+  const bd = uqYmd_(b.ngayBd), kt = uqYmd_(b.ngayKt) || bd, gioBd = sctHm_(b.gioBd), gioKt = sctHm_(b.gioKt);
+  const mucDich = String(b.mucDich || '').trim(), noiDung = String(b.noiDung || '').replace(/\s+/g, ' ').trim().slice(0, 500), pt = String(b.pt || '').trim();
+  if (!bd) return { error: 'invalid', message: 'Chọn ngày bắt đầu.' };
+  if (bd < w.min || bd > w.max) return { error: 'invalid', message: 'Ngày bắt đầu phải từ ' + sctDmy_(w.min) + ' đến ' + sctDmy_(w.max) + ' (khai bù tối đa ' + cfg.khaiBu + ' ngày, đăng ký trước tối đa ' + cfg.dkTruoc + ' ngày; sổ tháng trước khóa sau ngày ' + cfg.khoaSoNgay + ').' };
+  if (kt < bd) return { error: 'invalid', message: 'Ngày kết thúc không được trước ngày bắt đầu.' };
+  if (taDays(bd, kt) > cfg.toiDaChuyen) return { error: 'invalid', message: 'Ngày kết thúc cách ngày bắt đầu quá ' + cfg.toiDaChuyen + ' ngày.' };
+  if (!gioBd || !gioKt) return { error: 'invalid', message: 'Chọn giờ bắt đầu và giờ kết thúc.' };
+  if (kt === bd && gioKt <= gioBd) return { error: 'invalid', message: 'Giờ kết thúc phải sau giờ bắt đầu.' };
+  if (!cfg.mucDich.includes(mucDich)) return { error: 'invalid', message: 'Chọn mục đích công tác.' };
+  if (noiDung.length < 5) return { error: 'invalid', message: 'Ghi nội dung công tác (địa điểm, khách hàng/công việc).' };
+  if (!cfg.phuongTien.includes(pt)) return { error: 'invalid', message: 'Chọn phương tiện.' };
+  const f = sctFile_(), lock = LockService.getScriptLock();
+  try { lock.waitLock(15000); } catch (e) { return { error: 'busy', message: 'Hệ thống đang bận, thử lại sau vài giây.' }; }
+  let rec;
+  try {
+    const mine = sctRows_(f, bd, bd).filter(x => x.id === user.id && x.tt !== SCT_ST.HUY);
+    if (mine.some(x => x.gioBd === gioBd && x.gioKt === gioKt && sctNorm_(x.noiDung) === sctNorm_(noiDung))) return { error: 'invalid', message: 'Lượt này đã đăng ký rồi (trùng ngày, giờ và nội dung).' };
+    const trung = mine.filter(x => x.kt === bd && kt === bd ? (gioBd < x.gioKt && x.gioBd < gioKt) : false);
+    if (trung.length && b.xacNhanTrung !== true) return { error: 'trung', message: 'Trùng giờ với ' + trung.map(x => x.gioBd + '–' + x.gioKt + ' ' + x.noiDung.slice(0, 40)).join('; ') + '. Vẫn đăng ký?' };
+    const sh = sctYearSheet_(f, +bd.slice(0, 4), true), now = new Date();
+    rec = { ma: 'CT' + Utilities.formatDate(now, TZ, 'yyMMddHHmmss') + String(Math.floor(Math.random() * 90 + 10)), id: user.id, ten: user.hoTen, pb: user.pb, vt: user.vt, bd, gioBd, kt, gioKt, mucDich, noiDung, pt, tt: SCT_ST.OK };
+    const row = new Array(SCT_NCOL).fill('');
+    Object.assign(row, { [SC.MA]: rec.ma, [SC.DK_LUC]: now, [SC.ID]: user.id, [SC.TEN]: user.hoTen, [SC.PB]: user.pb, [SC.VT]: user.vt, [SC.NGAY_BD]: sctDate_(bd), [SC.GIO_BD]: gioBd,
+      [SC.NGAY_KT]: sctDate_(kt), [SC.GIO_KT]: gioKt, [SC.MUC_DICH]: mucDich, [SC.NOI_DUNG]: noiDung, [SC.PT]: pt, [SC.TT]: SCT_ST.OK, [SC.NGUON]: 'Ứng dụng', [SC.EMAIL]: 'Đang gửi' });
+    rec.row = sh.getLastRow() + 1; rec.sheet = sh.getName();
+    sh.getRange(rec.row, 1, 1, SCT_NCOL).setValues([row]);
+  } finally { lock.releaseLock(); }
+  const mail = sctNotify_(rec, cfg);
+  try { f.getSheetByName(rec.sheet).getRange(rec.row, SC.EMAIL + 1).setValue(mail.status); } catch (e) {}
+  log_(user.id, user.hoTen, 'Đăng ký công tác', SCT_APP, rec.ma + ' · ' + sctDmy_(bd) + ' ' + gioBd + ' · ' + mucDich, '');
+  return Object.assign(apiSctLoad_({ token: b.token, thang: bd.slice(0, 7) }), { added: rec.ma, mail: mail.text, loaiTru: sctLoaiTru_(rec, cfg) });
+}
+function apiSctCancel_(b) {
+  const g = sctGuard_(b, SCT_APP); if (g.error) return g;
+  const { user, cfg } = g, today = sctToday_();
+  const lock = LockService.getScriptLock();
+  try { lock.waitLock(10000); } catch (e) { return { error: 'busy', message: 'Hệ thống đang bận, thử lại sau vài giây.' }; }
+  let x;
+  try {
+    const f = sctFile_(), ma = String(b.ma || '');
+    x = sctRows_(f, sctAdd_(today, -62), sctAdd_(today, cfg.dkTruoc + 31)).find(r => r.ma === ma && r.id === user.id);
+    if (!x) return { error: 'invalid', message: 'Không tìm thấy lượt đăng ký của anh/chị.' };
+    if (x.tt !== SCT_ST.OK) return { error: 'invalid', message: 'Lượt này đang ở trạng thái "' + x.tt + '".' };
+    if (sctLocked_(x.bd, today, cfg)) return { error: 'invalid', message: 'Sổ tháng ' + x.bd.slice(5, 7) + '/' + x.bd.slice(0, 4) + ' đã khóa.' };
+    f.getSheetByName(x.sheet).getRange(x.row, SC.TT + 1, 1, 4).setValues([[SCT_ST.HUY, user.hoTen + ' (' + user.id + ')', new Date(), 'Cán bộ tự hủy']]);
+  } finally { lock.releaseLock(); }
+  log_(user.id, user.hoTen, 'Hủy lượt công tác', SCT_APP, x.ma + ' · ' + sctDmy_(x.bd), '');
+  return Object.assign(apiSctLoad_({ token: b.token, thang: x.bd.slice(0, 7) }), { cancelled: x.ma });
+}
+
+/* ---------- Email thông báo ---------- */
+function sctMailHtml_(list, p, cfg, title) {
+  const td = 'border:1px solid #c9d6e2;padding:6px;vertical-align:top';
+  return '<p>Kính gửi Lãnh đạo ' + taEsc(p.pb) + ',</p><p>' + title + '</p><table style="border-collapse:collapse;font-size:13px;font-family:Arial,sans-serif">' +
+    '<tr style="background:#DEEAF6"><th style="' + td + '">Cán bộ</th><th style="' + td + '">Thời gian</th><th style="' + td + '">Mục đích / nội dung</th><th style="' + td + '">Phương tiện</th></tr>' +
+    list.map(x => { const why = sctLoaiTru_(x, cfg);
+      return '<tr><td style="' + td + '"><b>' + taEsc(x.ten) + '</b></td><td style="' + td + ';white-space:nowrap">' + sctDmy_(x.bd) + '<br>' + x.gioBd + ' – ' + (x.kt !== x.bd ? sctDmy_(x.kt) + ' ' : '') + x.gioKt + '</td>' +
+        '<td style="' + td + '">' + taEsc(x.mucDich) + '<br>' + taEsc(x.noiDung) + (why ? '<br><i style="color:#8a5300">(Không tính ngày công tác phí: ' + taEsc(why) + ')</i>' : '') + '</td><td style="' + td + '">' + taEsc(x.pt) + '</td></tr>'; }).join('') +
+    '</table><p style="color:#555;font-size:12.5px">Mặc định các lượt đăng ký ở trạng thái Phê duyệt. Nếu không đồng ý, vào Không Gian Số Nội Bộ → Quản lý sổ công tác → bấm <b>Từ chối phê duyệt</b>.</p>' +
+    '<p style="color:#888;font-size:12px">Email tự động – Sổ công tác, Không Gian Số Nội Bộ.</p>';
+}
+/** Gửi ngay; khi chế độ "Theo ca" hoặc hạn mức email còn ít → chờ gửi ca */
+function sctNotify_(x, cfg) {
+  const p = cfg.phong.find(q => q.pb === x.pb);
+  if (!p || !p.emailTB.length) return { status: 'Không gửi (chưa có email)', text: '' };
+  let quota = 100; try { quota = MailApp.getRemainingDailyQuota(); } catch (e) {}
+  if (cfg.cheDo === 'ca' || quota - p.emailTB.length < cfg.duPhong) return { status: 'Chờ gửi ca', text: 'Lãnh đạo phòng sẽ nhận thông báo ở ca gửi ' + (sctHm_(new Date()) < cfg.caSang.s ? cfg.caSang.s : sctHm_(new Date()) < cfg.caChieu.s ? cfg.caChieu.s : cfg.caSang.s + ' ngày mai') + '.' };
+  try {
+    MailApp.sendEmail({ to: p.emailTB.join(','), name: 'Sổ công tác – ' + x.ten,
+      subject: '[Sổ công tác] ' + x.ten + ' – ' + sctDmy_(x.bd) + ' ' + x.gioBd + '–' + x.gioKt + ' – ' + x.mucDich,
+      htmlBody: sctMailHtml_([x], p, cfg, 'Cán bộ <b>' + taEsc(x.ten) + '</b> vừa đăng ký công tác:') });
+    return { status: 'Đã gửi', text: 'Đã gửi email cho lãnh đạo phòng.' };
+  } catch (e) { return { status: 'Chờ gửi ca', text: 'Chưa gửi được email ngay, sẽ gửi ở ca kế tiếp.' }; }
+}
+/** Lịch 2 ca/ngày: gom các lượt "Chờ gửi ca" của mỗi phòng thành 1 email */
+function sctGuiTheoCa(e) {
+  const cfg = sctConfig_(true), f = sctFile_(), today = sctToday_(), report = [];
+  const rows = sctRows_(f, sctAdd_(today, -40), sctAdd_(today, cfg.dkTruoc)).filter(x => x.email === 'Chờ gửi ca');
+  cfg.phong.filter(p => p.on).forEach(p => {
+    const l = rows.filter(x => x.pb === p.pb).sort((a, c) => a.dkLuc.localeCompare(c.dkLuc)); if (!l.length) return;
+    if (!p.emailTB.length) { l.forEach(x => f.getSheetByName(x.sheet).getRange(x.row, SC.EMAIL + 1).setValue('Không gửi (chưa có email)')); return; }
+    let quota = 100; try { quota = MailApp.getRemainingDailyQuota(); } catch (err) {}
+    if (quota < p.emailTB.length) { report.push(p.pb + ': hết hạn mức email, để ca sau'); return; }
+    try {
+      MailApp.sendEmail({ to: p.emailTB.join(','), name: 'Sổ công tác – ' + p.pb, subject: '[Sổ công tác] ' + p.pb + ': ' + l.length + ' lượt đăng ký công tác',
+        htmlBody: sctMailHtml_(l, p, cfg, 'Tổng hợp ' + l.length + ' lượt đăng ký công tác chưa thông báo:') });
+      l.forEach(x => f.getSheetByName(x.sheet).getRange(x.row, SC.EMAIL + 1).setValue('Đã gửi (ca)'));
+      report.push(p.pb + ': ' + l.length + ' lượt');
+    } catch (err) { report.push(p.pb + ': LỖI ' + err.message); }
+  });
+  if (report.length) log_('', 'Hệ thống', 'Gửi thông báo công tác theo ca', SCT_APP, report.join(' | ').slice(0, 450), '');
+}
+
+/* ---------- API I010: quản lý ---------- */
+function apiSctqLoad_(b) {
+  const g = sctGuard_(b, SCT_APP_QL); if (g.error) return g;
+  const { user, cfg, role } = g, today = sctToday_(), months = sctMonths_(cfg, today);
+  const ym = months.includes(String(b.thang || '')) ? String(b.thang) : today.slice(0, 7);
+  const pbs = b.pb && role.scope.includes(b.pb) ? [b.pb] : role.scope;
+  const [from, to] = sctMonthRange_(ym), f = sctFile_(), users = loadData_().users;
+  const rows = sctRows_(f, from < today ? from : today, to > today ? to : today).filter(x => pbs.includes(x.pb));
+  const inMonth = rows.filter(x => x.bd >= from && x.bd <= to);
+  const homNay = rows.filter(x => x.tt === SCT_ST.OK && x.bd <= today && x.kt >= today).sort((a, c) => (a.gioBd).localeCompare(c.gioBd));
+  const th = sctTongHop_(inMonth, cfg, users);
+  const feed = inMonth.slice().sort((a, c) => c.dkLuc.localeCompare(a.dkLuc));
+  return { ok: true, today, thang: ym, pb: pbs.length === 1 ? pbs[0] : '', me: user.hoTen,
+    role: { scope: role.scope, tuChoi: role.tuChoi, full: role.full }, cfg: Object.assign(sctPublicCfg_(cfg, today), { phong: cfg.phong.filter(p => role.scope.includes(p.pb)).map(p => ({ pb: p.pb, ten: p.ten })) }),
+    homNay: homNay.map(x => sctOut_(x, cfg, today)), items: feed.map(x => sctOut_(x, cfg, today)),
+    tongHop: th.map(e => ({ id: e.id, ten: e.ten, pb: e.pb, ctp: e.ctp, soLuot: e.soLuot, soNgay: e.soNgay, ngay: e.ngay, du: e.du, tien: e.tien })),
+    khoa: sctLocked_(from, today, cfg), khoaNgay: sctLockDay_(from, cfg) };
+}
+function sctSetTt_(b, tt) {
+  const g = sctGuard_(b, SCT_APP_QL); if (g.error) return g;
+  const { user, cfg, role } = g, today = sctToday_(), lyDo = String(b.lyDo || '').trim().slice(0, 300);
+  if (tt === SCT_ST.TC && lyDo.length < 3) return { error: 'invalid', message: 'Ghi lý do từ chối.' };
+  const lock = LockService.getScriptLock();
+  try { lock.waitLock(10000); } catch (e) { return { error: 'busy', message: 'Hệ thống đang bận, thử lại sau vài giây.' }; }
+  let x;
+  try {
+    const f = sctFile_();
+    x = sctRows_(f, sctAdd_(today, -70), sctAdd_(today, cfg.dkTruoc + 31)).find(r => r.ma === String(b.ma || ''));
+    if (!x || !role.scope.includes(x.pb)) return { error: 'invalid', message: 'Không tìm thấy lượt đăng ký.' };
+    if (!role.tuChoi.includes(x.pb)) return { error: 'forbidden', message: 'Chỉ lãnh đạo phòng ' + x.pb + ' được từ chối/khôi phục.' };
+    if (x.id === user.id && !role.full) return { error: 'forbidden', message: 'Không tự từ chối lượt đăng ký của chính mình.' };
+    if (sctLocked_(x.bd, today, cfg)) return { error: 'invalid', message: 'Sổ tháng ' + x.bd.slice(5, 7) + '/' + x.bd.slice(0, 4) + ' đã khóa.' };
+    if (tt === SCT_ST.TC && x.tt !== SCT_ST.OK) return { error: 'invalid', message: 'Lượt này đang ở trạng thái "' + x.tt + '".' };
+    if (tt === SCT_ST.OK && x.tt !== SCT_ST.TC) return { error: 'invalid', message: 'Chỉ khôi phục được lượt đã từ chối.' };
+    f.getSheetByName(x.sheet).getRange(x.row, SC.TT + 1, 1, 4).setValues([[tt, user.hoTen + ' (' + user.id + ')', new Date(), tt === SCT_ST.TC ? lyDo : 'Khôi phục phê duyệt']]);
+  } finally { lock.releaseLock(); }
+  log_(user.id, user.hoTen, tt === SCT_ST.TC ? 'Từ chối phê duyệt công tác' : 'Khôi phục phê duyệt công tác', SCT_APP_QL, x.ma + ' · ' + x.ten + ' · ' + sctDmy_(x.bd) + (lyDo ? ' · ' + lyDo : ''), '');
+  return Object.assign(apiSctqLoad_({ token: b.token, thang: b.thang, pb: b.pb }), { done: x.ma });
+}
+/** Xuất PDF: loai = 'bc' (Báo cáo sổ công tác và chấm công tác phí) | 'bcc' (Bảng chấm công công tác phí) */
+function apiSctqPdf_(b) {
+  const g = sctGuard_(b, SCT_APP_QL); if (g.error) return g;
+  const { user, cfg, role } = g, today = sctToday_();
+  const pb = String(b.pb || ''); if (!role.scope.includes(pb)) return { error: 'invalid', message: 'Chọn một phòng để xuất PDF.' };
+  const ym = sctMonths_(cfg, today).includes(String(b.thang || '')) ? String(b.thang) : today.slice(0, 7);
+  const blob = b.loai === 'bcc' ? sctPdfBangChamCong_(pb, ym, cfg) : sctPdfBaoCao_(pb, ym, cfg);
+  log_(user.id, user.hoTen, 'Xuất PDF sổ công tác', SCT_APP_QL, pb + ' · ' + ym + ' · ' + (b.loai === 'bcc' ? 'Bảng chấm công' : 'Báo cáo'), '');
+  return { ok: true, name: blob.getName(), pdf: Utilities.base64Encode(blob.getBytes()) };
+}
+
+/* ---------- PDF ---------- */
+function sctData_(pb, ym, cfg) {
+  const [from, to] = sctMonthRange_(ym), users = loadData_().users;
+  const th = sctTongHop_(sctRows_(sctFile_(), from, to).filter(x => x.pb === pb), cfg, users);
+  const p = cfg.phong.find(q => q.pb === pb) || { pb, ten: pb, ma: pb };
+  const today = sctToday_(), dangChay = today <= to;
+  return { th, p, y: +ym.slice(0, 4), m: +ym.slice(5, 7), nd: +to.slice(8, 10), asOf: dangChay ? Utilities.formatDate(new Date(), TZ, 'dd/MM/yyyy HH:mm') : '' };
+}
+const sctTien_ = n => String(n).replace(/\B(?=(\d{3})+(?!\d))/g, '.') + ' đ';
+/** PDF 1 (A4 dọc): chi tiết từng cán bộ + bảng tổng hợp – theo mẫu skill */
+function sctPdfBaoCao_(pb, ym, cfg) {
+  const d = sctData_(pb, ym, cfg), E = taEsc, MM = String(d.m).padStart(2, '0');
+  const css = '@page{size:A4;margin:14mm 13mm}body{font-family:Arial,Helvetica,sans-serif;font-size:10pt;color:#000}h1{font-size:13pt;text-align:center;margin:0 0 3px}' +
+    '.c{text-align:center}table{border-collapse:collapse;width:100%;margin:4px 0}td,th{border:1px solid #000;padding:3px 4px;font-size:9pt;vertical-align:top}th{background:#E8E8E8}' +
+    'tr.x td{background:#F2F2F2}.u{font-weight:bold;margin:12px 0 2px}.kl{font-weight:bold;margin:3px 0 8px}.sig{width:100%;margin-top:22px}.sig td{border:0;text-align:center;width:50%}';
+  let h = '<html><head><meta charset="utf-8"><style>' + css + '</style></head><body>' +
+    '<h1>BÁO CÁO SỔ CÔNG TÁC VÀ CHẤM CÔNG TÁC PHÍ</h1><h1>' + E(d.p.ten) + '</h1><h1>Tháng ' + MM + '/' + d.y + '</h1>' +
+    (d.asOf ? '<p class="c"><i>(Số liệu tính đến ' + d.asOf + ' – tháng chưa kết thúc)</i></p>' : '') + '<br>';
+  d.th.forEach(e => {
+    h += '<div class="u">Cán bộ: ' + E(e.ten) + '</div><table><tr><th style="width:28px">STT</th><th style="width:72px">Ngày bắt đầu</th><th style="width:70px">Thời gian</th><th>Nội dung công tác</th><th style="width:150px">Ghi chú</th></tr>' +
+      e.luot.map((x, i) => '<tr' + (x.loaiTru ? ' class="x"' : '') + '><td class="c">' + (i + 1) + '</td><td class="c">' + sctDmy_(x.bd) + '</td><td class="c">' + x.gioBd + '–' + x.gioKt + (x.kt !== x.bd ? '<br>đến ' + sctDmy_(x.kt) : '') + '</td>' +
+        '<td>' + (x.mucDich ? '<b>' + E(x.mucDich) + ':</b> ' : '') + E(x.noiDung) + '</td><td>' + E(x.pt) + (x.loaiTru ? '<br><i>(Không tính ngày: ' + E(x.loaiTru) + (x.tt === SCT_ST.TC && x.lyDo ? ' – ' + E(x.lyDo) : '') + ')</i>' : '') + '</td></tr>').join('') + '</table>' +
+      '<div class="kl">→ Số lượt khai báo: ' + e.soLuot + '  |  Số ngày thực tế đi công tác: ' + e.soNgay + '  |  Kết luận: ' + (e.ctp ? (e.du ? 'Đủ điều kiện chấm công tác phí' : 'Không đủ điều kiện') : 'Không thuộc diện chấm công tác phí') + '</div>';
+  });
+  if (!d.th.length) h += '<p class="c">Không có lượt đăng ký công tác trong tháng.</p>';
+  h += '<p style="font-weight:bold;font-size:11pt;margin-top:14px">BẢNG TỔNG HỢP</p><table><tr><th>Cán bộ</th><th style="width:80px">Số lượt khai báo</th><th style="width:80px">Số ngày thực tế</th><th style="width:150px">Kết luận</th></tr>' +
+    d.th.map(e => '<tr><td>' + E(e.ten) + '</td><td class="c">' + e.soLuot + '</td><td class="c">' + e.soNgay + '</td><td>' + (e.ctp ? (e.du ? 'Đủ điều kiện' : 'Không đủ điều kiện') : 'Không thuộc diện') + '</td></tr>').join('') + '</table>' +
+    '<table class="sig"><tr><td><b>NGƯỜI LẬP BÁO CÁO</b><br>(Ký, ghi rõ họ tên)</td><td><b>XÁC NHẬN CỦA LÃNH ĐẠO PHÒNG</b><br>(Ký, ghi rõ họ tên)</td></tr></table></body></html>';
+  return Utilities.newBlob(h, 'text/html', 'bc.html').getAs('application/pdf').setName('So_Cong_Tac_' + d.p.ma + '_Thang_' + MM + '_' + d.y + '.pdf');
+}
+/** PDF 2 (A4 ngang): bảng 31 ngày cho cán bộ thuộc diện – dựng trên Google Sheet tạm rồi xuất PDF khổ ngang */
+function sctPdfBangChamCong_(pb, ym, cfg) {
+  const d = sctData_(pb, ym, cfg), MM = String(d.m).padStart(2, '0'), list = d.th.filter(e => e.ctp);
+  const lock = LockService.getScriptLock(); lock.waitLock(30000);
+  try {
+    const props = PropertiesService.getScriptProperties();
+    let ss = null; try { ss = props.getProperty('SCT_TMP_ID') ? SpreadsheetApp.openById(props.getProperty('SCT_TMP_ID')) : null; } catch (e) { ss = null; }
+    if (!ss) { ss = SpreadsheetApp.create('SCT_TamXuatPDF (hệ thống – không xóa)'); props.setProperty('SCT_TMP_ID', ss.getId()); }
+    const sh = ss.getSheets()[0], NC = 35, nR = 8 + list.length + 5;
+    sh.clear(); sh.getRange(1, 1, sh.getMaxRows(), sh.getMaxColumns()).breakApart();
+    if (sh.getMaxColumns() < NC) sh.insertColumnsAfter(sh.getMaxColumns(), NC - sh.getMaxColumns());
+    if (sh.getMaxRows() < nR) sh.insertRowsAfter(sh.getMaxRows(), nR - sh.getMaxRows());
+    const all = sh.getRange(1, 1, nR, NC); all.setFontFamily('Arial').setFontSize(8).setVerticalAlignment('middle').setWrap(true);
+    [['NGÂN HÀNG TMCP CÔNG THƯƠNG VIỆT NAM'], [cfg.tenCN], [d.p.ten.toUpperCase()]].forEach((t, i) => { const r = sh.getRange(i + 1, 1, 1, 8).merge(); r.setValue(t[0]).setFontWeight('bold').setHorizontalAlignment('center').setFontSize(9); });
+    sh.getRange(5, 1, 1, NC).merge().setValue('BẢNG CHẤM CÔNG CÔNG TÁC PHÍ').setFontWeight('bold').setFontSize(14).setHorizontalAlignment('center');
+    sh.getRange(6, 1, 1, NC).merge().setValue('Tháng  ' + MM + '  năm ' + d.y + (d.asOf ? '   (số liệu tính đến ' + d.asOf + ')' : '')).setFontSize(10).setHorizontalAlignment('center');
+    const head = ['Số TT', 'Họ và tên CB-CNV'].concat(Array.from({ length: 31 }, (_, i) => String(i + 1)), ['TC số ngày đi công tác', 'Số tiền đề nghị chi công tác phí']);
+    const body = list.map((e, n) => { const days = {}; e.ngay.forEach(x => { days[+x.slice(8, 10)] = 1; });
+      return [n + 1, e.ten].concat(Array.from({ length: 31 }, (_, i) => days[i + 1] ? '+' : ''), [e.soNgay, sctTien_(e.tien)]); });
+    const t = sh.getRange(8, 1, 1 + body.length, NC);
+    t.setValues([head].concat(body).map(r => r.map(String))).setBorder(true, true, true, true, true, true, '#000000', SpreadsheetApp.BorderStyle.SOLID).setHorizontalAlignment('center');
+    sh.getRange(8, 1, 1, NC).setFontWeight('bold');
+    if (body.length) { sh.getRange(9, 2, body.length, 1).setHorizontalAlignment('left'); sh.getRange(9, NC, body.length, 1).setHorizontalAlignment('right'); }
+    if (d.nd < 31) sh.getRange(8, 3 + d.nd, 1 + body.length, 31 - d.nd).setBackground('#D9D9D9');
+    const sr = 8 + body.length + 2;
+    sh.getRange(sr, 1, 1, 12).merge().setValue('Lập biểu\n(Ký, ghi rõ họ tên)').setHorizontalAlignment('center').setFontWeight('bold');
+    sh.getRange(sr, 20, 1, 16).merge().setValue('Xác nhận của Lãnh đạo Phòng\n(Ký, ghi rõ họ tên)').setHorizontalAlignment('center').setFontWeight('bold');
+    sh.setColumnWidth(1, 32); sh.setColumnWidth(2, 150); for (let c = 3; c <= 33; c++) sh.setColumnWidth(c, 21); sh.setColumnWidth(34, 62); sh.setColumnWidth(35, 105);
+    sh.setRowHeight(8, 42); sh.setRowHeight(sr, 48);
+    SpreadsheetApp.flush();
+    const url = 'https://docs.google.com/spreadsheets/d/' + ss.getId() + '/export?format=pdf&gid=' + sh.getSheetId() + '&size=A4&portrait=false&fitw=true&gridlines=false&printtitle=false' +
+      '&sheetnames=false&pagenum=UNDEFINED&fzr=false&top_margin=0.4&bottom_margin=0.4&left_margin=0.3&right_margin=0.3&horizontal_alignment=CENTER&range=A1:AI' + nR;
+    const res = UrlFetchApp.fetch(url, { headers: { Authorization: 'Bearer ' + ScriptApp.getOAuthToken() }, muteHttpExceptions: true });
+    if (res.getResponseCode() !== 200) throw new Error('Xuất PDF lỗi HTTP ' + res.getResponseCode());
+    return res.getBlob().setName('Bang_Cham_Cong_Cong_Tac_' + d.p.ma + '_Thang_' + MM + '_' + d.y + '.pdf');
+  } finally { lock.releaseLock(); }
+}
+/** Ngày 1 hằng tháng: gửi mỗi phòng 2 PDF tháng trước cho Trưởng phòng. Chạy tay từ menu: hỏi gửi tháng nào */
+function sctBaoCaoThang(e) {
+  const manual = !(e && e.triggerUid), today = sctToday_();
+  if (!manual && today.slice(8, 10) !== '01') return;
+  const cfg = sctConfig_(true), ym = sctAdd_(today.slice(0, 8) + '01', -1).slice(0, 7), report = [];
+  cfg.phong.filter(p => p.on).forEach(p => {
+    if (!p.emailBC.length) { report.push(p.pb + ': chưa có email nhận báo cáo'); return; }
+    try {
+      const a = sctPdfBaoCao_(p.pb, ym, cfg), b2 = sctPdfBangChamCong_(p.pb, ym, cfg), th = sctData_(p.pb, ym, cfg).th.filter(x => x.ctp);
+      MailApp.sendEmail({ to: p.emailBC.join(','), cc: p.emailCC.join(','), name: 'Sổ công tác – Không Gian Số Nội Bộ',
+        subject: '[Sổ công tác] ' + p.pb + ': báo cáo sổ công tác và chấm công tác phí tháng ' + ym.slice(5, 7) + '/' + ym.slice(0, 4),
+        htmlBody: '<p>Kính gửi Trưởng phòng ' + taEsc(p.pb) + ',</p><p>Đính kèm Báo cáo sổ công tác và chấm công tác phí, Bảng chấm công công tác phí tháng ' + ym.slice(5, 7) + '/' + ym.slice(0, 4) + '.</p>' +
+          '<p>Cán bộ đủ điều kiện: <b>' + (th.filter(x => x.du).map(x => taEsc(x.ten) + ' (' + x.soNgay + ' ngày)').join(', ') || 'không có') + '</b>.</p>' +
+          '<p style="color:#888;font-size:12px">Email tự động ngày 1 hằng tháng. Sổ tháng ' + ym.slice(5, 7) + ' khóa sau hết ngày ' + cfg.khoaSoNgay + ' – nếu có điều chỉnh trong hôm nay, xuất lại PDF tại ứng dụng Quản lý sổ công tác.</p>',
+        attachments: [a, b2] });
+      report.push(p.pb + ': đã gửi');
+    } catch (err) { report.push(p.pb + ': LỖI ' + err.message); }
+  });
+  log_('', 'Hệ thống', 'Gửi báo cáo sổ công tác tháng', SCT_APP_QL, ym + ' · ' + report.join(' | ').slice(0, 420), '');
+  if (manual) { try { SpreadsheetApp.getUi().alert('Báo cáo sổ công tác tháng ' + ym, report.join('\n'), SpreadsheetApp.getUi().ButtonSet.OK); } catch (err) {} }
+}
+
+/* ---------- Nhập dữ liệu Google Form cũ (từ LICH_SU_TU) ---------- */
+function sctNhapForm() {
+  const cfg = sctConfig_(true), f = sctFile_(), today = sctToday_(), from = cfg.lichSuTu + '-01', to = sctAdd_(today, cfg.dkTruoc);
+  const users = loadData_().users, ul = Object.values(users);
+  const bd = f.getSheetByName(SCT_SH.BIDANH), bdv = bd.getLastRow() > 1 ? bd.getRange(2, 1, bd.getLastRow() - 1, 5).getValues() : [];
+  const alias = {}; bdv.forEach(r => { const id = String(r[2]).trim(); if (/^9\d{4}$/.test(id)) alias[sctNorm_(r[0]) + '|' + String(r[1]).trim()] = id; });
+  const existing = {}; sctRows_(f, from, to).forEach(x => { if (x.khoa) existing[x.khoa] = 1; });
+  const ng = f.getSheetByName(SCT_SH.NGUON), src = ng.getRange(2, 1, Math.max(ng.getLastRow() - 1, 1), 2).getValues().filter(r => String(r[0]).trim() && String(r[1]).trim());
+  const unknown = {}, byYear = {}, rep = [];
+  const pdmy = v => v instanceof Date ? Utilities.formatDate(v, TZ, 'yyyy-MM-dd') : uqYmd_(v);
+  const findUser = (name, pb) => {
+    const k = sctNorm_(name); if (!k) return null;
+    if (alias[k + '|' + pb]) return users[alias[k + '|' + pb]] || null;
+    const same = ul.filter(u => sctNorm_(u.hoTen) === k);
+    return same.find(u => u.pb === pb) || (same.length === 1 ? same[0] : null);
+  };
+  src.forEach((s, si) => {
+    const pb = String(s[0]).trim(); let v;
+    try { v = SpreadsheetApp.openById(String(s[1]).trim()).getSheets()[0].getDataRange().getValues(); } catch (e) { rep.push(pb + ': không mở được file'); return; }
+    const h = v[0].map(x => sctNorm_(x)), col = k => h.findIndex(x => x.includes(k));
+    const c = { ts: col('dau thoi gian'), u: col('user can bo'), bd: col('ngay bat dau'), gbd: col('gio bat dau'), kt: col('ngay ket thuc'), gkt: col('gio ket thuc'), nd: col('noi dung cong tac'),
+      pt: col('phuong tien') >= 0 ? col('phuong tien') : col('ghi chu'), pd: col('phe duyet') };
+    if (c.u < 0 || c.bd < 0 || c.nd < 0) { rep.push(pb + ': thiếu cột'); return; }
+    let n = 0, skipU = 0, dup = 0;
+    v.slice(1).forEach(r => {
+      const ngay = pdmy(r[c.bd]); if (!ngay || ngay < from || ngay > to) return;
+      const name = String(r[c.u] || '').trim(), ts = r[c.ts] instanceof Date ? Utilities.formatDate(r[c.ts], TZ, 'yyyyMMddHHmmss') : String(r[c.ts] || '').replace(/\D/g, '');
+      const key = 'F|' + pb + '|' + ts + '|' + sctNorm_(name) + '|' + ngay;
+      if (existing[key]) { dup++; return; }
+      const u = findUser(name, pb);
+      if (!u) { const k = sctNorm_(name) + '|' + pb; unknown[k] = unknown[k] || { name, pb, n: 0 }; unknown[k].n++; skipU++; return; }
+      const kt = pdmy(r[c.kt]) || ngay, gbd = sctHm_(r[c.gbd]) || '', gkt = sctHm_(r[c.gkt]) || '';
+      const co = []; if (kt < ngay || taDays(ngay, kt) > cfg.toiDaChuyen) co.push('Ngày kết thúc bất thường'); if (gbd && gbd < '06:00') co.push('Giờ bắt đầu bất thường');
+      if (gbd && gkt && kt === ngay && gkt <= gbd) co.push('Giờ kết thúc trước giờ bắt đầu');
+      const rej = /kh[oô]ng/i.test(String(r[c.pd] || ''));
+      const row = new Array(SCT_NCOL).fill('');
+      Object.assign(row, { [SC.MA]: 'GF' + ts.slice(2) + String(si) + String(n).padStart(4, '0'), [SC.DK_LUC]: r[c.ts] instanceof Date ? r[c.ts] : new Date(), [SC.ID]: u.id, [SC.TEN]: u.hoTen, [SC.PB]: pb, [SC.VT]: u.vt,
+        [SC.NGAY_BD]: sctDate_(ngay), [SC.GIO_BD]: gbd, [SC.NGAY_KT]: sctDate_(kt < ngay ? ngay : kt), [SC.GIO_KT]: gkt, [SC.MUC_DICH]: '', [SC.NOI_DUNG]: String(r[c.nd] || '').trim(),
+        [SC.PT]: String(c.pt >= 0 ? r[c.pt] || '' : '').trim(), [SC.TT]: rej ? SCT_ST.TC : SCT_ST.OK, [SC.XL_BOI]: rej ? 'Google Form' : '', [SC.XL_LY_DO]: rej ? 'Không đồng ý (Google Form)' : '',
+        [SC.NGUON]: 'Google Form ' + pb, [SC.TEN_GOC]: name, [SC.CO]: co.join('; '), [SC.EMAIL]: 'Không gửi (dữ liệu cũ)', [SC.KHOA]: key });
+      (byYear[ngay.slice(0, 4)] = byYear[ngay.slice(0, 4)] || []).push(row); existing[key] = 1; n++;
+    });
+    ng.getRange(si + 2, 3).setValue(Utilities.formatDate(new Date(), TZ, 'dd/MM/yyyy HH:mm') + ': nhập ' + n + ', đã có ' + dup + ', chưa ghép tên ' + skipU);
+    rep.push(pb + ': nhập mới ' + n + (dup ? ', đã có ' + dup : '') + (skipU ? ', CHƯA GHÉP TÊN ' + skipU : ''));
+  });
+  Object.keys(byYear).forEach(y => { const sh = sctYearSheet_(f, +y, true), l = byYear[y]; l.sort((a, b) => a[SC.DK_LUC] - b[SC.DK_LUC]); sh.getRange(sh.getLastRow() + 1, 1, l.length, SCT_NCOL).setValues(l); });
+  // Bảng ghép tên: thêm tên chưa ghép được; cập nhật họ tên theo ID đã điền
+  const known = {}; bdv.forEach((r, i) => { known[sctNorm_(r[0]) + '|' + String(r[1]).trim()] = i; const id = String(r[2]).trim(); if (users[id]) bd.getRange(i + 2, 4).setValue(users[id].hoTen); });
+  const add = Object.entries(unknown).filter(([k]) => known[k] === undefined).map(([, x]) => [x.name, x.pb, '', '', x.n]);
+  Object.entries(unknown).forEach(([k, x]) => { if (known[k] !== undefined) bd.getRange(known[k] + 2, 5).setValue(x.n); });
+  if (add.length) bd.getRange(bd.getLastRow() + 1, 1, add.length, 5).setValues(add);
+  CacheService.getScriptCache().remove('sct_cfg');
+  const msg = 'Nhập lượt có ngày bắt đầu từ ' + sctDmy_(from) + ':\n' + rep.join('\n') + (Object.keys(unknown).length ? '\n\nCòn ' + Object.keys(unknown).length + ' tên chưa ghép được với CanBo → điền ID ở sheet SCT_BiDanh rồi chạy lại menu này (không nhập trùng).' : '\n\nĐã ghép đủ tên.');
+  log_('', 'Hệ thống', 'Nhập sổ công tác từ Google Form', SCT_APP, rep.join(' | ').slice(0, 450), '');
+  try { SpreadsheetApp.getUi().alert('Nhập dữ liệu sổ công tác', msg, SpreadsheetApp.getUi().ButtonSet.OK); } catch (e) {}
+  return msg;
 }
