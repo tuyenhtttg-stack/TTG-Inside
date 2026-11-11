@@ -1,7 +1,7 @@
 # Không Gian Số Nội Bộ · TTG Inside
 
 Bộ tiện ích nội bộ dành cho cán bộ **VietinBank Chi nhánh Tây Tiền Giang**, thiết kế cho điện thoại.
-Phiên bản 2.0.0 – 09/11/2026: thêm I009 Sổ công tác và I010 Quản lý sổ công tác (thay 10 Google Form sổ công tác, chấm công tác phí, xuất PDF, báo cáo ngày 1). Bản 1.9.x: Theo dõi giấy ủy quyền.
+Phiên bản 2.1.0 – 11/11/2026: thông báo popup và thông báo đẩy cho sổ công tác; thêm I011 Tính lãi tiết kiệm và I012 ATM và điểm giao dịch. Bản 2.0.0: Sổ công tác (I009, I010). Bản 1.9.x: Theo dõi giấy ủy quyền.
 
 | Nhóm | Tiện ích | Mô tả |
 |---|---|---|
@@ -11,6 +11,8 @@ Phiên bản 2.0.0 – 09/11/2026: thêm I009 Sổ công tác và I010 Quản l�
 | Mã QR | Tạo QR kết nối WiFi | 4 bước: chọn điểm giao dịch → chọn mạng WiFi → quét thử → in thẻ niêm yết A6 |
 | Chi phí | Quản lý chi phí (I003) | Hạn mức phê duyệt còn lại theo thời gian thực; trưởng/phó phòng nhập khoản đã duyệt; PGĐ, Giám đốc, kế toán xem theo quyền |
 | Chi phí | Báo cáo chi phí (I004) | Tổng quan, dự báo hạn mức, theo phòng/nhóm, ma trận, xu hướng 12 tháng, kế hoạch năm, khoản lớn/lặp lại, nhận xét AI |
+| Phục vụ khách hàng | Tính lãi tiết kiệm (I011) | Tiền lãi theo 5 phương thức lĩnh lãi, lịch lĩnh lãi; so sánh cầm cố sổ với rút trước hạn. Tham số ở sheet TL_CauHinh |
+| Phục vụ khách hàng | ATM và điểm giao dịch (I012) | Danh sách ATM/CDM và điểm giao dịch đọc từ file quản lý ATM; tìm kiếm, lọc, tìm điểm gần nhất, bản đồ, chỉ đường Google Maps |
 | Mã QR | Tạo QR theo yêu cầu | Biểu mẫu tạo mã: đường link, gọi điện, tin nhắn, email, danh thiếp, văn bản; ô nhập tự nhận dạng |
 
 ## Cấu trúc thư mục
@@ -18,9 +20,10 @@ Phiên bản 2.0.0 – 09/11/2026: thêm I009 Sổ công tác và I010 Quản l�
 ```
 index.html              Trang chính (toàn bộ giao diện và chương trình; font, logo nhúng sẵn)
 manifest.webmanifest    Khai báo để cài lên màn hình chính điện thoại
-sw.js                   Service worker: mở nhanh, dùng được khi mạng yếu
+sw.js                   Service worker: mở nhanh, dùng được khi mạng yếu; nhận thông báo đẩy
 lib/qrcode.js           Thư viện tạo mã QR (qrcode-generator 1.4.4, MIT)
 lib/jsQR.js             Thư viện đọc mã QR từ ảnh (jsQR 1.4.0, Apache-2.0)
+lib/leaflet/            Thư viện bản đồ (Leaflet 1.9.4, BSD-2) – chỉ tải khi mở màn hình ATM; nền bản đồ OpenStreetMap
 lib/tesseract/          Thư viện đọc chữ trên ảnh thẻ (Tesseract.js 5.1.1, Apache-2.0) – chỉ tải khi bấm chụp thẻ
 icons/                  Biểu tượng ứng dụng
 apps-script/Code.gs     Máy chủ phân quyền (gắn với Google Sheet) + trợ lý AI giai đoạn 2
@@ -196,3 +199,19 @@ Thêm thuộc tính tập lệnh `ANTHROPIC_API_KEY` trong Apps Script (cùng sc
 - **Hạn khai báo:** đăng ký trước tối đa 7 ngày, khai bù tối đa 3 ngày; sổ tháng khóa sau hết ngày 1 tháng sau.
 - **Email:** gửi ngay; khi hạn mức email trong ngày còn ít hơn `EMAIL_DU_PHONG` (hoặc đặt `CHE_DO_EMAIL` = Theo ca) thì gom gửi 2 ca 11:30 và 17:00. Ngày 1 hằng tháng 18 giờ tự gửi 2 PDF tháng trước cho Trưởng phòng.
 - **Dữ liệu cũ:** menu "Nhập dữ liệu sổ công tác từ Google Form (từ 10/2026)" – ghép tên với CanBo, tên không ghép được hiện ở `SCT_BiDanh` để điền ID rồi chạy lại (không nhập trùng).
+
+## Thông báo popup – từ v2.1.0
+
+- **Khi nào có thông báo:** cán bộ đăng ký công tác → người thuộc `VAI_TRO_POPUP` (sheet SCT_CauHinh) và có phòng đó trong phạm vi xem sổ nhận thông báo. Lãnh đạo phòng nhận của phòng mình; vai trò xem tất cả/toàn quyền (Quản trị hệ thống) nhận của mọi phòng. Muốn ngừng nhận: xóa tên vai trò khỏi `VAI_TRO_POPUP`.
+- **Hai dạng:** (1) popup trong ứng dụng khi đang mở – trang hỏi máy chủ mỗi `POPUP_CHU_KY_GIAY` giây; (2) thông báo đẩy ra màn hình điện thoại khi đã đóng ứng dụng – cán bộ bấm chuông → **Bật thông báo trên máy này** (iPhone phải cài TTG Inside ra màn hình chính, iOS 16.4 trở lên).
+- **Tham số:** `THONG_BAO_POPUP` (Bật/Tắt), `VAI_TRO_POPUP`, `POPUP_CHU_KY_GIAY`, `GUI_EMAIL_DANG_KY` (Tắt = không gửi email mỗi lượt đăng ký nữa; báo cáo PDF ngày 1 vẫn gửi).
+- **Dữ liệu:** sheet `ThongBao` (sổ thông báo, giữ 7 ngày gần nhất trên màn hình) và `ThongBaoMay` (các máy đã bật thông báo) trong file phân quyền. Không sửa tay cột Khóa máy.
+- **Bảo mật:** tin đẩy không mang nội dung; điện thoại tự hỏi lại máy chủ để lấy nội dung, nên dịch vụ đẩy của Google/Apple không đọc được. Màn hình khóa chỉ hiện tên cán bộ, phòng, thời gian, mục đích – không hiện nội dung chi tiết. Khóa ký tự sinh, lưu ở Thuộc tính tập lệnh `TB_VAPID_PRIV`, `TB_VAPID_PUB` (không xóa: xóa thì mọi máy phải bật lại thông báo).
+- **Thử:** menu **Không Gian Số → Gửi thử thông báo popup cho tôi…**
+
+## Tính lãi tiết kiệm (I011) và ATM, điểm giao dịch (I012) – từ v2.1.0
+
+- Cài đặt: menu **Không Gian Số → Cài đặt / cập nhật Tính lãi, ATM và điểm giao dịch (I011, I012)**. Tạo sheet `TL_CauHinh`, `ATM_CauHinh` trong file phân quyền, đăng ký 2 mã và tick sẵn cho mọi vai trò.
+- `TL_CauHinh`: kỳ hạn, lãi suất không kỳ hạn, biên độ và lãi suất vay cầm cố tối thiểu, tỷ lệ vay tối đa, cơ sở ngày. Công thức quy đổi lãi suất theo CV 4277/CV-NHCT3 nằm trong `index.html`.
+- `ATM_CauHinh`: `FILE_ID` của file quản lý ATM (sheet `DS_ATM`, `DS_PGD`), có hiện máy chưa công khai cho cán bộ hay không, bật/tắt bản đồ. Ứng dụng tìm cột theo tên tiêu đề; không hiển thị cột "Ghi chú nội bộ". Sửa file ATM xong bấm **Làm mới** trên màn hình (dữ liệu đệm 10 phút).
+- Ảnh trên Drive phải chia sẻ "Bất kỳ ai có đường liên kết". Vị trí "gần tôi" chỉ tính trên điện thoại, không gửi về máy chủ.

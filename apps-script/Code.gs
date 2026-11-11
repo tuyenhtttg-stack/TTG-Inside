@@ -1,6 +1,6 @@
 /**
  * KHÔNG GIAN SỐ NỘI BỘ (TTG Inside) – Máy chủ phân quyền
- * VietinBank Chi nhánh Tây Tiền Giang · phiên bản 2.0.0 · 09/11/2026
+ * VietinBank Chi nhánh Tây Tiền Giang · phiên bản 2.1.0 · 11/11/2026
  *
  * Script này GẮN VỚI file Google Sheet phân quyền (Tiện ích mở rộng → Apps Script), làm 2 việc:
  *   1. Menu quản trị + tự tick quyền theo vai trò ngay trong Sheet.
@@ -64,6 +64,8 @@ function onOpen() {
     .addItem('Nhập dữ liệu sổ công tác từ Google Form (từ 10/2026)', 'sctNhapForm')
     .addItem('Gửi ngay báo cáo sổ công tác tháng trước', 'sctBaoCaoThang')
     .addItem('Gửi ngay email nhắc hạn giấy ủy quyền', 'nhacHanUyQuyen')
+    .addItem('Cài đặt / cập nhật Tính lãi, ATM và điểm giao dịch (I011, I012)', 'caiDatTienIchKhachHang')
+    .addItem('Gửi thử thông báo popup cho tôi…', 'tbGuiThu')
     .addItem('Kiểm tra kết nối AI (Claude)', 'kiemTraAI')
     .addItem('Thêm ứng dụng mới…', 'themUngDung')
     .addItem('Sinh thêm ID dự phòng…', 'sinhThemID')
@@ -342,7 +344,7 @@ function kiemTraDuLieu() {
 }
 
 function lamMoiBoNhoDem(silent) {
-  CacheService.getScriptCache().removeAll([CACHE_KEY, 'ta_cfg', 'uq_cfg', 'sct_cfg', 'cp_cfg']);
+  CacheService.getScriptCache().removeAll([CACHE_KEY, 'ta_cfg', 'uq_cfg', 'sct_cfg', 'cp_cfg', 'tl_cfg', 'atm_data']);
   if (silent !== true) SpreadsheetApp.getActive().toast('Ứng dụng sẽ dùng dữ liệu mới ngay lần mở kế tiếp.', 'Không Gian Số');
 }
 
@@ -389,6 +391,13 @@ function doPost(e) {
       case 'sctq_reject': return json_(sctSetTt_(body, SCT_ST.TC));
       case 'sctq_restore': return json_(sctSetTt_(body, SCT_ST.OK));
       case 'sctq_pdf':  return json_(apiSctqPdf_(body));
+      case 'tb_poll':   return json_(apiTbPoll_(body));
+      case 'tb_read':   return json_(apiTbRead_(body));
+      case 'tb_sub':    return json_(apiTbSub_(body));
+      case 'tb_unsub':  return json_(apiTbUnsub_(body));
+      case 'tb_pull':   return json_(apiTbPull_(body));
+      case 'tl_cfg':    return json_(apiTlCfg_(body));
+      case 'atm_load':  return json_(apiAtmLoad_(body));
       default:       return json_({ error: 'bad_request' });
     }
   } catch (err) {
@@ -440,7 +449,7 @@ function apiOpen_(b) {
 function session_(u) {
   return { user: { ten: firstName_(u.hoTen), xungHo: u.gt === 'Nữ' ? 'chị' : u.gt === 'Nam' ? 'anh' : 'anh/chị', phongBan: u.pb, maPhongBan: u.maPB || '', loaiPhongBan: u.loaiPB || '', vaiTro: u.vt },
            apps: sctFilterApps_(u, uqFilterApps_(u, taFilterApps_(u, userApps_(u)))), stats: countVisit_(), ai: !!PropertiesService.getScriptProperties().getProperty('ANTHROPIC_API_KEY') && userApps_(u).includes('I002'),
-           expires: endOfDayIso_() };
+           tb: tbSession_(u), expires: endOfDayIso_() };
 }
 
 /* ---------- Phiên đăng nhập: có hiệu lực đến hết ngày (giờ Việt Nam) ---------- */
@@ -2698,6 +2707,10 @@ const SCT_CAUHINH_BAN_DAU = [
   ['VAI_TRO_XEM_TAT_CA', 'Giám đốc, Quản trị hệ thống', 'Xem sổ tất cả các phòng'],
   ['VAI_TRO_TOAN_QUYEN', 'Quản trị hệ thống', 'Toàn quyền mọi màn hình (từ chối, khôi phục, xuất PDF mọi phòng)'],
   ['CHE_DO_EMAIL', 'Ngay', 'Ngay: gửi ngay mỗi lượt đăng ký (tự chuyển sang gửi theo ca khi hạn mức email trong ngày còn ít); Theo ca: gom gửi 2 ca'],
+  ['GUI_EMAIL_DANG_KY', 'Bật', 'Bật: gửi email cho lãnh đạo phòng mỗi lượt đăng ký. Tắt: không gửi email đăng ký nữa (chỉ còn popup) – báo cáo PDF ngày 1 hằng tháng vẫn gửi email'],
+  ['THONG_BAO_POPUP', 'Bật', 'Bật/Tắt thông báo popup khi có lượt đăng ký công tác mới'],
+  ['VAI_TRO_POPUP', 'Trưởng phòng, Phó phòng, Quản trị hệ thống', 'Vai trò nhận popup: lãnh đạo nhận của phòng mình; vai trò xem tất cả/toàn quyền nhận của mọi phòng. Bỏ tên vai trò khỏi đây để ngừng nhận'],
+  ['POPUP_CHU_KY_GIAY', '60', 'Khi đang mở ứng dụng, cứ bấy nhiêu giây hỏi máy chủ 1 lần xem có thông báo mới (30–600)'],
   ['EMAIL_DU_PHONG', '30', 'Khi hạn mức gửi email trong ngày còn ít hơn số này thì chuyển sang gửi theo ca (dành cho email khác)'],
   ['GIO_CA_SANG', '11:30', 'Giờ gửi ca sáng (gom các lượt chờ gửi)'],
   ['GIO_CA_CHIEU', '17:00', 'Giờ gửi ca chiều'],
@@ -2721,7 +2734,7 @@ function caiDatSoCongTac() {
   const n9 = dangKyUngDung_(SCT_APP, 'Sổ công tác', 'Đăng ký công tác, sổ của tôi, số ngày lũy kế chấm công tác phí', roles.filter(r => !SCT_VT_KHONG_GHI.includes(r)));
   const n10 = dangKyUngDung_(SCT_APP_QL, 'Quản lý sổ công tác', 'Sổ công tác thời gian thực, từ chối phê duyệt, chấm công tác phí, xuất PDF',
     cfg.vtLanhDao.concat(cfg.vtPgd, cfg.vtToanQuyen).filter((r, i, a) => a.indexOf(r) === i));
-  const trig = caiLichSoCongTac_(cfg);
+  const trig = caiLichSoCongTac_(cfg) + tbCaiDat_();
   lamMoiBoNhoDem(true);
   const warn = sctKiemTra_(cfg);
   ui.alert('Sổ công tác',
@@ -2801,7 +2814,7 @@ function caiLichSoCongTac_(cfg) {
 }
 function sctKiemTra_(cfg) {
   const msg = [], roles = Object.keys(rolePerms_()), pbs = phongBanMap_();
-  [['VAI_TRO_CTP', cfg.vtCtp], ['VAI_TRO_LANH_DAO', cfg.vtLanhDao], ['VAI_TRO_PGD', cfg.vtPgd], ['VAI_TRO_XEM_TAT_CA', cfg.vtXemAll], ['VAI_TRO_TOAN_QUYEN', cfg.vtToanQuyen]].forEach(([k, l]) =>
+  [['VAI_TRO_CTP', cfg.vtCtp], ['VAI_TRO_LANH_DAO', cfg.vtLanhDao], ['VAI_TRO_PGD', cfg.vtPgd], ['VAI_TRO_XEM_TAT_CA', cfg.vtXemAll], ['VAI_TRO_TOAN_QUYEN', cfg.vtToanQuyen], ['VAI_TRO_POPUP', cfg.vtPopup]].forEach(([k, l]) =>
     l.filter(r => !roles.includes(r)).forEach(r => msg.push('- ' + k + ': vai trò "' + r + '" không có trong sheet VaiTro.')));
   cfg.phong.filter(p => p.on).forEach(p => {
     if (!pbs[p.pb]) msg.push('- SCT_Phong: "' + p.pb + '" không có trong sheet PhongBan.');
@@ -2840,6 +2853,8 @@ function sctConfig_(fresh) {
     dkTruoc: num(kv.DANG_KY_TRUOC, 7, 0, 60), khaiBu: num(kv.KHAI_BU, 3, 0, 31), khoaSoNgay: num(kv.KHOA_SO_NGAY, 1, 1, 28), toiDaChuyen: num(kv.SO_NGAY_TOI_DA_CHUYEN, 30, 0, 90),
     khungGio: khung, vtLanhDao: list(kv.VAI_TRO_LANH_DAO || 'Trưởng phòng, Phó phòng'), vtPgd: list(kv.VAI_TRO_PGD || 'Phó Giám đốc'),
     vtXemAll: list(kv.VAI_TRO_XEM_TAT_CA || 'Giám đốc, Quản trị hệ thống'), vtToanQuyen: list(kv.VAI_TRO_TOAN_QUYEN || 'Quản trị hệ thống'),
+    guiEmail: !/^(tắt|tat|không|khong|off|0)$/i.test(kv.GUI_EMAIL_DANG_KY || 'Bật'), popup: !/^(tắt|tat|không|khong|off|0)$/i.test(kv.THONG_BAO_POPUP || 'Bật'),
+    vtPopup: list(kv.VAI_TRO_POPUP === undefined ? 'Trưởng phòng, Phó phòng, Quản trị hệ thống' : kv.VAI_TRO_POPUP), popupChuKy: num(kv.POPUP_CHU_KY_GIAY, 60, 30, 600),
     cheDo: /ca/i.test(kv.CHE_DO_EMAIL || '') ? 'ca' : 'ngay', duPhong: num(kv.EMAIL_DU_PHONG, 30, 0, 1500),
     caSang: hm(kv.GIO_CA_SANG, '11:30'), caChieu: hm(kv.GIO_CA_CHIEU, '17:00'), gioBaoCao: num(kv.GIO_BAO_CAO_THANG, 18, 0, 23),
     lichSuTu: lsm ? lsm[1] + '-' + String(lsm[2]).padStart(2, '0') : '2026-10', mien, tenCN: kv.TEN_CHI_NHANH || 'CHI NHÁNH TÂY TIỀN GIANG',
@@ -3035,8 +3050,28 @@ function sctMailHtml_(list, p, cfg, title) {
     '</table><p style="color:#555;font-size:12.5px">Mặc định các lượt đăng ký ở trạng thái Phê duyệt. Nếu không đồng ý, vào Không Gian Số Nội Bộ → Quản lý sổ công tác → bấm <b>Từ chối phê duyệt</b>.</p>' +
     '<p style="color:#888;font-size:12px">Email tự động – Sổ công tác, Không Gian Số Nội Bộ.</p>';
 }
-/** Gửi ngay; khi chế độ "Theo ca" hoặc hạn mức email còn ít → chờ gửi ca */
+/** Thông báo lượt đăng ký mới: popup (theo VAI_TRO_POPUP) và email (nếu GUI_EMAIL_DANG_KY = Bật) */
 function sctNotify_(x, cfg) {
+  const pop = sctPopup_(x, cfg), mail = sctEmail_(x, cfg);
+  return { status: mail.status, text: [pop ? 'Đã gửi thông báo popup cho ' + pop + ' người.' : '', mail.text].filter(Boolean).join(' ') };
+}
+/** Người nhận popup của 1 phòng: vai trò thuộc VAI_TRO_POPUP và phòng nằm trong phạm vi xem sổ của người đó */
+function sctPopupIds_(pb, cfg, exceptId) {
+  if (!cfg.popup || !cfg.vtPopup.length) return [];
+  return Object.values(loadData_().users).filter(u => u.tt === TT.ON && u.id !== exceptId && cfg.vtPopup.includes(u.vt) && userApps_(u).includes(SCT_APP_QL) && sctRole_(u, cfg).scope.includes(pb)).map(u => u.id);
+}
+function sctPopup_(x, cfg) {
+  try {
+    const ids = sctPopupIds_(x.pb, cfg, x.id); if (!ids.length) return 0;
+    const khi = sctDmy_(x.bd) + ' ' + x.gioBd + '–' + (x.kt !== x.bd ? sctDmy_(x.kt) + ' ' : '') + x.gioKt, why = sctLoaiTru_(x, cfg);
+    return tbGui_(ids, { app: SCT_APP_QL, view: 'ql-cong-tac', tieuDe: x.ten + ' đăng ký công tác',
+      noiDung: x.pb + ' · ' + khi + ' · ' + x.mucDich + ' · ' + x.pt + '\n' + x.noiDung + (why ? '\n(Không tính ngày công tác phí: ' + why + ')' : ''),
+      ngan: x.pb + ' · ' + khi + ' · ' + x.mucDich });   // màn hình khóa không hiện nội dung chi tiết
+  } catch (e) { console.error('sctPopup_', e); return 0; }
+}
+/** Gửi ngay; khi chế độ "Theo ca" hoặc hạn mức email còn ít → chờ gửi ca */
+function sctEmail_(x, cfg) {
+  if (!cfg.guiEmail) return { status: 'Không gửi (tắt email)', text: '' };
   const p = cfg.phong.find(q => q.pb === x.pb);
   if (!p || !p.emailTB.length) return { status: 'Không gửi (chưa có email)', text: '' };
   let quota = 100; try { quota = MailApp.getRemainingDailyQuota(); } catch (e) {}
@@ -3262,4 +3297,326 @@ function sctNhapForm() {
   log_('', 'Hệ thống', 'Nhập sổ công tác từ Google Form', SCT_APP, rep.join(' | ').slice(0, 450), '');
   try { SpreadsheetApp.getUi().alert('Nhập dữ liệu sổ công tác', msg, SpreadsheetApp.getUi().ButtonSet.OK); } catch (e) {}
   return msg;
+}
+
+/* =====================================================================
+   PHẦN 11 – THÔNG BÁO POPUP (dùng chung cho các ứng dụng)
+   - Sheet ThongBao: mỗi dòng 1 thông báo gửi cho 1 cán bộ; trang web hỏi máy chủ định kỳ (tb_poll) để hiện popup.
+   - Sheet ThongBaoMay: điện thoại/máy tính đã bật "thông báo trên máy này" (Web Push).
+   - Thông báo đẩy KHÔNG mang nội dung: máy chủ chỉ "đánh thức" điện thoại, điện thoại tự hỏi lại máy chủ (tb_pull)
+     để lấy nội dung → dịch vụ đẩy của Google/Apple không đọc được nội dung thông báo.
+   - Khóa ký (VAPID) tự sinh, lưu ở Thuộc tính tập lệnh: TB_VAPID_PRIV, TB_VAPID_PUB.
+   ===================================================================== */
+const TB_SH = { TB: 'ThongBao', MAY: 'ThongBaoMay' };
+const TB_HEAD = ['Mã', 'Lúc gửi', 'ID nhận', 'Họ tên nhận', 'Ứng dụng', 'Tiêu đề', 'Nội dung', 'Nội dung rút gọn (màn hình khóa)', 'Màn hình mở', 'Đã xem lúc'];
+const TB_MAY_HEAD = ['ID cán bộ', 'Họ tên', 'Địa chỉ đẩy (endpoint)', 'Khóa máy', 'Thiết bị', 'Đăng ký lúc', 'Lần lấy gần nhất', 'Kết quả đẩy gần nhất'];
+const TBC = { MA: 0, LUC: 1, ID: 2, TEN: 3, APP: 4, TIEU_DE: 5, NOI_DUNG: 6, NGAN: 7, VIEW: 8, XEM: 9 };
+const TBM = { ID: 0, TEN: 1, EP: 2, KEY: 3, DEV: 4, LUC: 5, PULL: 6, KQ: 7 };
+const TB_GIU_NGAY = 7, TB_MAX_ROWS = 3000;
+// Chỉ nhận địa chỉ đẩy của các dịch vụ chính thức (Chrome/Android, Safari/iOS, Firefox, Edge)
+const TB_HOST_OK = /^https:\/\/(fcm\.googleapis\.com|[a-z0-9-]+\.push\.apple\.com|updates\.push\.services\.mozilla\.com|[a-z0-9.-]+\.notify\.windows\.com)\//i;
+
+function tbSheet_(name) {
+  const ss = ss_(); let sh = ss.getSheetByName(name);
+  if (!sh) {
+    const head = name === TB_SH.TB ? TB_HEAD : TB_MAY_HEAD;
+    sh = ss.insertSheet(name); sh.getRange(1, 1, 1, head.length).setValues([head]);
+    sh.setFrozenRows(1); sh.getRange(1, 1, 1, head.length).setFontWeight('bold').setFontColor('#FFFFFF').setBackground('#005993').setWrap(true);
+    sh.getRange('A2:A').setNumberFormat('@'); sh.getRange('C2:C').setNumberFormat('@');
+    if (name === TB_SH.TB) { sh.getRange('B2:B').setNumberFormat('dd/mm/yyyy hh:mm:ss'); sh.getRange('J2:J').setNumberFormat('dd/mm/yyyy hh:mm:ss'); [130, 140, 70, 160, 80, 220, 420, 300, 110, 140].forEach((w, i) => sh.setColumnWidth(i + 1, w)); }
+    else { sh.getRange('D2:D').setNumberFormat('@'); sh.getRange('F2:G').setNumberFormat('dd/mm/yyyy hh:mm:ss'); [80, 160, 420, 150, 160, 140, 140, 220].forEach((w, i) => sh.setColumnWidth(i + 1, w)); }
+  }
+  return sh;
+}
+/** Cài đặt: tạo 2 sheet và khóa ký. Trả về mô tả ngắn */
+function tbCaiDat_() {
+  tbSheet_(TB_SH.TB); tbSheet_(TB_SH.MAY);
+  let ok = false; try { ok = !!tbVapid_().pub; } catch (e) { ok = false; }
+  return ok ? 'Thông báo popup: đã sẵn sàng (sheet ThongBao, ThongBaoMay; khóa ký thông báo đẩy đã có).\n' : 'LƯU Ý: chưa tạo được khóa ký thông báo đẩy – popup trong ứng dụng vẫn chạy, thông báo khi đóng ứng dụng chưa dùng được.\n';
+}
+function tbBump_(id) { try { CacheService.getScriptCache().put('tb_v_' + id, String(Date.now()), 21600); } catch (e) {} }
+function tbIso_(d) { return d instanceof Date ? Utilities.formatDate(d, TZ, "yyyy-MM-dd'T'HH:mm:ss") : String(d || ''); }
+
+/** Gửi thông báo cho danh sách ID cán bộ. o = {app, tieuDe, noiDung, ngan, view}. Trả về số người nhận */
+function tbGui_(ids, o) {
+  const users = loadData_().users, list = Array.from(new Set(ids)).map(id => users[id]).filter(u => u && u.tt === TT.ON);
+  if (!list.length) return 0;
+  const now = new Date(), stamp = Utilities.formatDate(now, TZ, 'yyMMddHHmmss');
+  const rows = list.map((u, i) => ['TB' + stamp + String(Math.floor(Math.random() * 900 + 100)) + i, now, u.id, u.hoTen, o.app || '', String(o.tieuDe || '').slice(0, 120),
+    String(o.noiDung || '').slice(0, 600), String(o.ngan || o.noiDung || '').slice(0, 160), o.view || '', '']);
+  const lock = LockService.getScriptLock(); let locked = false;
+  try { lock.waitLock(8000); locked = true; } catch (e) {}
+  try {
+    const sh = tbSheet_(TB_SH.TB);
+    if (sh.getLastRow() > TB_MAX_ROWS) sh.deleteRows(2, 1000); // sổ thông báo chỉ giữ các dòng gần đây
+    sh.getRange(sh.getLastRow() + 1, 1, rows.length, TB_HEAD.length).setValues(rows);
+  } finally { if (locked) lock.releaseLock(); }
+  list.forEach(u => tbBump_(u.id));
+  try { tbDay_(list.map(u => u.id)); } catch (e) { console.error('tbDay_', e); }
+  return list.length;
+}
+function tbItems_(id, sinceMs) {
+  const sh = tbSheet_(TB_SH.TB), last = sh.getLastRow(); if (last < 2) return [];
+  const n = Math.min(last - 1, 600), v = sh.getRange(last - n + 1, 1, n, TB_HEAD.length).getValues(), min = Date.now() - TB_GIU_NGAY * 864e5;
+  return v.map((r, i) => ({ row: last - n + 1 + i, ma: String(r[TBC.MA]), luc: r[TBC.LUC], id: String(r[TBC.ID]).trim(), app: String(r[TBC.APP]), tieuDe: String(r[TBC.TIEU_DE]),
+    noiDung: String(r[TBC.NOI_DUNG]), ngan: String(r[TBC.NGAN]), view: String(r[TBC.VIEW]), xem: !!r[TBC.XEM] }))
+    .filter(x => x.id === id && x.luc instanceof Date && x.luc.getTime() >= Math.max(min, sinceMs || 0))
+    .sort((a, b) => b.luc - a.luc);
+}
+const tbOut_ = x => ({ ma: x.ma, luc: tbIso_(x.luc), app: x.app, tieuDe: x.tieuDe, noiDung: x.noiDung, view: x.view, xem: x.xem });
+
+/** Trang web hỏi định kỳ: có thông báo mới không. b.v = phiên bản lần trước → không đổi thì trả ngay, không đọc sheet */
+function apiTbPoll_(b) {
+  const g = checkToken_(b.token); if (g.error) return g;
+  const id = g.user.id, cache = CacheService.getScriptCache();
+  let v = cache.get('tb_v_' + id);
+  if (v && b.v && String(b.v) === v) return { ok: true, same: true, v };
+  if (!v) { v = String(Date.now()); try { cache.put('tb_v_' + id, v, 21600); } catch (e) {} }
+  const items = tbItems_(id).slice(0, 30);
+  return { ok: true, v, items: items.map(tbOut_), chuaXem: items.filter(x => !x.xem).length };
+}
+/** Đánh dấu đã xem: b.ma = [mã…] hoặc b.all = true */
+function apiTbRead_(b) {
+  const g = checkToken_(b.token); if (g.error) return g;
+  const want = Array.isArray(b.ma) ? b.ma.map(String) : [], items = tbItems_(g.user.id).filter(x => !x.xem && (b.all === true || want.includes(x.ma)));
+  if (items.length) { const sh = tbSheet_(TB_SH.TB), now = new Date(); items.forEach(x => sh.getRange(x.row, TBC.XEM + 1).setValue(now)); tbBump_(g.user.id); }
+  return apiTbPoll_({ token: b.token });
+}
+/** Bật thông báo trên máy này: lưu địa chỉ đẩy, trả khóa máy cho service worker */
+function apiTbSub_(b) {
+  const g = checkToken_(b.token); if (g.error) return g;
+  const ep = String(b.endpoint || '').trim();
+  if (!TB_HOST_OK.test(ep) || ep.length > 900) return { error: 'invalid', message: 'Trình duyệt này chưa được hỗ trợ nhận thông báo đẩy.' };
+  const site = String(b.site || '').trim();
+  if (/^https:\/\/[a-z0-9.-]+(\/[\w./-]*)?$/i.test(site)) { const p = PropertiesService.getScriptProperties(); if (p.getProperty('TB_SITE') !== site) p.setProperty('TB_SITE', site); }
+  const lock = LockService.getScriptLock();
+  try { lock.waitLock(8000); } catch (e) { return { error: 'busy', message: 'Hệ thống đang bận, thử lại sau vài giây.' }; }
+  try {
+    const sh = tbSheet_(TB_SH.MAY), n = sh.getLastRow() - 1, v = n > 0 ? sh.getRange(2, 1, n, TB_MAY_HEAD.length).getValues() : [];
+    const i = v.findIndex(r => String(r[TBM.EP]) === ep), now = new Date(), dev = String(b.device || '').slice(0, 60);
+    let key = i >= 0 ? String(v[i][TBM.KEY]) : '';
+    if (!key) key = (Utilities.getUuid() + Utilities.getUuid()).replace(/-/g, '').slice(0, 40);
+    const row = [g.user.id, g.user.hoTen, ep, key, dev, i >= 0 ? v[i][TBM.LUC] : now, now, i >= 0 ? v[i][TBM.KQ] : ''];
+    sh.getRange(i >= 0 ? i + 2 : sh.getLastRow() + 1, 1, 1, TB_MAY_HEAD.length).setValues([row]);
+    // mỗi cán bộ giữ tối đa 5 máy: bỏ máy cũ nhất
+    const mine = v.map((r, k) => ({ k, id: String(r[TBM.ID]).trim(), luc: r[TBM.PULL] instanceof Date ? r[TBM.PULL].getTime() : 0 })).filter(x => x.id === g.user.id && x.k !== i).sort((a, c) => c.luc - a.luc);
+    mine.slice(4).map(x => x.k + 2).sort((a, c) => c - a).forEach(r => sh.deleteRow(r));
+    if (i < 0) log_(g.user.id, g.user.hoTen, 'Bật thông báo trên máy', '', dev, '');
+    return { ok: true, key };
+  } finally { lock.releaseLock(); }
+}
+function apiTbUnsub_(b) {
+  const ep = String(b.endpoint || '').trim(); if (!ep) return { ok: true };
+  const lock = LockService.getScriptLock();
+  try { lock.waitLock(8000); } catch (e) { return { ok: true }; }
+  try { const sh = tbSheet_(TB_SH.MAY), n = sh.getLastRow() - 1; if (n > 0) { const v = sh.getRange(2, TBM.EP + 1, n, 1).getValues(); for (let i = n - 1; i >= 0; i--) if (String(v[i][0]) === ep) sh.deleteRow(i + 2); } }
+  finally { lock.releaseLock(); }
+  return { ok: true };
+}
+/** Service worker gọi khi được đánh thức (không cần phiên đăng nhập, dùng khóa máy): trả các thông báo mới chưa xem */
+function apiTbPull_(b) {
+  const key = String(b.key || ''); if (!/^[0-9a-f]{40}$/.test(key)) return { ok: true, items: [] };
+  const sh = tbSheet_(TB_SH.MAY), n = sh.getLastRow() - 1; if (n < 1) return { ok: true, items: [] };
+  const v = sh.getRange(2, 1, n, TB_MAY_HEAD.length).getValues(), i = v.findIndex(r => String(r[TBM.KEY]) === key);
+  if (i < 0) return { ok: true, items: [], gone: true };
+  const id = String(v[i][TBM.ID]).trim(), u = loadData_().users[id];
+  if (!u || u.tt !== TT.ON) return { ok: true, items: [], gone: true };
+  const lastPull = v[i][TBM.PULL] instanceof Date ? v[i][TBM.PULL].getTime() : 0, now = new Date();
+  const items = tbItems_(id, Math.max(lastPull - 5000, now.getTime() - 12 * 3600e3)).filter(x => !x.xem).slice(0, 3);
+  sh.getRange(i + 2, TBM.PULL + 1).setValue(now);
+  return { ok: true, items: items.map(x => ({ ma: x.ma, tieuDe: x.tieuDe, ngan: x.ngan, view: x.view })) };
+}
+
+/* ---------- Đẩy tới điện thoại (Web Push, không nội dung) ---------- */
+function tbDay_(ids) {
+  const sh = tbSheet_(TB_SH.MAY), n = sh.getLastRow() - 1; if (n < 1) return;
+  const v = sh.getRange(2, 1, n, TB_MAY_HEAD.length).getValues();
+  const subs = v.map((r, i) => ({ row: i + 2, id: String(r[TBM.ID]).trim(), ep: String(r[TBM.EP]) })).filter(s => ids.includes(s.id) && TB_HOST_OK.test(s.ep));
+  if (!subs.length) return;
+  const vp = tbVapid_(), reqs = subs.map(s => ({ url: s.ep, method: 'post', muteHttpExceptions: true,
+    headers: { TTL: '43200', Urgency: 'high', Authorization: 'vapid t=' + tbJwt_(s.ep.match(/^https:\/\/[^/]+/)[0], vp) + ', k=' + vp.pub } }));
+  let res; try { res = UrlFetchApp.fetchAll(reqs); } catch (e) { console.error('push', e); return; }
+  const now = Utilities.formatDate(new Date(), TZ, 'dd/MM HH:mm'), dead = [];
+  res.forEach((r, k) => { const code = r.getResponseCode();
+    if (code === 404 || code === 410) dead.push(subs[k].row);           // máy đã gỡ ứng dụng hoặc tắt thông báo
+    else sh.getRange(subs[k].row, TBM.KQ + 1).setValue((code >= 200 && code < 300 ? 'Đã đẩy ' : 'Lỗi ' + code + ' ') + now); });
+  dead.sort((a, b) => b - a).forEach(r => sh.deleteRow(r));
+}
+function tbVapid_() {
+  const p = PropertiesService.getScriptProperties(); let priv = p.getProperty('TB_VAPID_PRIV'), pub = p.getProperty('TB_VAPID_PUB');
+  if (!priv || !pub) {
+    const E = tbEc_(), seed = tbSha_(tbStr_(Utilities.getUuid() + Utilities.getUuid() + Date.now() + Utilities.getUuid()));
+    const d = E.mod(E.fromBytes(seed), E.n - BigInt(1)) + BigInt(1), Q = E.mul(d);
+    priv = tbB64_(E.toBytes(d)); pub = tbB64_([4].concat(E.toBytes(Q.x), E.toBytes(Q.y)));
+    p.setProperties({ TB_VAPID_PRIV: priv, TB_VAPID_PUB: pub });
+  }
+  return { priv, pub };
+}
+/** Thẻ ký ES256 cho 1 dịch vụ đẩy (đệm 11 giờ) */
+function tbJwt_(aud, vp) {
+  const cache = CacheService.getScriptCache(), ck = 'tb_jwt_' + Utilities.base64EncodeWebSafe(aud).slice(0, 80), hit = cache.get(ck);
+  if (hit) return hit;
+  const site = PropertiesService.getScriptProperties().getProperty('TB_SITE') || 'https://www.vietinbank.vn';
+  const head = tbB64_(tbStr_(JSON.stringify({ typ: 'JWT', alg: 'ES256' }))), body = tbB64_(tbStr_(JSON.stringify({ aud, exp: Math.floor(Date.now() / 1000) + 12 * 3600, sub: site })));
+  const E = tbEc_(), sig = E.sign(tbSha_(tbStr_(head + '.' + body)), E.fromBytes(tbUnb64_(vp.priv)));
+  const jwt = head + '.' + body + '.' + tbB64_(sig);
+  try { cache.put(ck, jwt, 11 * 3600); } catch (e) {}
+  return jwt;
+}
+// Byte không dấu 0..255 ↔ byte có dấu của Apps Script
+function tbStr_(s) { return Utilities.newBlob(s).getBytes().map(x => x & 255); }
+function tbSigned_(a) { return a.map(x => x > 127 ? x - 256 : x); }
+function tbSha_(a) { return Utilities.computeDigest(Utilities.DigestAlgorithm.SHA_256, tbSigned_(a)).map(x => x & 255); }
+function tbHmac_(key, a) { return Utilities.computeHmacSha256Signature(tbSigned_(a), tbSigned_(key)).map(x => x & 255); }
+function tbB64_(a) { return Utilities.base64EncodeWebSafe(tbSigned_(a)).replace(/=+$/, ''); }
+function tbUnb64_(s) { return Utilities.base64DecodeWebSafe(s + '==='.slice((s.length + 3) % 4)).map(x => x & 255); }
+/** Đường cong P-256 (chữ ký ES256) bằng số nguyên lớn – chỉ dùng để ký thẻ thông báo đẩy */
+function tbEc_() {
+  const B = BigInt, _0 = B(0), _1 = B(1), _2 = B(2), _3 = B(3), _8 = B(8);
+  const p = B('0xffffffff00000001000000000000000000000000ffffffffffffffffffffffff'), n = B('0xffffffff00000000ffffffffffffffffbce6faada7179e84f3b9cac2fc632551');
+  const G = { x: B('0x6b17d1f2e12c4247f8bce6e563a440f277037d812deb33a0f4a13945d898c296'), y: B('0x4fe342e2fe1a7f9b8ee7eb4a7c0f9e162bce33576b315ececbb6406837bf51f5') };
+  const mod = (a, m) => { const r = a % m; return r < _0 ? r + m : r; };
+  const pow = (a, e, m) => { let r = _1; a = mod(a, m); while (e > _0) { if (e & _1) r = r * a % m; a = a * a % m; e >>= _1; } return r; };
+  const inv = (a, m) => pow(a, m - _2, m);
+  const dbl = P => { if (!P || P.y === _0) return null;
+    const yy = P.y * P.y % p, s = B(4) * P.x * yy % p, zz = P.z * P.z % p, m = _3 * mod(P.x - zz, p) * (P.x + zz) % p;
+    const x = mod(m * m - _2 * s, p); return { x, y: mod(m * (s - x) - _8 * yy * yy, p), z: _2 * P.y * P.z % p }; };
+  const add = (P, Q) => { if (!P) return Q; if (!Q) return P;
+    const z1 = P.z * P.z % p, z2 = Q.z * Q.z % p, u1 = P.x * z2 % p, u2 = Q.x * z1 % p, s1 = P.y * z2 % p * Q.z % p, s2 = Q.y * z1 % p * P.z % p;
+    const h = mod(u2 - u1, p), r = mod(s2 - s1, p); if (h === _0) return r === _0 ? dbl(P) : null;
+    const hh = h * h % p, hhh = hh * h % p, v = u1 * hh % p, x = mod(r * r - hhh - _2 * v, p);
+    return { x, y: mod(r * (v - x) - s1 * hhh, p), z: h * P.z % p * Q.z % p }; };
+  const mul = k => { let R = null, A = { x: G.x, y: G.y, z: _1 }; while (k > _0) { if (k & _1) R = add(R, A); A = dbl(A); k >>= _1; }
+    const zi = inv(R.z, p), zi2 = zi * zi % p; return { x: R.x * zi2 % p, y: R.y * zi2 % p * zi % p }; };
+  const fromBytes = a => a.reduce((s, b) => (s << _8) | B(b), _0);
+  const toBytes = v => { const o = new Array(32); for (let i = 31; i >= 0; i--) { o[i] = Number(v & B(255)); v >>= _8; } return o; };
+  /** Ký: hash = 32 byte SHA-256; số ngẫu nhiên k sinh theo RFC 6979 (HMAC) */
+  const sign = (hash, d) => {
+    const z = mod(fromBytes(hash), n), x = toBytes(d), h1 = toBytes(z);
+    let V = new Array(32).fill(1), K = new Array(32).fill(0);
+    K = tbHmac_(K, V.concat([0], x, h1)); V = tbHmac_(K, V); K = tbHmac_(K, V.concat([1], x, h1)); V = tbHmac_(K, V);
+    for (let t = 0; t < 50; t++) {
+      V = tbHmac_(K, V); const k = fromBytes(V);
+      if (k > _0 && k < n) { const r = mod(mul(k).x, n), s = mod(inv(k, n) * (z + r * d), n); if (r !== _0 && s !== _0) return toBytes(r).concat(toBytes(s)); }
+      K = tbHmac_(K, V.concat([0])); V = tbHmac_(K, V);
+    }
+    throw new Error('Không ký được');
+  };
+  return { n, mod, mul, sign, fromBytes, toBytes };
+}
+
+/* =====================================================================
+   PHẦN 12 – TIỆN ÍCH PHỤC VỤ KHÁCH HÀNG
+   I011 Tính lãi tiết kiệm: tham số ở sheet TL_CauHinh (file phân quyền).
+   I012 ATM và điểm giao dịch: đọc file quản lý ATM (ATM_CauHinh → FILE_ID), sheet DS_ATM và DS_PGD.
+   ===================================================================== */
+const TL_APP = 'I011', ATM_APP = 'I012';
+const TL_SH = 'TL_CauHinh', ATM_SH = 'ATM_CauHinh';
+const TL_CAUHINH_BAN_DAU = [
+  ['KY_HAN', '1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 24, 36', 'Các kỳ hạn gửi (tháng) hiện trên màn hình'],
+  ['LS_KHONG_KY_HAN', '0,2', 'Lãi suất không kỳ hạn (%/năm) áp dụng khi rút trước hạn'],
+  ['BIEN_DO_VAY', '2', 'Lãi suất vay cầm cố = lãi suất sổ + biên độ này (%/năm)'],
+  ['LS_VAY_TOI_THIEU', '8', 'Lãi suất vay cầm cố tối thiểu (%/năm)'],
+  ['TY_LE_VAY_TOI_DA', '100', 'Số tiền vay tối đa so với số tiền trên sổ (%)'],
+  ['CO_SO_NGAY', '365', 'Số ngày của năm dùng để tính lãi'],
+  ['SO_TIEN_MAU', '100000000', 'Số tiền gửi điền sẵn khi mở màn hình (đồng)'],
+  ['LS_MAU', '5,0', 'Lãi suất điền sẵn khi mở màn hình (%/năm)']
+];
+const ATM_FILE_MAC_DINH = '1AgfKCA8tKQOlL8gRuK3h1rmIATOWUrJaZLflYM3sdfA'; // Mau_Quan_ly_ATM_VetinBank_TayTienGiang
+const ATM_CAUHINH_BAN_DAU = [
+  ['FILE_ID', ATM_FILE_MAC_DINH, 'ID file Google Sheet quản lý ATM (phần giữa /d/ và /edit trong đường link)'],
+  ['SHEET_ATM', 'DS_ATM', 'Tên sheet danh sách ATM/CDM'],
+  ['SHEET_PGD', 'DS_PGD', 'Tên sheet danh sách điểm giao dịch'],
+  ['HIEN_KHONG_CONG_KHAI', 'Có', 'Có: cán bộ thấy cả máy/điểm chưa công khai cho khách (có nhãn "Nội bộ"); Không: chỉ hiện dòng Công khai = Có'],
+  ['HIEN_MA_MAY', 'Có', 'Có: hiện mã ATM trên màn hình cho cán bộ'],
+  ['DO_RONG_ANH', '800', 'Độ rộng ảnh hiển thị (điểm ảnh). Ảnh trên Drive phải chia sẻ "Bất kỳ ai có đường liên kết"'],
+  ['BAN_DO', 'Bật', 'Bật/Tắt bản đồ trên màn hình (bản đồ nền OpenStreetMap)']
+];
+
+function caiDatTienIchKhachHang() {
+  const ui = SpreadsheetApp.getUi(), ss = SpreadsheetApp.getActive(), out = [];
+  [[TL_SH, TL_CAUHINH_BAN_DAU], [ATM_SH, ATM_CAUHINH_BAN_DAU]].forEach(([name, init]) => {
+    let sh = ss.getSheetByName(name);
+    if (!sh) { sh = ss.insertSheet(name); sh.getRange(1, 1, 1, 3).setValues([['Tham số', 'Giá trị', 'Ý nghĩa']]); sh.getRange('B2:B').setNumberFormat('@');
+      sh.setFrozenRows(1); sh.getRange(1, 1, 1, 3).setFontWeight('bold').setFontColor('#FFFFFF').setBackground('#005993'); [200, 380, 620].forEach((w, i) => sh.setColumnWidth(i + 1, w)); out.push('tạo sheet ' + name); }
+    const keys = sh.getDataRange().getValues().map(r => String(r[0]).trim());
+    init.forEach(r => { if (!keys.includes(r[0])) { sh.appendRow(r); out.push(name + ': thêm ' + r[0]); } });
+  });
+  const roles = Object.keys(rolePerms_());
+  const n11 = dangKyUngDung_(TL_APP, 'Tính lãi tiết kiệm', 'Tính lãi theo phương thức lĩnh lãi; so sánh cầm cố sổ với rút trước hạn', roles);
+  const n12 = dangKyUngDung_(ATM_APP, 'ATM và điểm giao dịch', 'Vị trí ATM/CDM và điểm giao dịch của chi nhánh, chỉ đường, bản đồ', roles);
+  lamMoiBoNhoDem(true);
+  let kt = ''; try { const d = atmData_(true); kt = 'Đọc được ' + d.atm.length + ' máy ATM/CDM và ' + d.pgd.length + ' điểm giao dịch.'; } catch (e) { kt = 'LƯU Ý: chưa đọc được file ATM (' + e.message + '). Kiểm tra FILE_ID ở sheet ' + ATM_SH + '.'; }
+  ui.alert('Tính lãi tiết kiệm (I011) và ATM, điểm giao dịch (I012)',
+    (out.length ? 'Đã cập nhật: ' + out.join('; ') + '.\n\n' : 'Các sheet cấu hình đã có, giữ nguyên.\n\n') +
+    (n11 ? 'Đã đăng ký I011 – Tính lãi tiết kiệm (tick sẵn cho mọi vai trò).\n' : '') + (n12 ? 'Đã đăng ký I012 – ATM và điểm giao dịch (tick sẵn cho mọi vai trò).\n' : '') +
+    '\n' + kt + '\n\nẢnh ATM/điểm giao dịch trên Drive cần chia sẻ "Bất kỳ ai có đường liên kết" thì mới hiện trong ứng dụng.\nTiếp theo: Triển khai → Quản lý triển khai → Phiên bản mới.', ui.ButtonSet.OK);
+}
+function tienIchKv_(name, init) {
+  const kv = {}; init.forEach(r => kv[r[0]] = r[1]);
+  const sh = ss_().getSheetByName(name);
+  if (sh && sh.getLastRow() > 1) sh.getDataRange().getValues().slice(1).forEach(r => { const k = String(r[0]).trim(); if (k && String(r[1]).trim() !== '') kv[k] = String(r[1]).trim(); });
+  return kv;
+}
+function tienIchGuard_(b, app) {
+  const v = checkToken_(b.token); if (v.error) return v;
+  if (!userApps_(v.user).includes(app)) return { error: 'forbidden' };
+  return { user: v.user };
+}
+function apiTlCfg_(b) {
+  const g = tienIchGuard_(b, TL_APP); if (g.error) return g;
+  const cache = CacheService.getScriptCache(), hit = cache.get('tl_cfg'); if (hit) return JSON.parse(hit);
+  const kv = tienIchKv_(TL_SH, TL_CAUHINH_BAN_DAU), dec = (s, d, lo, hi) => { const x = parseFloat(String(s).replace(/\s/g, '').replace(',', '.')); return isFinite(x) ? Math.max(lo, Math.min(hi, x)) : d; };
+  const terms = Array.from(new Set(String(kv.KY_HAN).split(/[,;\s]+/).map(x => parseInt(x, 10)).filter(x => x >= 1 && x <= 120))).sort((a, c) => a - c);
+  const out = { ok: true, cfg: { terms: terms.length ? terms : [1, 2, 3, 6, 9, 12, 24, 36], lsKhongKyHan: dec(kv.LS_KHONG_KY_HAN, 0.2, 0, 20), bienDoVay: dec(kv.BIEN_DO_VAY, 2, 0, 20),
+    lsVayToiThieu: dec(kv.LS_VAY_TOI_THIEU, 8, 0, 30), tyLeVayToiDa: dec(kv.TY_LE_VAY_TOI_DA, 100, 1, 100), coSoNgay: dec(kv.CO_SO_NGAY, 365, 360, 366),
+    soTienMau: Math.round(dec(String(kv.SO_TIEN_MAU).replace(/\./g, ''), 1e8, 0, 1e13)), lsMau: dec(kv.LS_MAU, 5, 0, 30) } };
+  try { cache.put('tl_cfg', JSON.stringify(out), 300); } catch (e) {}
+  return out;
+}
+
+/** Đọc file quản lý ATM: tìm dòng tiêu đề theo tên cột nên chèn/đổi thứ tự cột không ảnh hưởng */
+function atmData_(fresh) {
+  const cache = CacheService.getScriptCache();
+  if (!fresh) { const hit = cache.get('atm_data'); if (hit) return JSON.parse(hit); }
+  const kv = tienIchKv_(ATM_SH, ATM_CAUHINH_BAN_DAU), f = SpreadsheetApp.openById(String(kv.FILE_ID).replace(/^.*\/d\/([\w-]+).*$/, '$1'));
+  const yes = s => /^(có|co|bật|bat|x|true|1)$/i.test(String(s).trim()), noiBo = yes(kv.HIEN_KHONG_CONG_KHAI), w = Math.max(200, Math.min(1600, parseInt(kv.DO_RONG_ANH, 10) || 800));
+  const table = (name, keyCol) => { const sh = f.getSheetByName(name); if (!sh) throw new Error('Không thấy sheet ' + name);
+    const v = sh.getDataRange().getDisplayValues(), hi = v.findIndex(r => r.some(c => String(c).trim() === keyCol)); if (hi < 0) throw new Error('Sheet ' + name + ' thiếu cột "' + keyCol + '"');
+    const h = {}; v[hi].forEach((c, i) => { const k = String(c).trim(); if (k && h[k] === undefined) h[k] = i; });
+    return v.slice(hi + 1).filter(r => String(r[h[keyCol]] || '').trim()).map(r => k => String(h[k] === undefined ? '' : r[h[k]] || '').trim()); };
+  const num = s => { const x = parseFloat(String(s).replace(',', '.')); return isFinite(x) ? x : null; };
+  const img = s => { const m = String(s).match(/(?:\/d\/|[?&]id=)([\w-]{20,})/); return m ? 'https://drive.google.com/thumbnail?sz=w' + w + '&id=' + m[1] : ''; };
+  const atm = table(kv.SHEET_ATM, 'Mã ATM').map(g => ({ ma: g('Mã ATM'), ten: g('Tên điểm đặt'), loai: g('Loại máy') || 'ATM', diaChi: g('Địa chỉ'), xa: g('Xã/Phường'), lat: num(g('Vĩ độ (Lat)')), lng: num(g('Kinh độ (Lng)')),
+    gio: g('Giờ hoạt động'), dichVu: g('Dịch vụ'), anh: img(g('Link ảnh (Google Drive)')), tt: g('Trạng thái') || 'Hoạt động', congKhai: !/^không|^khong/i.test(g('Công khai')), capNhat: g('Ngày cập nhật') }))
+    .filter(x => x.ten && (noiBo || x.congKhai));
+  let pgd = [];
+  try { pgd = table(kv.SHEET_PGD, 'Mã điểm').map(g => ({ ma: g('Mã điểm'), ten: g('Tên điểm giao dịch'), loai: g('Loại') || 'Phòng giao dịch', diaChi: g('Địa chỉ'), xa: g('Xã/Phường'), lat: num(g('Vĩ độ (Lat)')), lng: num(g('Kinh độ (Lng)')),
+    gio: g('Giờ làm việc'), dt: g('Điện thoại'), anh: img(g('Link ảnh (Google Drive)')), congKhai: !/^không|^khong/i.test(g('Công khai')) })).filter(x => x.ten && (noiBo || x.congKhai)); } catch (e) { pgd = []; }
+  const out = { atm, pgd, hienMa: yes(kv.HIEN_MA_MAY), banDo: yes(kv.BAN_DO), luc: Utilities.formatDate(new Date(), TZ, 'HH:mm dd/MM/yyyy') };
+  try { cache.put('atm_data', JSON.stringify(out), 600); } catch (e) {}
+  return out;
+}
+function apiAtmLoad_(b) {
+  const g = tienIchGuard_(b, ATM_APP); if (g.error) return g;
+  try { return Object.assign({ ok: true }, atmData_(b.fresh === true)); }
+  catch (e) { console.error(e); return { error: 'not_configured', message: 'Chưa đọc được danh sách ATM. Quản trị kiểm tra sheet ' + ATM_SH + ' (FILE_ID) và chạy menu Cài đặt Tính lãi, ATM.' }; }
+}
+
+/** Thông tin thông báo trong phiên đăng nhập: khóa công khai để bật thông báo đẩy, có cần hỏi định kỳ không */
+function tbSession_(u) {
+  let poll = false, chuKy = 60;
+  try { const cfg = sctConfig_(); chuKy = cfg.popupChuKy || 60; poll = cfg.popup && cfg.vtPopup.includes(u.vt) && userApps_(u).includes(SCT_APP_QL) && sctRole_(u, cfg).scope.length > 0; } catch (e) {}
+  let vapid = ''; if (poll) { try { vapid = tbVapid_().pub; } catch (e) { vapid = ''; } }
+  return { poll, chuKy, vapid };
+}
+/** Menu: gửi 1 thông báo thử tới ID cán bộ nhập vào (để kiểm tra popup và thông báo đẩy) */
+function tbGuiThu() {
+  const ui = SpreadsheetApp.getUi(), r = ui.prompt('Gửi thử thông báo popup', 'Nhập mã ID cán bộ nhận (5 số):', ui.ButtonSet.OK_CANCEL);
+  if (r.getSelectedButton() !== ui.Button.OK) return;
+  const id = r.getResponseText().trim(), u = loadData_().users[id];
+  if (!u) { ui.alert('Không tìm thấy ID ' + id + '.'); return; }
+  const n = tbGui_([id], { app: SCT_APP_QL, view: 'ql-cong-tac', tieuDe: 'Thông báo thử', noiDung: 'Đây là thông báo thử từ Không Gian Số Nội Bộ, gửi lúc ' + Utilities.formatDate(new Date(), TZ, 'HH:mm:ss dd/MM/yyyy') + '.', ngan: 'Thông báo thử từ Không Gian Số Nội Bộ.' });
+  const sh = tbSheet_(TB_SH.MAY), m = sh.getLastRow() > 1 ? sh.getRange(2, 1, sh.getLastRow() - 1, TB_MAY_HEAD.length).getValues().filter(x => String(x[TBM.ID]).trim() === id) : [];
+  ui.alert('Gửi thử thông báo', n ? 'Đã gửi cho ' + u.hoTen + '.\n- Đang mở ứng dụng: popup hiện trong vòng 1 phút (nếu vai trò thuộc VAI_TRO_POPUP).\n- Máy đã bật thông báo: ' + m.length + ' máy' + (m.length ? ' (' + m.map(x => x[TBM.KQ] || 'đang đẩy').join('; ') + ')' : ' – cán bộ cần bấm chuông → "Bật thông báo trên máy này"') + '.' : 'Không gửi được (ID không ở trạng thái Hoạt động).', ui.ButtonSet.OK);
 }
