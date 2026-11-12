@@ -1,7 +1,7 @@
 # Không Gian Số Nội Bộ · TTG Inside
 
 Bộ tiện ích nội bộ dành cho cán bộ **VietinBank Chi nhánh Tây Tiền Giang**, thiết kế cho điện thoại.
-Phiên bản 2.2.0 – 12/11/2026: màn hình ATM và điểm giao dịch (I012) dùng lại nguyên webapp "Tìm ATM VietinBank" v1.1 (bản đồ toàn màn hình, bảng trượt, chi tiết, mã QR). Bản 2.1.1: chuông thông báo cho mọi cán bộ; Tính lãi và ATM đứng riêng. Bản 2.1.0: thông báo popup, I011, I012.
+Phiên bản 2.3.0 – 12/11/2026: thêm I013 Thiệp chúc mừng (10 mẫu sinh nhật, xuất video MP4 hoặc ảnh PNG, nhạc tự phối, gợi ý lời chúc bằng AI, tạo theo lô từ Excel); thêm sheet DungThu để cấp quyền dùng thử theo từng cán bộ. Bản 2.2.0: I012 dùng lại webapp Tìm ATM VietinBank v1.1. Bản 2.1.x: thông báo popup, chuông cho mọi cán bộ, I011.
 
 | Nhóm | Tiện ích | Mô tả |
 |---|---|---|
@@ -13,6 +13,7 @@ Phiên bản 2.2.0 – 12/11/2026: màn hình ATM và điểm giao dịch (I012)
 | Chi phí | Báo cáo chi phí (I004) | Tổng quan, dự báo hạn mức, theo phòng/nhóm, ma trận, xu hướng 12 tháng, kế hoạch năm, khoản lớn/lặp lại, nhận xét AI |
 | Phục vụ khách hàng | Tính lãi tiết kiệm (I011) | Tiền lãi theo 5 phương thức lĩnh lãi, lịch lĩnh lãi; so sánh cầm cố sổ với rút trước hạn. Tham số ở sheet TL_CauHinh |
 | Phục vụ khách hàng | ATM và điểm giao dịch (I012) | Danh sách ATM/CDM và điểm giao dịch đọc từ file quản lý ATM; tìm kiếm, lọc, tìm điểm gần nhất, bản đồ, chỉ đường Google Maps |
+| Phục vụ khách hàng | Thiệp chúc mừng (I013) | Tạo thiệp video (MP4 9:16, ~13 giây, có nhạc) hoặc ảnh (PNG) chúc mừng khách hàng; 10 mẫu sinh nhật × 3 tông màu; gắn ảnh khách; tạo theo danh sách Excel |
 | Mã QR | Tạo QR theo yêu cầu | Biểu mẫu tạo mã: đường link, gọi điện, tin nhắn, email, danh thiếp, văn bản; ô nhập tự nhận dạng |
 
 ## Cấu trúc thư mục
@@ -24,6 +25,7 @@ sw.js                   Service worker: mở nhanh, dùng được khi mạng y�
 lib/qrcode.js           Thư viện tạo mã QR (qrcode-generator 1.4.4, MIT)
 lib/jsQR.js             Thư viện đọc mã QR từ ảnh (jsQR 1.4.0, Apache-2.0)
 lib/leaflet/            Thư viện bản đồ (Leaflet 1.9.4, BSD-2) – chỉ tải khi mở màn hình ATM; nền bản đồ OpenStreetMap. Giao diện và chương trình của màn hình ATM nằm trong index.html (3 khối amTplBody, amTplCss, amTplJs)
+lib/mp4-muxer.js        Thư viện đóng gói video MP4 (mp4-muxer 5.2.2, MIT) – chỉ tải khi tạo thiệp video
 lib/tesseract/          Thư viện đọc chữ trên ảnh thẻ (Tesseract.js 5.1.1, Apache-2.0) – chỉ tải khi bấm chụp thẻ
 icons/                  Biểu tượng ứng dụng
 apps-script/Code.gs     Máy chủ phân quyền (gắn với Google Sheet) + trợ lý AI giai đoạn 2
@@ -217,3 +219,14 @@ Thêm thuộc tính tập lệnh `ANTHROPIC_API_KEY` trong Apps Script (cùng sc
 - **I012 từ v2.2.0** là webapp "Tìm ATM VietinBank" v1.1 chạy trong khung nhúng: bản đồ toàn màn hình, thanh tìm kiếm, tab ATM / Điểm giao dịch, lọc CDM, 24/7, Đang hoạt động, bảng trượt danh sách, thẻ "gần bạn nhất", trang chi tiết có ảnh, chỉ đường, chia sẻ, mã QR, ghim gộp nhiều máy cùng vị trí. Khác bản công khai: dữ liệu lấy qua máy chủ (đăng nhập mới xem được), có nhãn "Nội bộ" cho điểm chưa công khai. Khi mở màn hình này phần đầu trang Không Gian Số tạm ẩn, còn nút Trang chủ.
 - `ATM_CauHinh`: `FILE_ID` của file quản lý ATM (sheet `DS_ATM`, `DS_PGD`), `HIEN_KHONG_CONG_KHAI`, `HIEN_MA_MAY`, `CHE_DO_DI_CHUYEN` (two-wheeler/driving/walking), `LINK_CONG_KHAI` (địa chỉ webapp ATM công khai – có thì Chia sẻ và Mã QR dẫn tới trang đó, trống thì dẫn tới Google Maps), `HOTLINE`, `WEBSITE`, `TU_LAM_MOI_PHUT`. Ứng dụng tìm cột theo tên tiêu đề; không hiển thị cột "Ghi chú nội bộ". Dữ liệu đệm 10 phút.
 - Ảnh trên Drive phải chia sẻ "Bất kỳ ai có đường liên kết". Vị trí "gần tôi" chỉ tính trên điện thoại, không gửi về máy chủ.
+
+## Thiệp chúc mừng (I013) – từ v2.3.0
+
+- **Cài đặt:** menu **Không Gian Số → Cài đặt / cập nhật Thiệp chúc mừng (I013)**. Tạo sheet `THIEP_CauHinh`, `THIEP_LoiChuc`, `DungThu`; đăng ký I013 và chỉ tick cho vai trò Quản trị hệ thống.
+- **Dùng thử theo cán bộ:** sheet `DungThu` (Mã ứng dụng | mã ID hoặc đúng họ tên cán bộ | Ghi chú) cấp quyền riêng cho từng người, ngoài bảng vai trò – dùng cho giai đoạn phát triển của bất kỳ ứng dụng nào. Xóa dòng là thu quyền. Khi triển khai: tick I013 cho các vai trò ở sheet VaiTro.
+- **Dữ liệu khách hàng:** thiệp được dựng ngay trên máy cán bộ. Họ tên và ảnh khách KHÔNG gửi về máy chủ, không lưu ở đâu. Nhật ký chỉ ghi số thiệp đã tạo. Gợi ý AI chỉ nhận dịp, xưng hô, tông và ghi chú ngắn của cán bộ.
+- **`THIEP_CauHinh`:** `TEN_DON_VI`, `DIP_DANG_MO` (các dịp đã có mẫu), `GOI_Y_AI`, `HAN_MUC_AI_NGAY`, `MODEL_LOI_CHUC`, `DO_DAI_LOI_CHUC`, `SO_THIEP_TOI_DA_LO`, `DO_DAI_VIDEO_GIAY`.
+- **`THIEP_LoiChuc`:** kho lời chúc soạn sẵn theo dịp và tông (Chung/Nam/Nữ); viết `{xungHo}` ở chỗ cần gọi Anh/Chị. Bỏ tick "Đang dùng" để ẩn.
+- **Mẫu thiệp:** nằm trong `index.html`, mảng `TC_MAU` (mỗi mẫu có bảng màu 3 tông và các hàm vẽ). Nhạc: hàm `tcMusic` tự phối giai điệu Happy Birthday (phạm vi công cộng) thành 3 bản: hộp nhạc, piano, vui tươi – không dùng file nhạc ngoài.
+- **Video:** MP4 720×1280, 30 hình/giây, H.264 + AAC (dựng bằng WebCodecs của Chrome/Edge/Safari mới). Máy không có bộ mã hóa chuẩn sẽ có cảnh báo ngay dưới file. Ảnh: PNG 1080×1920.
+- **Tạo theo lô:** tải file Excel mẫu trên màn hình, điền Xưng hô / Tên trên thiệp / Tông màu / Lời chúc riêng; kết quả là 1 file zip, mỗi thiệp mang tên người nhận.
