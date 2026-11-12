@@ -1332,7 +1332,7 @@ footer .shell{display:flex;flex-direction:column;align-items:center;gap:6px;padd
 /* =====================================================================
    CẤU HÌNH — chỉnh tại đây khi triển khai
    ===================================================================== */
-const APP_VERSION='2.1.0 · 11/11/2026';
+const APP_VERSION='2.1.1 · 11/11/2026';
 // Tên bộ công cụ (song ngữ)
 const SUITE={vi:'Không Gian Số Nội Bộ',en:'TTG Inside'};
 
@@ -1374,7 +1374,7 @@ const TOOLKIT=[
     {id:'so-cong-tac',app:'I009',title:'Sổ công tác',desc:'Đăng ký công tác, báo lãnh đạo phòng, xem số ngày lũy kế công tác phí trong tháng.',icon:'route'},
     {id:'ql-cong-tac',app:'I010',title:'Quản lý sổ công tác',desc:'Sổ công tác thời gian thực, từ chối phê duyệt, chấm công tác phí, xuất PDF.',icon:'calcheck'}
   ]}
-  ,{id:'kh',vi:'Phục vụ khách hàng',en:'Customer service',tools:[
+  ,{id:'kh',vi:'Phục vụ khách hàng',en:'Customer service',solo:true,tools:[
     {id:'tinh-lai',app:'I011',title:'Tính lãi tiết kiệm',desc:'Tiền lãi theo từng phương thức lĩnh lãi; so sánh cầm cố sổ với rút trước hạn.',icon:'percent'},
     {id:'diem-atm',app:'I012',title:'ATM và điểm giao dịch',desc:'Vị trí ATM/CDM, điểm giao dịch của chi nhánh; tìm điểm gần nhất, chỉ đường, bản đồ.',icon:'pin'}
   ]}
@@ -1472,7 +1472,7 @@ function go(id,fromHash){
   $('#ctx').hidden=!tool;
   if(tool){
     $('#crumbTxt').innerHTML=`${esc(tool.group.vi)} › <b>${esc(tool.title)}</b>`;
-    const sibs=tool.group.tools.filter(canUse);$('#seg').hidden=sibs.length<2;
+    const sibs=tool.group.tools.filter(canUse);$('#seg').hidden=sibs.length<2||!!tool.group.solo; // nhóm solo: mỗi màn hình đứng riêng, không hiện nút chuyển sang màn hình cùng nhóm
     $('#seg').innerHTML=sibs.map(t=>`<button role="tab" aria-selected="${t.id===id}" data-id="${t.id}">${esc(t.title)}</button>`).join('');
     $('#seg').querySelectorAll('button').forEach(b=>b.onclick=()=>go(b.dataset.id));
     if(!DEMO)api('open',{token:S.token,app:tool.app}).then(r=>{ // máy chủ kiểm tra lại quyền và ghi nhật ký
@@ -3485,7 +3485,7 @@ async function ntPushState(){
 async function ntPushUi(){
   const box=$('#ntPush');if(DEMO){box.innerHTML='<b>Thông báo trên máy này</b><span>Xem thử: bản thật có nút bật thông báo đẩy ra màn hình điện thoại khi đã đóng ứng dụng.</span>';return}
   const st=await ntPushState(),ios=/iPhone|iPad/.test(navigator.userAgent),alone=matchMedia('(display-mode: standalone)').matches||navigator.standalone;
-  const txt={on:'Máy này <b>đang bật</b> thông báo: có lượt đăng ký mới sẽ báo ra màn hình kể cả khi đã đóng ứng dụng.',
+  const txt={on:'Máy này <b>đang bật</b> thông báo: có thông báo mới sẽ báo ra màn hình kể cả khi đã đóng ứng dụng.',
     off:'Bật để nhận thông báo ra màn hình điện thoại kể cả khi đã đóng ứng dụng.',
     denied:'Thông báo đang bị chặn trên máy này. Vào cài đặt trình duyệt (hoặc Cài đặt → Thông báo → TTG Inside) cho phép thông báo, rồi mở lại ứng dụng.',
     unsupported:ios&&!alone?'Trên iPhone: thêm TTG Inside vào màn hình chính (Safari → Chia sẻ → Thêm vào MH chính), mở từ biểu tượng đó rồi vào đây để bật thông báo.':'Trình duyệt này chưa hỗ trợ thông báo đẩy. Popup vẫn hiện khi đang mở ứng dụng.'}[st];

@@ -1,6 +1,6 @@
 /**
  * KHÔNG GIAN SỐ NỘI BỘ (TTG Inside) – Máy chủ phân quyền
- * VietinBank Chi nhánh Tây Tiền Giang · phiên bản 2.1.0 · 11/11/2026
+ * VietinBank Chi nhánh Tây Tiền Giang · phiên bản 2.1.1 · 11/11/2026
  *
  * Script này GẮN VỚI file Google Sheet phân quyền (Tiện ích mở rộng → Apps Script), làm 2 việc:
  *   1. Menu quản trị + tự tick quyền theo vai trò ngay trong Sheet.
@@ -2709,7 +2709,7 @@ const SCT_CAUHINH_BAN_DAU = [
   ['CHE_DO_EMAIL', 'Ngay', 'Ngay: gửi ngay mỗi lượt đăng ký (tự chuyển sang gửi theo ca khi hạn mức email trong ngày còn ít); Theo ca: gom gửi 2 ca'],
   ['GUI_EMAIL_DANG_KY', 'Bật', 'Bật: gửi email cho lãnh đạo phòng mỗi lượt đăng ký. Tắt: không gửi email đăng ký nữa (chỉ còn popup) – báo cáo PDF ngày 1 hằng tháng vẫn gửi email'],
   ['THONG_BAO_POPUP', 'Bật', 'Bật/Tắt thông báo popup khi có lượt đăng ký công tác mới'],
-  ['VAI_TRO_POPUP', 'Trưởng phòng, Phó phòng, Quản trị hệ thống', 'Vai trò nhận popup: lãnh đạo nhận của phòng mình; vai trò xem tất cả/toàn quyền nhận của mọi phòng. Bỏ tên vai trò khỏi đây để ngừng nhận'],
+  ['VAI_TRO_POPUP', 'Trưởng phòng, Phó phòng, Quản trị hệ thống', 'Vai trò nhận popup KHI CÓ LƯỢT ĐĂNG KÝ CÔNG TÁC (chuông thì mọi cán bộ đều có): lãnh đạo nhận của phòng mình; vai trò xem tất cả/toàn quyền nhận của mọi phòng. Bỏ tên vai trò khỏi đây để ngừng nhận'],
   ['POPUP_CHU_KY_GIAY', '60', 'Khi đang mở ứng dụng, cứ bấy nhiêu giây hỏi máy chủ 1 lần xem có thông báo mới (30–600)'],
   ['EMAIL_DU_PHONG', '30', 'Khi hạn mức gửi email trong ngày còn ít hơn số này thì chuyển sang gửi theo ca (dành cho email khác)'],
   ['GIO_CA_SANG', '11:30', 'Giờ gửi ca sáng (gom các lượt chờ gửi)'],
@@ -3605,10 +3605,11 @@ function apiAtmLoad_(b) {
 
 /** Thông tin thông báo trong phiên đăng nhập: khóa công khai để bật thông báo đẩy, có cần hỏi định kỳ không */
 function tbSession_(u) {
-  let poll = false, chuKy = 60;
-  try { const cfg = sctConfig_(); chuKy = cfg.popupChuKy || 60; poll = cfg.popup && cfg.vtPopup.includes(u.vt) && userApps_(u).includes(SCT_APP_QL) && sctRole_(u, cfg).scope.length > 0; } catch (e) {}
-  let vapid = ''; if (poll) { try { vapid = tbVapid_().pub; } catch (e) { vapid = ''; } }
-  return { poll, chuKy, vapid };
+  // Từ v2.1.1: mọi cán bộ đều có chuông và bật được thông báo trên máy (chuẩn bị cho chúc mừng sinh nhật, ngày lễ…).
+  // Ai nhận thông báo nào do từng ứng dụng quyết định (sổ công tác: VAI_TRO_POPUP).
+  let chuKy = 60; try { chuKy = sctConfig_().popupChuKy || 60; } catch (e) {}
+  let vapid = ''; try { vapid = tbVapid_().pub; } catch (e) { vapid = ''; }
+  return { poll: true, chuKy, vapid };
 }
 /** Menu: gửi 1 thông báo thử tới ID cán bộ nhập vào (để kiểm tra popup và thông báo đẩy) */
 function tbGuiThu() {
@@ -3618,5 +3619,5 @@ function tbGuiThu() {
   if (!u) { ui.alert('Không tìm thấy ID ' + id + '.'); return; }
   const n = tbGui_([id], { app: SCT_APP_QL, view: 'ql-cong-tac', tieuDe: 'Thông báo thử', noiDung: 'Đây là thông báo thử từ Không Gian Số Nội Bộ, gửi lúc ' + Utilities.formatDate(new Date(), TZ, 'HH:mm:ss dd/MM/yyyy') + '.', ngan: 'Thông báo thử từ Không Gian Số Nội Bộ.' });
   const sh = tbSheet_(TB_SH.MAY), m = sh.getLastRow() > 1 ? sh.getRange(2, 1, sh.getLastRow() - 1, TB_MAY_HEAD.length).getValues().filter(x => String(x[TBM.ID]).trim() === id) : [];
-  ui.alert('Gửi thử thông báo', n ? 'Đã gửi cho ' + u.hoTen + '.\n- Đang mở ứng dụng: popup hiện trong vòng 1 phút (nếu vai trò thuộc VAI_TRO_POPUP).\n- Máy đã bật thông báo: ' + m.length + ' máy' + (m.length ? ' (' + m.map(x => x[TBM.KQ] || 'đang đẩy').join('; ') + ')' : ' – cán bộ cần bấm chuông → "Bật thông báo trên máy này"') + '.' : 'Không gửi được (ID không ở trạng thái Hoạt động).', ui.ButtonSet.OK);
+  ui.alert('Gửi thử thông báo', n ? 'Đã gửi cho ' + u.hoTen + '.\n- Đang mở ứng dụng: popup hiện trong vòng 1 phút.\n- Máy đã bật thông báo: ' + m.length + ' máy' + (m.length ? ' (' + m.map(x => x[TBM.KQ] || 'đang đẩy').join('; ') + ')' : ' – cán bộ cần bấm chuông → "Bật thông báo trên máy này"') + '.' : 'Không gửi được (ID không ở trạng thái Hoạt động).', ui.ButtonSet.OK);
 }

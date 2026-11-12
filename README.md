@@ -1,7 +1,7 @@
 # Không Gian Số Nội Bộ · TTG Inside
 
 Bộ tiện ích nội bộ dành cho cán bộ **VietinBank Chi nhánh Tây Tiền Giang**, thiết kế cho điện thoại.
-Phiên bản 2.1.0 – 11/11/2026: thông báo popup và thông báo đẩy cho sổ công tác; thêm I011 Tính lãi tiết kiệm và I012 ATM và điểm giao dịch. Bản 2.0.0: Sổ công tác (I009, I010). Bản 1.9.x: Theo dõi giấy ủy quyền.
+Phiên bản 2.1.1 – 11/11/2026: chuông thông báo cho mọi cán bộ; màn hình Tính lãi và ATM đứng riêng (không hiện nút chuyển qua lại). Bản 2.1.0: thông báo popup và thông báo đẩy cho sổ công tác; thêm I011 Tính lãi tiết kiệm và I012 ATM và điểm giao dịch. Bản 2.0.0: Sổ công tác (I009, I010). Bản 1.9.x: Theo dõi giấy ủy quyền.
 
 | Nhóm | Tiện ích | Mô tả |
 |---|---|---|
@@ -203,6 +203,7 @@ Thêm thuộc tính tập lệnh `ANTHROPIC_API_KEY` trong Apps Script (cùng sc
 ## Thông báo popup – từ v2.1.0
 
 - **Khi nào có thông báo:** cán bộ đăng ký công tác → người thuộc `VAI_TRO_POPUP` (sheet SCT_CauHinh) và có phòng đó trong phạm vi xem sổ nhận thông báo. Lãnh đạo phòng nhận của phòng mình; vai trò xem tất cả/toàn quyền (Quản trị hệ thống) nhận của mọi phòng. Muốn ngừng nhận: xóa tên vai trò khỏi `VAI_TRO_POPUP`.
+- **Chuông (từ v2.1.1):** mọi cán bộ đều có chuông và bật được thông báo trên máy; ai nhận thông báo nào do từng ứng dụng quyết định.
 - **Hai dạng:** (1) popup trong ứng dụng khi đang mở – trang hỏi máy chủ mỗi `POPUP_CHU_KY_GIAY` giây; (2) thông báo đẩy ra màn hình điện thoại khi đã đóng ứng dụng – cán bộ bấm chuông → **Bật thông báo trên máy này** (iPhone phải cài TTG Inside ra màn hình chính, iOS 16.4 trở lên).
 - **Tham số:** `THONG_BAO_POPUP` (Bật/Tắt), `VAI_TRO_POPUP`, `POPUP_CHU_KY_GIAY`, `GUI_EMAIL_DANG_KY` (Tắt = không gửi email mỗi lượt đăng ký nữa; báo cáo PDF ngày 1 vẫn gửi).
 - **Dữ liệu:** sheet `ThongBao` (sổ thông báo, giữ 7 ngày gần nhất trên màn hình) và `ThongBaoMay` (các máy đã bật thông báo) trong file phân quyền. Không sửa tay cột Khóa máy.
