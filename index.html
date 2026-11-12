@@ -633,30 +633,11 @@ footer .shell{display:flex;flex-direction:column;align-items:center;gap:6px;padd
 .tl-kv.neg b{color:var(--vtb-do)}
 .tl-notebox{font-size:13px;color:var(--muted);background:var(--vtb-nen-sang);border-radius:12px;padding:12px;margin:0}
 
-/* ===== ATM và điểm giao dịch (I012) ===== */
-.am .chip[aria-pressed="true"]{background:var(--vtb-xanh-dam);border-color:var(--vtb-xanh-dam);color:#fff}
-.am-mapcard{padding:0;overflow:hidden;gap:0}
-.am-map{height:300px;background:var(--vtb-nen-sang);z-index:0}
-.am-legend{display:flex;gap:14px;flex-wrap:wrap;font-size:12px;color:var(--muted);padding:8px 12px}
-.am-legend .d,.am-pin{display:inline-block;width:12px;height:12px;border-radius:50%;margin-right:5px;vertical-align:-1px;border:2px solid #fff;box-shadow:0 0 0 1px rgba(13,43,69,.35)}
-.am-legend .d.atm,.am-pin.atm{background:#005993}.am-legend .d.cdm,.am-pin.cdm{background:#0E7A4B}.am-legend .d.pgd,.am-pin.pgd{background:#D71249}
-.am-pin{width:20px;height:20px;margin:0;display:block}
-.am-pin.me{background:#F2A900;width:16px;height:16px}
-.am-it{background:var(--surface);border:1px solid var(--line);border-radius:16px;overflow:hidden;display:flex;flex-direction:column}
-.am-it.near{border:2px solid var(--vtb-do)}
-.am-it img{display:block;width:100%;height:150px;object-fit:cover;background:var(--vtb-nen-sang)}
-.am-it .bd{padding:12px;display:flex;flex-direction:column;gap:6px}
-.am-it .r1{display:flex;gap:6px;align-items:center;flex-wrap:wrap}
-.am-it h3{margin:0;font-size:15.5px;color:var(--vtb-xanh-dam);overflow-wrap:anywhere}
-.am-it p{margin:0;font-size:13.5px;overflow-wrap:anywhere}
-.am-it p.mt{color:var(--muted);font-size:12.5px}
-.am-b{font-size:11.5px;font-weight:700;border-radius:999px;padding:2px 8px;white-space:nowrap;background:var(--vtb-nen-sang);color:var(--vtb-xanh-dam)}
-.am-b.cdm{background:var(--ok-bg);color:var(--ok)}.am-b.pgd{background:#FDE7EC;color:#9B0E35}.am-b.off{background:var(--warn-bg);color:var(--warn-ink)}.am-b.nb{background:#EEF1F4;color:#6B7A88}.am-b.km{background:var(--vtb-xanh-dam);color:#fff}
-.am-it .act{display:flex;gap:8px;flex-wrap:wrap;margin-top:4px}
-.am-it .act .btn{min-height:40px;font-size:13.5px;padding:0 12px;text-decoration:none}
-.am .leaflet-popup-content{font:13px var(--font);margin:10px 12px}
-.am .leaflet-popup-content b{color:var(--vtb-xanh-dam)}
-.am .leaflet-popup-content a{color:var(--vtb-xanh-dam);font-weight:700}
+/* ===== ATM và điểm giao dịch (I012) – khung nhúng webapp "Tìm ATM VietinBank" ===== */
+.am-frame{position:fixed;left:0;right:0;top:120px;width:100%;height:calc(100dvh - 120px);border:0;background:var(--vtb-nen-sang);z-index:4;display:block}
+/* Khi mở bản đồ: ẩn phần đầu và chân trang của Không Gian Số để bản đồ chiếm trọn màn hình (vẫn còn nút Trang chủ) */
+body:has(#v-diem-atm:not([hidden])) header.brand,body:has(#v-diem-atm:not([hidden])) footer,body:has(#v-diem-atm:not([hidden])) #installTip{display:none}
+body:has(#v-diem-atm:not([hidden])){overflow:hidden}
 :root{padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
 </style>
 </head>
@@ -1201,27 +1182,797 @@ footer .shell{display:flex;flex-direction:column;align-items:center;gap:6px;padd
  </div>
 </section>
 
-<!-- ============ ATM VÀ ĐIỂM GIAO DỊCH (I012) ============ -->
+<!-- ============ ATM VÀ ĐIỂM GIAO DỊCH (I012) ============
+     Màn hình là webapp "Tìm ATM VietinBank" v1.1 chạy trong khung nhúng (giữ nguyên cấu trúc: bản đồ, thanh tìm kiếm,
+     bộ lọc, bảng trượt danh sách/chi tiết, mã QR). 3 khối bên dưới là giao diện, kiểu dáng và chương trình của khung. -->
 <section class="view am" id="v-diem-atm" hidden>
- <div class="stack">
-  <div class="card">
-    <div class="ta-top"><h2>ATM và điểm giao dịch</h2>
-      <button class="btn sm ghost" id="amReload"><svg viewBox="0 0 24 24"><path d="M20 11a8 8 0 1 0-2.3 5.7M20 4v7h-7"/></svg>Làm mới</button></div>
-    <span class="upd" id="amUpd" role="status">Đang tải…</span>
-    <div class="callout warn" id="amErr" hidden></div>
-    <input class="inp" id="amQ" type="search" placeholder="Tìm theo tên, địa chỉ, xã/phường, mã máy" autocomplete="off" aria-label="Tìm ATM, điểm giao dịch">
-    <div class="chips" id="amFilter"></div>
-    <button class="btn ghost" id="amNear"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M12 2v4M12 18v4M2 12h4M18 12h4"/></svg>Tìm điểm gần tôi nhất</button>
-    <span class="hint" id="amNearTxt" hidden></span>
-  </div>
-  <div class="card am-mapcard" id="amMapCard" hidden>
-    <div class="am-map" id="amMap" role="application" aria-label="Bản đồ ATM và điểm giao dịch"></div>
-    <div class="am-legend"><span><i class="d atm"></i>ATM</span><span><i class="d cdm"></i>CDM (nạp, rút)</span><span><i class="d pgd"></i>Điểm giao dịch</span></div>
-  </div>
-  <div class="sum-line" id="amSum"></div>
-  <div class="stack" id="amList" style="gap:10px"></div>
- </div>
+  <div class="card" id="amWait"><span class="upd" id="amUpd" role="status">Đang tải bản đồ…</span>
+    <div class="callout warn" id="amErr" hidden></div><button class="btn ghost" id="amReload" hidden>Thử lại</button></div>
+  <iframe class="am-frame" id="amFrame" title="Bản đồ ATM và điểm giao dịch" allow="geolocation; clipboard-write; web-share" hidden></iframe>
 </section>
+<script type="text/plain" id="amTplBody">
+<div class="brand-strip" aria-hidden="true"></div>
+<div id="map" aria-label="Bản đồ ATM"></div>
+
+<!-- Thanh trên: tiêu đề, logo, tìm kiếm, bộ lọc -->
+<header class="topbar" id="topbar">
+  <div class="appbar">
+    <div class="appbar-row">
+      <div class="titles">
+        <h1 id="appTitle">Tìm ATM VietinBank</h1>
+        <div class="sub" id="branchName">Chi nhánh Tây Tiền Giang</div>
+      </div>
+      <div class="logo-wrap">
+        <img id="logo" class="logo" alt="VietinBank Chi nhánh Tây Tiền Giang">
+        <span id="logoText" class="logo-text" hidden>VietinBank<br><small>Tây Tiền Giang</small></span>
+      </div>
+    </div>
+    <label class="search">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
+      <input id="q" type="search" placeholder="Tìm theo tên, địa chỉ, xã/phường…" autocomplete="off" enterkeyhint="search">
+      <button id="qClear" class="icon-btn sm" type="button" aria-label="Xóa tìm kiếm" hidden>
+        <svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6 6 18"/></svg>
+      </button>
+    </label>
+  </div>
+  <nav class="chips" id="chips" aria-label="Bộ lọc">
+    <div class="seg" role="tablist">
+      <button role="tab" data-tab="atm" aria-selected="true">ATM</button>
+      <button role="tab" data-tab="pgd" aria-selected="false">Điểm giao dịch</button>
+    </div>
+    <button class="chip" data-filter="cdm" aria-pressed="false">Nạp tiền (CDM)</button>
+    <button class="chip" data-filter="h24" aria-pressed="false">24/7</button>
+    <button class="chip" data-filter="active" aria-pressed="false">Đang hoạt động</button>
+  </nav>
+</header>
+
+<!-- Nút định vị -->
+<button id="locateBtn" class="fab" type="button" aria-label="Vị trí của tôi">
+  <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3.2"/><circle cx="12" cy="12" r="7.5"/><path d="M12 1.5v3M12 19.5v3M1.5 12h3M19.5 12h3"/></svg>
+</button>
+
+<!-- Bảng trượt: danh sách / chi tiết -->
+<section class="sheet" id="sheet" aria-label="Danh sách ATM">
+  <div class="sheet-head" id="sheetHead">
+    <div class="handle" aria-hidden="true"></div>
+  </div>
+  <div class="sheet-body" id="sheetBody">
+    <div id="listView"></div>
+    <div id="detailView" hidden></div>
+  </div>
+</section>
+
+<!-- Hộp thoại mã QR -->
+<dialog id="qrDialog" class="qr-dialog">
+  <form method="dialog" class="qr-inner">
+    <button class="icon-btn qr-close" value="close" aria-label="Đóng">
+      <svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6 6 18"/></svg>
+    </button>
+    <div class="qr-title" id="qrTitle"></div>
+    <div class="qr-sub">Quét mã để mở bản đồ và chỉ đường</div>
+    <div class="qr-box" id="qrBox"></div>
+    <div class="qr-actions">
+      <button type="button" class="btn btn-primary" id="qrDownload">Tải ảnh mã QR</button>
+    </div>
+  </form>
+</dialog>
+
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+</script>
+<script type="text/plain" id="amTplCss">
+/* ===== Bản đồ ATM VietinBank – Tây Tiền Giang (nhúng trong Không Gian Số; font SVN-Gilroy lấy từ trang chính) ===== */
+
+:root{
+  --vtb-blue:#005993; --vtb-blue-2:#0A6FB0; --vtb-light:#7ED3F7; --vtb-red:#D71249; --vtb-bg:#DFF1FB;
+  --ink:#0C2A44; --muted:#5D6F82; --line:#E4ECF3; --card:#fff; --soft:#F3F8FC;
+  --ok:#0F8B5F; --off:#8A97A6;
+  --radius:18px; --shadow:0 6px 24px rgba(0,58,99,.14),0 1px 3px rgba(0,58,99,.08);
+  --font:"SVN-Gilroy","Be Vietnam Pro",system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+  --hoa-no:linear-gradient(100deg,#1BA9E1 0%,#12C2EE 32%,#0A7FB8 48%,#005993 58%,#3D4E86 66%,#8B3A5E 76%,#D71249 90%,#C21F2C 100%);
+  --sheet-vis:240px; --top-h:150px;
+}
+*{box-sizing:border-box}
+html,body{height:100%;margin:0}
+body{font-family:var(--font);color:var(--ink);background:var(--vtb-bg);overflow:hidden;
+  -webkit-tap-highlight-color:transparent;-webkit-font-smoothing:antialiased;font-size:15px}
+button{font:inherit;color:inherit;cursor:pointer;border:0;background:none;padding:0}
+svg{width:20px;height:20px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;flex:none}
+a{color:inherit}
+[hidden]{display:none!important}
+
+/* Dải Hoa nở */
+.brand-strip{position:fixed;top:0;left:0;right:0;height:4px;background:var(--hoa-no);z-index:1200}
+
+/* Bản đồ */
+#map{position:fixed;inset:0;z-index:0;background:#E6EEF4}
+.leaflet-tile-pane{filter:saturate(.72) contrast(.96) brightness(1.03)}
+.leaflet-container{font-family:var(--font)}
+.leaflet-control-attribution{font-size:10px;background:rgba(255,255,255,.8)!important;border-radius:6px 0 0 0}
+.leaflet-bottom{bottom:var(--sheet-vis);transition:bottom .3s}
+
+/* Thanh trên */
+.topbar{position:fixed;z-index:1100;top:calc(env(safe-area-inset-top) + 12px);left:12px;right:12px;display:flex;flex-direction:column;gap:8px;pointer-events:none}
+.topbar>*{pointer-events:auto}
+.appbar{background:var(--card);border-radius:var(--radius);box-shadow:var(--shadow);padding:10px 12px 10px 14px}
+.appbar-row{display:flex;align-items:center;gap:10px;margin-bottom:9px}
+.titles{flex:1;min-width:0}
+h1{font-size:17px;line-height:1.2;margin:0;color:var(--vtb-blue);font-weight:700;letter-spacing:-.01em}
+.sub{font-size:12px;color:var(--muted);margin-top:2px}
+.logo{height:40px;width:auto;display:block}
+.logo-text{font-weight:700;color:var(--vtb-blue);font-size:14px;line-height:1.1;text-align:right}
+.logo-text small{font-weight:500;font-size:11px}
+.search{display:flex;align-items:center;gap:8px;background:var(--soft);border:1px solid var(--line);border-radius:12px;padding:0 6px 0 11px;height:42px;color:var(--muted)}
+.search:focus-within{border-color:var(--vtb-blue);background:#fff;box-shadow:0 0 0 3px rgba(0,89,147,.12)}
+.search input{flex:1;min-width:0;border:0;background:none;outline:0;font:inherit;font-size:15px;color:var(--ink);height:100%}
+.search input::-webkit-search-cancel-button{display:none}
+
+.chips{display:flex;gap:6px;overflow-x:auto;scrollbar-width:none;padding:2px 0 4px;margin:0 -12px;padding-left:12px;padding-right:12px}
+.chips::-webkit-scrollbar{display:none}
+.seg{display:flex;background:var(--card);border-radius:999px;padding:3px;box-shadow:var(--shadow);flex:none}
+.seg button{padding:6px 13px;border-radius:999px;font-size:13px;font-weight:600;color:var(--muted);white-space:nowrap}
+.seg button[aria-selected=true]{background:var(--vtb-blue);color:#fff}
+.chip{flex:none;padding:7px 13px;border-radius:999px;background:var(--card);box-shadow:var(--shadow);font-size:13px;font-weight:500;white-space:nowrap;color:var(--ink)}
+.chip[aria-pressed=true]{background:#E6F4FC;color:var(--vtb-blue);box-shadow:inset 0 0 0 1.5px var(--vtb-blue),var(--shadow)}
+
+/* Nút nổi */
+.fab{position:fixed;z-index:1050;right:14px;bottom:calc(var(--sheet-vis) + 14px);width:48px;height:48px;border-radius:50%;
+  background:#fff;color:var(--vtb-blue);box-shadow:var(--shadow);display:grid;place-items:center;transition:bottom .3s cubic-bezier(.2,.8,.2,1)}
+.fab svg{width:24px;height:24px}
+.fab.active{color:#fff;background:var(--vtb-blue)}
+.fab.loading svg{animation:spin 1s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+/* Bảng trượt */
+.sheet{position:fixed;z-index:1080;left:0;right:0;bottom:0;height:calc(100dvh - 72px);background:var(--card);
+  border-radius:22px 22px 0 0;box-shadow:0 -8px 30px rgba(0,58,99,.16);display:flex;flex-direction:column;
+  transform:translateY(calc(100% - var(--sheet-vis)));transition:transform .32s cubic-bezier(.2,.8,.2,1);will-change:transform}
+.sheet.dragging{transition:none}
+.sheet-head{padding:9px 0 4px;touch-action:none;cursor:grab;flex:none}
+.handle{width:42px;height:5px;border-radius:5px;background:#CFDAE4;margin:0 auto}
+.sheet-body{flex:1;overflow-y:auto;overscroll-behavior:contain;padding:0 16px calc(16px + env(safe-area-inset-bottom));-webkit-overflow-scrolling:touch}
+
+.list-head{display:flex;align-items:baseline;justify-content:space-between;gap:8px;padding:6px 2px 10px}
+.list-head h2{font-size:17px;margin:0;font-weight:700;color:var(--ink)}
+.count{font-size:13px;color:var(--muted)}
+
+/* Thẻ "Gần bạn nhất" */
+.hero{position:relative;border-radius:16px;padding:14px;background:linear-gradient(135deg,#005993 0%,#0A6FB0 60%,#1B88C6 100%);color:#fff;margin-bottom:12px;overflow:hidden}
+.hero::after{content:"";position:absolute;left:0;right:0;bottom:0;height:4px;background:var(--hoa-no)}
+.hero-badge{display:inline-flex;align-items:center;gap:6px;font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;background:rgba(255,255,255,.16);padding:4px 9px;border-radius:999px}
+.hero-badge i{width:7px;height:7px;border-radius:50%;background:#fff;box-shadow:0 0 0 0 rgba(255,255,255,.7);animation:pulse 1.8s infinite}
+@keyframes pulse{70%{box-shadow:0 0 0 7px rgba(255,255,255,0)}100%{box-shadow:0 0 0 0 rgba(255,255,255,0)}}
+.hero-name{font-size:17px;font-weight:700;margin:9px 0 3px;line-height:1.3}
+.hero-addr{font-size:13px;opacity:.88;line-height:1.4}
+.hero-meta{display:flex;gap:12px;font-size:13px;margin-top:8px;opacity:.95;flex-wrap:wrap}
+.hero-meta b{font-size:15px}
+.hero-actions{display:flex;gap:8px;margin-top:12px}
+.hero .btn-primary{background:#fff;color:var(--vtb-blue)}
+.hero .btn-ghost{background:rgba(255,255,255,.14);color:#fff}
+
+/* Thông báo định vị */
+.notice{display:flex;align-items:center;gap:12px;background:var(--soft);border:1px dashed #BFD6E7;border-radius:14px;padding:12px;margin-bottom:12px;font-size:13px;color:var(--muted)}
+.notice svg{color:var(--vtb-blue);width:24px;height:24px}
+.notice .btn{margin-left:auto;flex:none}
+
+/* Nút */
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:7px;height:42px;padding:0 16px;border-radius:12px;font-weight:600;font-size:14px;text-decoration:none;white-space:nowrap}
+.btn svg{width:18px;height:18px}
+.btn-primary{background:var(--vtb-blue);color:#fff}
+.btn-primary:active{filter:brightness(.92)}
+.btn-ghost{background:var(--soft);color:var(--vtb-blue)}
+.btn-sm{height:34px;padding:0 12px;font-size:13px;border-radius:10px}
+.btn-block{flex:1}
+.icon-btn{width:40px;height:40px;border-radius:12px;display:grid;place-items:center;color:var(--muted)}
+.icon-btn.sm{width:30px;height:30px}
+.icon-btn:active{background:var(--soft)}
+
+/* Danh sách */
+.items{list-style:none;margin:0;padding:0}
+.item{display:flex;align-items:center;gap:12px;padding:12px 2px;border-top:1px solid var(--line);cursor:pointer}
+.item:first-child{border-top:0}
+.item:active{background:var(--soft)}
+.item-ico{width:42px;height:42px;border-radius:12px;display:grid;place-items:center;background:#E6F2FA;color:var(--vtb-blue);flex:none;position:relative}
+.item-ico.cdm::after{content:"";position:absolute;right:-2px;top:-2px;width:11px;height:11px;border-radius:50%;background:var(--vtb-red);border:2px solid #fff}
+.item-ico.off{background:#EEF1F4;color:var(--off)}
+.item-ico.pgd{background:#FDE8EE;color:var(--vtb-red)}
+.item-main{flex:1;min-width:0}
+.item-name{font-weight:600;font-size:15px;line-height:1.3;display:flex;gap:6px;align-items:center}
+.item-name span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.item-addr{font-size:13px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:2px}
+.item-meta{display:flex;gap:6px;align-items:center;margin-top:5px;flex-wrap:wrap;font-size:12px;color:var(--muted)}
+.dist{font-weight:700;color:var(--ink)}
+.tag{display:inline-flex;align-items:center;gap:4px;font-size:11.5px;font-weight:600;padding:2px 8px;border-radius:999px;background:var(--soft);color:var(--muted)}
+.tag.ok{background:#E5F5EE;color:var(--ok)}
+.tag.ok::before,.tag.bad::before{content:"";width:6px;height:6px;border-radius:50%;background:currentColor}
+.tag.bad{background:#F1F3F5;color:#6B7785}
+.tag.near{background:var(--vtb-red);color:#fff}
+.tag.blue{background:#E6F2FA;color:var(--vtb-blue)}
+.go{width:40px;height:40px;border-radius:50%;background:var(--vtb-blue);color:#fff;display:grid;place-items:center;flex:none}
+.go svg{width:18px;height:18px}
+.empty{text-align:center;color:var(--muted);padding:28px 10px;font-size:14px}
+
+/* Chi tiết */
+.d-top{display:flex;align-items:center;gap:6px;margin:0 -6px 6px}
+.d-top .grow{flex:1}
+.photo{position:relative;aspect-ratio:16/9;border-radius:16px;overflow:hidden;background:linear-gradient(160deg,#7ED3F7 0%,#DFF1FB 100%);margin-bottom:14px}
+.photo img{width:100%;height:100%;object-fit:cover;display:block}
+.photo .ph{position:absolute;inset:0;display:grid;place-items:center;color:var(--vtb-blue);text-align:center;font-size:13px}
+.photo .ph svg{width:40px;height:40px;stroke-width:1.5;margin:0 auto 6px;display:block;opacity:.8}
+.d-tags{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px}
+.d-name{font-size:20px;font-weight:700;line-height:1.3;margin:0 0 4px;color:var(--ink)}
+.d-code{font-size:12px;color:var(--muted)}
+.d-actions{display:flex;gap:8px;margin:16px 0 8px}
+.d-actions .btn-primary{height:48px;font-size:15px;border-radius:14px}
+.d-sub{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:12px}
+.d-sub .btn{flex-direction:column;height:62px;gap:4px;font-size:12px;font-weight:600;border-radius:14px}
+.d-sub .btn svg{width:20px;height:20px}
+.rows{border:1px solid var(--line);border-radius:16px;overflow:hidden;margin-bottom:12px}
+.row{display:flex;gap:12px;padding:12px 14px;border-top:1px solid var(--line);font-size:14px;align-items:flex-start}
+.row:first-child{border-top:0}
+.row svg{color:var(--vtb-blue);margin-top:1px}
+.row .k{font-size:12px;color:var(--muted);margin-bottom:2px}
+.row .v{line-height:1.45}
+.svc{display:flex;flex-wrap:wrap;gap:6px;margin-top:4px}
+
+/* Chân trang */
+.foot{margin:18px -16px 0;padding:14px 16px 6px;border-top:1px solid var(--line);font-size:12px;color:var(--muted);text-align:center;line-height:1.7}
+.foot .hot{display:inline-flex;align-items:center;gap:6px;font-weight:700;font-size:14px;color:var(--vtb-blue);text-decoration:none}
+.foot .hot svg{color:var(--vtb-red);width:16px;height:16px}
+.foot .strip{height:4px;background:var(--hoa-no);border-radius:4px;margin-top:10px}
+.install{margin-top:8px}
+
+/* Ghim bản đồ */
+.pin-wrap{background:none;border:0}
+.pin{position:relative;width:36px;height:36px;border-radius:50% 50% 50% 4px;transform:rotate(-45deg);background:var(--vtb-blue);
+  box-shadow:0 3px 8px rgba(0,40,70,.35);border:2.5px solid #fff;display:grid;place-items:center;transition:transform .2s}
+.pin svg{transform:rotate(45deg);width:17px;height:17px;color:#fff;stroke-width:2.2}
+.pin.cdm::after{content:"";position:absolute;top:-4px;right:-4px;width:12px;height:12px;border-radius:50%;background:var(--vtb-red);border:2px solid #fff}
+.pin.off{background:var(--off)}
+.pin.pgd{background:#fff;border-color:var(--vtb-red)}
+.pin.pgd svg{color:var(--vtb-red)}
+.pin.sel{transform:rotate(-45deg) scale(1.28)}
+.pin.near::before{content:"";position:absolute;inset:-9px;border-radius:50%;border:3px solid var(--vtb-red);opacity:.0;animation:ring 1.8s infinite}
+@keyframes ring{0%{transform:scale(.6);opacity:.8}100%{transform:scale(1.5);opacity:0}}
+.me-dot{width:18px;height:18px;border-radius:50%;background:#1A73E8;border:3px solid #fff;box-shadow:0 0 0 1px rgba(0,0,0,.08),0 2px 6px rgba(0,0,0,.3)}
+
+/* QR */
+.qr-dialog{border:0;border-radius:22px;padding:0;width:min(92vw,360px);box-shadow:0 20px 60px rgba(0,0,0,.3)}
+.qr-dialog::backdrop{background:rgba(8,30,50,.55)}
+.qr-inner{padding:22px 20px 20px;text-align:center;position:relative}
+.qr-close{position:absolute;top:8px;right:8px}
+.qr-title{font-weight:700;font-size:16px;color:var(--vtb-blue);padding:0 30px}
+.qr-sub{font-size:13px;color:var(--muted);margin:4px 0 14px}
+.qr-box{background:#fff;border:1px solid var(--line);border-radius:16px;padding:14px;display:inline-block}
+.qr-box svg{width:220px;height:220px;stroke:none;display:block}
+.qr-actions{margin-top:14px;display:flex}
+.qr-actions .btn{flex:1}
+
+/* Toast */
+.toast{position:fixed;z-index:1300;left:50%;top:calc(env(safe-area-inset-top) + 16px);transform:translate(-50%,-140%);background:#0C2A44;color:#fff;
+  padding:10px 16px;border-radius:12px;font-size:14px;box-shadow:var(--shadow);transition:transform .3s,opacity .3s;max-width:90vw;text-align:center;opacity:0;pointer-events:none}
+.toast.show{transform:translate(-50%,0);opacity:1}
+
+/* Máy tính / tablet: bảng bên trái */
+@media (min-width:900px){
+  .topbar{right:auto;width:400px}
+  .sheet{left:12px;right:auto;width:400px;top:calc(var(--top-h) + 20px);bottom:12px;height:auto;border-radius:var(--radius);transform:none!important;box-shadow:var(--shadow)}
+  .sheet-head{display:none}
+  .sheet-body{padding-top:6px}
+  .fab{bottom:24px;right:24px}
+  .leaflet-bottom{bottom:0}
+}
+@media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+
+/* v1.1 – Ghim nhiều máy cùng vị trí */
+.pin-box{position:relative;width:36px;height:36px}
+.pin-cnt{position:absolute;top:-9px;right:-9px;min-width:20px;height:20px;padding:0 5px;border-radius:10px;background:var(--vtb-red);
+  color:#fff;font-size:11.5px;font-weight:700;line-height:16px;text-align:center;border:2px solid #fff;box-shadow:0 1px 4px rgba(0,0,0,.25);z-index:2}
+.same{margin:12px 0 0;padding:12px;border-radius:14px;background:var(--soft)}
+.same-t{font-size:12px;font-weight:600;color:var(--muted);margin-bottom:8px}
+.same-list{display:flex;gap:8px;flex-wrap:wrap}
+.same-i{position:relative;display:flex;flex-direction:column;align-items:flex-start;gap:1px;padding:8px 26px 8px 12px;border-radius:12px;background:#fff;border:1.5px solid var(--line);text-align:left}
+.same-i b{font-size:13px;color:var(--vtb-blue)}
+.same-i span{font-size:11.5px;color:var(--muted)}
+.same-i i{position:absolute;top:10px;right:10px;width:8px;height:8px;border-radius:50%;background:var(--ok)}
+.same-i i.bad{background:var(--off)}
+.same-i.on{border-color:var(--vtb-blue);box-shadow:0 0 0 3px rgba(0,89,147,.12)}
+</script>
+<script type="text/plain" id="amTplJs">
+/* =========================================================
+   Bản đồ ATM VietinBank – Chi nhánh Tây Tiền Giang (bản nhúng trong Không Gian Số Nội Bộ, I012)
+   Giữ nguyên cấu trúc webapp "Tìm ATM VietinBank" v1.1. Khác bản công khai:
+   - Dữ liệu lấy qua máy chủ Không Gian Số (atm_load) thay cho CSV xuất bản
+   - Không đổi địa chỉ trang, không tự cài service worker (trang chính đã lo)
+   Bản đồ: Leaflet + OpenStreetMap | Dẫn đường: Google Maps
+   ========================================================= */
+(() => {
+'use strict';
+const P = window.parent, BR = P.amBridge;   // cầu nối sang trang Không Gian Số
+if (!window.L){ document.body.innerHTML = '<div class="empty" style="padding:60px 20px">Chưa tải được bản đồ. Kiểm tra kết nối mạng rồi mở lại màn hình này.</div>'; return; }
+const CFG = BR.cfg();
+const $ = s => document.querySelector(s);
+const root = document.documentElement;
+
+/* ---------- Icon SVG ---------- */
+const I = {
+  atm:'<svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="14" rx="2.5"/><path d="M3 10h18M7 15h4"/></svg>',
+  pgd:'<svg viewBox="0 0 24 24"><path d="M3 21h18M5 21V10M19 21V10M9 21v-6h6v6M2 10l10-6 10 6"/></svg>',
+  nav:'<svg viewBox="0 0 24 24"><path d="M3 11 21 3l-8 18-2-8-8-2z"/></svg>',
+  share:'<svg viewBox="0 0 24 24"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><path d="m8.6 13.5 6.8 4M15.4 6.5l-6.8 4"/></svg>',
+  qr:'<svg viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><path d="M14 14h3v3M21 14v.01M14 21h7v-4"/></svg>',
+  map:'<svg viewBox="0 0 24 24"><path d="M9 4 3 6v14l6-2 6 2 6-2V4l-6 2-6-2zM9 4v14M15 6v14"/></svg>',
+  back:'<svg viewBox="0 0 24 24"><path d="m15 18-6-6 6-6"/></svg>',
+  pin:'<svg viewBox="0 0 24 24"><path d="M12 21s7-6.2 7-12a7 7 0 1 0-14 0c0 5.8 7 12 7 12z"/><circle cx="12" cy="9" r="2.5"/></svg>',
+  clock:'<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>',
+  check:'<svg viewBox="0 0 24 24"><path d="M5 12l4 4L19 6"/></svg>',
+  phone:'<svg viewBox="0 0 24 24"><path d="M5 4h4l2 5-2.5 1.5a11 11 0 0 0 5 5L15 13l5 2v4a2 2 0 0 1-2 2A16 16 0 0 1 3 6a2 2 0 0 1 2-2z"/></svg>',
+  route:'<svg viewBox="0 0 24 24"><circle cx="6" cy="19" r="2.5"/><circle cx="18" cy="5" r="2.5"/><path d="M8.5 19H17a3.5 3.5 0 0 0 0-7H7a3.5 3.5 0 0 1 0-7h8.5"/></svg>',
+  locate:'<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3.2"/><circle cx="12" cy="12" r="7.5"/><path d="M12 1.5v3M12 19.5v3M1.5 12h3M19.5 12h3"/></svg>',
+  image:'<svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="14" rx="2"/><circle cx="9" cy="10" r="2"/><path d="m21 16-5-5-8 8"/></svg>',
+  cal:'<svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/></svg>',
+  dl:'<svg viewBox="0 0 24 24"><path d="M12 4v11M7 10l5 5 5-5M5 20h14"/></svg>'
+};
+
+/* ---------- Tiện ích ---------- */
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const norm = s => String(s ?? '').normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/đ/g,'d').replace(/Đ/g,'D').toLowerCase().replace(/\s+/g,' ').trim();
+const pad = n => String(n).padStart(2,'0');
+const fmtDateTime = t => { const d = new Date(t); return `${pad(d.getHours())}:${pad(d.getMinutes())}, ${pad(d.getDate())}/${pad(d.getMonth()+1)}/${d.getFullYear()}`; };
+const fmtDist = m => m == null ? '' : m < 1000 ? `${Math.max(10, Math.round(m/10)*10)} m` : `${(m/1000).toFixed(m < 10000 ? 1 : 0).replace('.', ',')} km`;
+function haversine(a, b){
+  const R = 6371000, r = x => x*Math.PI/180;
+  const dLat = r(b.lat-a.lat), dLng = r(b.lng-a.lng);
+  const h = Math.sin(dLat/2)**2 + Math.cos(r(a.lat))*Math.cos(r(b.lat))*Math.sin(dLng/2)**2;
+  return 2*R*Math.asin(Math.sqrt(h));
+}
+let toastTimer;
+function toast(msg){
+  const t = $('#toast'); t.textContent = msg; t.classList.add('show');
+  clearTimeout(toastTimer); toastTimer = setTimeout(() => t.classList.remove('show'), 2600);
+}
+const dirUrl = it => `https://www.google.com/maps/dir/?api=1&destination=${it.lat},${it.lng}` +
+  `&travelmode=${encodeURIComponent(CFG.TRAVEL_MODE || 'driving')}&dir_action=navigate`;
+const viewUrl = it => `https://www.google.com/maps/search/?api=1&query=${it.lat},${it.lng}`;
+// Liên kết để chia sẻ / mã QR: trang ATM công khai (nếu khai báo LINK_CONG_KHAI) hoặc vị trí trên Google Maps
+const deepLink = it => CFG.PUBLIC_URL ? `${CFG.PUBLIC_URL.replace(/\/?(index\.html)?$/,'/')}?${it.kind}=${encodeURIComponent(it.id)}` : viewUrl(it);
+
+/* ---------- Ảnh: link Google Drive / URL / file trong assets/anh ---------- */
+function photoSrc(v){
+  v = (v || '').trim(); if (!v) return null;
+  const m = v.match(/\/d\/([\w-]{20,})/) || v.match(/[?&]id=([\w-]{20,})/);
+  if (m) return { src:`https://drive.google.com/thumbnail?id=${m[1]}&sz=w1000`, alt:`https://lh3.googleusercontent.com/d/${m[1]}=w1000` };
+  if (/^https?:\/\//i.test(v)) return { src:v };
+  return null;
+}
+
+/* ---------- Trạng thái ---------- */
+const S = {
+  tab: 'atm', q: '', f: { cdm:false, h24:false, active:false },
+  atm: [], pgd: [], me: null, loc: 'idle', sel: null,
+  loadedAt: null, fromCache: false, failed: false, firstFix: true, booted: false
+};
+
+/* ---------- Bản đồ ---------- */
+const map = L.map('map', { zoomControl: false, attributionControl: true, tap: true })
+  .setView(CFG.MAP_CENTER || [10.38, 106], CFG.MAP_ZOOM || 11);
+map.attributionControl.setPrefix('<a href="https://leafletjs.com" target="_blank" rel="noopener">Leaflet</a>');
+L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
+  maxZoom: 19, attribution: '&copy; <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a>'
+}).addTo(map);
+const layer = L.layerGroup().addTo(map);
+let meMarker = null, meCircle = null;
+
+function pinIcon(it, near, sel, count = 1){
+  const cls = ['pin', it.kind === 'pgd' ? 'pgd' : (it.active ? '' : 'off'), it.type === 'CDM' && count < 2 ? 'cdm' : '', near ? 'near' : '', sel ? 'sel' : ''].join(' ');
+  const badge = count > 1 ? `<span class="pin-cnt" title="${count} máy tại cùng vị trí">${count}</span>` : '';
+  return L.divIcon({ className: 'pin-wrap', html: `<div class="pin-box"><div class="${cls}">${it.kind === 'pgd' ? I.pgd : I.atm}</div>${badge}</div>`,
+    iconSize: [36, 36], iconAnchor: [18, 40] });
+}
+// Các điểm cách nhau dưới 30 m được xem là cùng vị trí (VD: 2 máy tại 1 PGD)
+const SAME_SPOT_M = 30;
+const sameSpot = (a, b) => haversine(a, b) < SAME_SPOT_M;
+const isDesk = () => matchMedia('(min-width:900px)').matches;
+function pads(){
+  const tb = $('#topbar').getBoundingClientRect();
+  if (isDesk()) return { paddingTopLeft: [tb.right + 30, 30], paddingBottomRight: [40, 40] };
+  return { paddingTopLeft: [30, tb.bottom + 24], paddingBottomRight: [30, sheet.vis + 30] };
+}
+function fitItems(list, maxZoom = 15){
+  if (!list.length) return;
+  const b = L.latLngBounds(list.map(p => [p.lat, p.lng]));
+  map.fitBounds(b, { ...pads(), maxZoom, animate: S.booted });
+}
+function focusItem(it, zoom = 16){
+  map.flyToBounds(L.latLngBounds([[it.lat, it.lng], [it.lat, it.lng]]), { ...pads(), maxZoom: zoom, duration: .6 });
+}
+
+/* ---------- Bảng trượt (mobile) ---------- */
+const sheetEl = $('#sheet'), body = $('#sheetBody');
+const sheet = {
+  vis: 240, state: 'peek',
+  h(){ return sheetEl.offsetHeight; },
+  snaps(){ const H = innerHeight; return { peek: Math.round(Math.min(300, H*.4)), half: Math.round(H*.56), full: this.h() }; },
+  set(v, animate = true){
+    if (isDesk()){ this.vis = 0; root.style.setProperty('--sheet-vis', '0px'); return; }
+    sheetEl.classList.toggle('dragging', !animate);
+    this.vis = Math.round(v);
+    sheetEl.style.transform = `translateY(${this.h() - this.vis}px)`;
+    root.style.setProperty('--sheet-vis', this.vis + 'px');
+  },
+  to(state){ this.state = state; this.set(this.snaps()[state]); }
+};
+(function dragSheet(){
+  let d = null;
+  sheetEl.addEventListener('touchstart', e => {
+    if (isDesk()) return;
+    d = { y0: e.touches[0].clientY, v0: sheet.vis, on: false, t0: Date.now(), y: e.touches[0].clientY };
+  }, { passive: true });
+  sheetEl.addEventListener('touchmove', e => {
+    if (!d) return;
+    const y = e.touches[0].clientY, dy = y - d.y0;
+    if (!d.on){
+      if (Math.abs(dy) < 6) return;
+      const full = sheet.vis >= sheet.snaps().full - 2;
+      if (e.target.closest('.sheet-head') || !full || (body.scrollTop <= 0 && dy > 0)) d.on = true;
+      else { d = null; return; }
+    }
+    e.preventDefault();
+    d.y = y;
+    sheet.set(Math.max(110, Math.min(sheet.snaps().full, d.v0 - dy)), false);
+  }, { passive: false });
+  const end = () => {
+    if (!d) return;
+    if (d.on){
+      const v = (d.y0 - d.y) / Math.max(1, Date.now() - d.t0); // px/ms, dương = kéo lên
+      const s = sheet.snaps(), cur = sheet.vis;
+      let target;
+      if (v > .5) target = cur < s.half ? 'half' : 'full';
+      else if (v < -.5) target = cur > s.half ? 'half' : 'peek';
+      else target = Object.entries(s).sort((a, b) => Math.abs(a[1]-cur) - Math.abs(b[1]-cur))[0][0];
+      sheet.to(target);
+    }
+    d = null;
+  };
+  sheetEl.addEventListener('touchend', end);
+  sheetEl.addEventListener('touchcancel', end);
+  $('#sheetHead').addEventListener('click', () => sheet.to(sheet.state === 'peek' ? 'half' : sheet.state === 'half' ? 'full' : 'peek'));
+})();
+
+/* ---------- Lọc, sắp xếp ---------- */
+function visible(){
+  let list = S[S.tab];
+  if (S.q){ const q = norm(S.q); list = list.filter(it => it.search.includes(q)); }
+  if (S.tab === 'atm'){
+    if (S.f.cdm) list = list.filter(it => it.type === 'CDM');
+    if (S.f.h24) list = list.filter(it => it.h24);
+    if (S.f.active) list = list.filter(it => it.active);
+  }
+  list = list.map(it => ({ it, d: S.me ? haversine(S.me, it) : null }));
+  list.sort((a, b) => S.me ? a.d - b.d : a.it.name.localeCompare(b.it.name, 'vi'));
+  return list;
+}
+const nearestOf = list => S.me ? (list.find(x => x.it.active) || null) : null;
+
+/* ---------- Giao diện danh sách ---------- */
+function tagsHTML(it, d, near){
+  const t = [];
+  if (near) t.push('<span class="tag near">Gần bạn nhất</span>');
+  if (d != null) t.push(`<span class="dist">${fmtDist(d)}</span>`);
+  if (it.kind === 'atm') t.push(`<span class="tag blue">${it.type === 'CDM' ? 'CDM · Nạp tiền' : 'ATM'}</span>`);
+  if (it.pub === false) t.push('<span class="tag">Nội bộ</span>');
+  if (it.h24) t.push('<span class="tag">24/7</span>');
+  t.push(`<span class="tag ${it.active ? 'ok' : 'bad'}">${esc(it.status)}</span>`);
+  return t.join('');
+}
+function footHTML(){
+  const note = S.source === 'cache' ? ' (bản lưu trên máy – chưa kết nối được máy chủ dữ liệu)' : '';
+  const when = S.loadedAt ? `Dữ liệu cập nhật lúc ${fmtDateTime(S.loadedAt)}${note}` : '';
+  const tel = s => s.replace(/[^\d+]/g, '');
+  return `<div class="foot">
+    ${when ? `<div>${when}</div>` : ''}
+    <a class="hot" href="tel:${tel(CFG.HOTLINE || '1900558868')}">${I.phone}Hotline ${esc(CFG.HOTLINE || '1900 558 868')}</a>
+    <div><a href="https://${esc(CFG.WEBSITE || 'www.vietinbank.vn')}" target="_blank" rel="noopener">${esc(CFG.WEBSITE || 'www.vietinbank.vn')}</a></div>
+    <div class="strip"></div>
+  </div>`;
+}
+
+function renderList(){
+  const list = visible(), near = nearestOf(list);
+  const isAtm = S.tab === 'atm';
+  let h = '';
+  if (S.me && near){
+    const it = near.it;
+    h += `<div class="hero">
+      <span class="hero-badge"><i></i>${isAtm ? 'ATM gần bạn nhất' : 'Điểm giao dịch gần bạn nhất'}</span>
+      <div class="hero-name">${esc(it.name)}</div>
+      <div class="hero-addr">${esc(it.address)}</div>
+      <div class="hero-meta"><span>Cách bạn <b>${fmtDist(near.d)}</b></span>${it.hours ? `<span>${esc(it.hours)}</span>` : ''}${isAtm ? `<span>${it.type === 'CDM' ? 'Rút & nạp tiền' : 'Rút tiền'}</span>` : ''}</div>
+      <div class="hero-actions">
+        <a class="btn btn-primary btn-block" href="${dirUrl(it)}" target="_blank" rel="noopener">${I.nav}Chỉ đường</a>
+        <button class="btn btn-ghost" data-open="${esc(it.kind)}|${esc(it.id)}">Chi tiết</button>
+      </div>
+    </div>`;
+  } else if (S.loc !== 'ok'){
+    const msg = S.loc === 'denied' ? 'Bạn đã tắt quyền vị trí. Bật lại trong cài đặt trình duyệt để tìm điểm gần nhất.'
+      : S.loc === 'unsupported' ? 'Thiết bị không hỗ trợ định vị.'
+      : S.loc === 'pending' ? 'Đang xác định vị trí của bạn…'
+      : 'Bật định vị để tìm điểm gần bạn nhất.';
+    h += `<div class="notice">${I.locate}<span>${msg}</span>${S.loc !== 'pending' && S.loc !== 'unsupported' ? '<button class="btn btn-primary btn-sm" data-act="locate">Bật vị trí</button>' : ''}</div>`;
+  }
+  const title = isAtm ? (S.me ? 'ATM quanh bạn' : 'Mạng lưới ATM') : 'Điểm giao dịch';
+  h += `<div class="list-head"><h2>${title}</h2><span class="count">${list.length} điểm</span></div>`;
+  if (!list.length){
+    const all = S[S.tab].length;
+    h += `<div class="empty">${S.failed && !all ? 'Chưa tải được dữ liệu. Vui lòng kiểm tra kết nối mạng.'
+      : !all ? (isAtm ? 'Chưa có dữ liệu ATM.' : 'Thông tin điểm giao dịch đang được cập nhật.')
+      : 'Không tìm thấy kết quả phù hợp.'}</div>`;
+  } else {
+    h += '<ul class="items">' + list.map(({ it, d }) => {
+      const ico = it.kind === 'pgd' ? 'pgd' : (it.active ? '' : 'off') + (it.type === 'CDM' ? ' cdm' : '');
+      return `<li class="item" data-open="${esc(it.kind)}|${esc(it.id)}">
+        <div class="item-ico ${ico}">${it.kind === 'pgd' ? I.pgd : I.atm}</div>
+        <div class="item-main">
+          <div class="item-name"><span>${esc(it.name)}</span></div>
+          <div class="item-addr">${esc(it.address || it.ward)}</div>
+          <div class="item-meta">${tagsHTML(it, d, near && near.it === it)}</div>
+        </div>
+        <a class="go" href="${dirUrl(it)}" target="_blank" rel="noopener" aria-label="Chỉ đường đến ${esc(it.name)}">${I.nav}</a>
+      </li>`;
+    }).join('') + '</ul>';
+  }
+  h += footHTML();
+  $('#listView').innerHTML = h;
+  renderMarkers(list, near);
+}
+function renderMarkers(list, near){
+  layer.clearLayers();
+  // Gộp các máy cùng vị trí thành 1 ghim có số lượng
+  const groups = [];
+  for (const { it } of list){
+    const g = groups.find(g => sameSpot(g[0], it));
+    g ? g.push(it) : groups.push([it]);
+  }
+  for (const g of groups){
+    const nearIt = near && g.includes(near.it) ? near.it : null;
+    const lead = g.includes(S.sel) ? S.sel : nearIt || g.find(x => x.active) || g[0];
+    const m = L.marker([lead.lat, lead.lng], {
+      icon: pinIcon(lead, !!nearIt, g.includes(S.sel), g.length),
+      zIndexOffset: g.includes(S.sel) ? 1000 : nearIt ? 500 : lead.active ? 100 : 0,
+      title: g.length > 1 ? `${lead.name} (${g.length} máy)` : lead.name, keyboard: true
+    });
+    m.on('click', () => openDetail(lead));
+    layer.addLayer(m);
+  }
+}
+
+/* ---------- Chi tiết ---------- */
+// Các máy khác đặt cùng vị trí: cho phép chuyển nhanh giữa các máy
+function sameHTML(it){
+  const g = S[it.kind].filter(x => sameSpot(x, it));
+  if (g.length < 2) return '';
+  return `<div class="same">
+    <div class="same-t">${it.kind === 'pgd' ? 'Cùng vị trí' : `Tại điểm này có ${g.length} máy`}</div>
+    <div class="same-list">${g.map(x => `<button class="same-i${x === it ? ' on' : ''}" data-swap="${esc(x.kind)}|${esc(x.id)}">
+      <b>${esc(x.kind === 'atm' ? (x.type === 'CDM' ? 'CDM · Nạp tiền' : 'ATM') : x.type)}</b><span>${esc(x.code || x.name)}</span>
+      <i class="${x.active ? 'ok' : 'bad'}"></i></button>`).join('')}</div>
+  </div>`;
+}
+function openDetail(it){
+  S.sel = it;
+  const d = S.me ? haversine(S.me, it) : null;
+  const ph = photoSrc(it.photo);
+  const svc = it.services ? it.services.split(/[,;]/).map(s => s.trim()).filter(Boolean) : [];
+  $('#detailView').innerHTML = `
+    <div class="d-top">
+      <button class="icon-btn" data-act="back" aria-label="Quay lại">${I.back}</button>
+      <span class="grow"></span>
+    </div>
+    <div class="photo">
+      ${ph ? `<img src="${esc(ph.src)}" ${ph.alt ? `data-alt="${esc(ph.alt)}"` : ''} alt="Ảnh ${esc(it.name)}" loading="lazy" referrerpolicy="no-referrer">` : ''}
+      <div class="ph" ${ph ? 'hidden' : ''}><div>${I.image}Hình ảnh đang được cập nhật</div></div>
+    </div>
+    <div class="d-tags">${tagsHTML(it, null, false)}</div>
+    <h2 class="d-name">${esc(it.name)}</h2>
+    ${CFG.SHOW_CODE && it.code && it.code !== it.name ? `<div class="d-code">Mã điểm: ${esc(it.code)}</div>` : ''}
+    ${sameHTML(it)}
+    <div class="d-actions">
+      <a class="btn btn-primary btn-block" href="${dirUrl(it)}" target="_blank" rel="noopener">${I.nav}Chỉ đường${d != null ? ` · ${fmtDist(d)}` : ''}</a>
+    </div>
+    <div class="d-sub">
+      <button class="btn btn-ghost" data-act="share">${I.share}Chia sẻ</button>
+      <button class="btn btn-ghost" data-act="qr">${I.qr}Mã QR</button>
+      <a class="btn btn-ghost" href="${viewUrl(it)}" target="_blank" rel="noopener">${I.map}Google Maps</a>
+    </div>
+    <div class="rows">
+      <div class="row">${I.pin}<div><div class="k">Địa chỉ</div><div class="v">${esc([it.address, it.ward && !it.address.includes(it.ward) ? it.ward : ''].filter(Boolean).join(', ') || '—')}</div></div></div>
+      ${it.hours ? `<div class="row">${I.clock}<div><div class="k">${it.kind === 'pgd' ? 'Giờ làm việc' : 'Giờ hoạt động'}</div><div class="v">${esc(it.hours)}</div></div></div>` : ''}
+      ${svc.length ? `<div class="row">${I.check}<div><div class="k">Dịch vụ</div><div class="svc">${svc.map(s => `<span class="tag blue">${esc(s)}</span>`).join('')}</div></div></div>` : ''}
+      ${it.phone ? `<div class="row">${I.phone}<div><div class="k">Điện thoại</div><div class="v"><a href="tel:${esc(it.phone.replace(/[^\d+]/g,''))}">${esc(it.phone)}</a></div></div></div>` : ''}
+      ${d != null ? `<div class="row">${I.route}<div><div class="k">Khoảng cách (đường chim bay)</div><div class="v">${fmtDist(d)}</div></div></div>` : ''}
+      ${it.updated ? `<div class="row">${I.cal}<div><div class="k">Cập nhật thông tin</div><div class="v">${esc(it.updated)}</div></div></div>` : ''}
+    </div>
+    ${footHTML()}`;
+  const img = $('#detailView .photo img');
+  if (img) img.addEventListener('error', () => {
+    if (img.dataset.alt){ img.src = img.dataset.alt; delete img.dataset.alt; }
+    else { img.remove(); $('#detailView .ph').hidden = false; }
+  });
+  $('#listView').hidden = true; $('#detailView').hidden = false; body.scrollTop = 0;
+  if (sheet.state === 'peek') sheet.to('half');
+  renderMarkers(visible(), nearestOf(visible()));
+  focusItem(it);
+}
+function closeDetail(){
+  if ($('#detailView').hidden) return;
+  S.sel = null;
+  $('#detailView').hidden = true; $('#listView').hidden = false;
+  renderList();
+}
+
+/* ---------- Chia sẻ & QR ---------- */
+async function share(it){
+  const url = deepLink(it), text = `${it.name} – ${it.address}`;
+  if (navigator.share){ try { await navigator.share({ title: it.name, text, url }); } catch(e){} return; }
+  try { await navigator.clipboard.writeText(url); toast('Đã sao chép liên kết'); }
+  catch(e){ toast('Chưa sao chép được liên kết'); }
+}
+function makeQR(text){ const q = P.qrcode(0, 'M'); q.addData(unescape(encodeURIComponent(text))); q.make(); return q; }
+function showQR(it){
+  const q = makeQR(deepLink(it));
+  $('#qrTitle').textContent = it.name;
+  $('#qrBox').innerHTML = q.createSvgTag({ cellSize: 6, margin: 0, scalable: true });
+  $('#qrDownload').onclick = () => downloadQR(it, q);
+  $('#qrDialog').showModal();
+}
+function downloadQR(it, q){
+  const n = q.getModuleCount(), cell = 14, m = 48, w = n*cell + m*2, h = w + 120;
+  const c = document.createElement('canvas'); c.width = w; c.height = h;
+  const x = c.getContext('2d');
+  x.fillStyle = '#fff'; x.fillRect(0, 0, w, h);
+  x.fillStyle = '#0C2A44';
+  for (let r = 0; r < n; r++) for (let k = 0; k < n; k++) if (q.isDark(r, k)) x.fillRect(m + k*cell, m + r*cell, cell, cell);
+  x.textAlign = 'center'; x.fillStyle = '#005993'; x.font = 'bold 26px sans-serif';
+  x.fillText(it.name.length > 40 ? it.name.slice(0, 39) + '…' : it.name, w/2, w + 20);
+  x.fillStyle = '#5D6F82'; x.font = '20px sans-serif';
+  x.fillText('Quét mã để chỉ đường – VietinBank Tây Tiền Giang', w/2, w + 58);
+  const g = x.createLinearGradient(0, 0, w, 0);
+  [['0','#1BA9E1'],['.48','#0A7FB8'],['.58','#005993'],['.76','#8B3A5E'],['.9','#D71249'],['1','#C21F2C']].forEach(([o, col]) => g.addColorStop(+o, col));
+  x.fillStyle = g; x.fillRect(0, h - 12, w, 12);
+  const a = document.createElement('a'); a.download = `QR_${it.id}.png`; a.href = c.toDataURL('image/png'); a.click();
+}
+
+/* ---------- Định vị ---------- */
+let watchId = null;
+function setMe(p){
+  S.me = { lat: p.coords.latitude, lng: p.coords.longitude, acc: p.coords.accuracy };
+  const ll = [S.me.lat, S.me.lng];
+  if (!meMarker){
+    meCircle = L.circle(ll, { radius: S.me.acc, color: '#1A73E8', weight: 1, opacity: .4, fillOpacity: .1, interactive: false }).addTo(map);
+    meMarker = L.marker(ll, { icon: L.divIcon({ className: 'pin-wrap', html: '<div class="me-dot"></div>', iconSize: [18, 18], iconAnchor: [9, 9] }), zIndexOffset: 2000, interactive: false }).addTo(map);
+  } else { meMarker.setLatLng(ll); meCircle.setLatLng(ll).setRadius(S.me.acc); }
+}
+function locate(manual){
+  const fab = $('#locateBtn');
+  if (!('geolocation' in navigator)){ S.loc = 'unsupported'; renderList(); if (manual) toast('Thiết bị không hỗ trợ định vị'); return; }
+  if (S.me && manual && S.loc === 'ok'){ fitMeNearest(); return; }
+  fab.classList.add('loading'); if (S.loc !== 'ok'){ S.loc = 'pending'; if ($('#detailView').hidden) renderList(); }
+  navigator.geolocation.getCurrentPosition(p => {
+    fab.classList.remove('loading'); fab.classList.add('active');
+    setMe(p); S.loc = 'ok';
+    if ($('#detailView').hidden) renderList();
+    if (manual) fitMeNearest(); else if (S.firstFix && $('#detailView').hidden) fitAll();
+    S.firstFix = false;
+    if (watchId == null) watchId = navigator.geolocation.watchPosition(q => {
+      const moved = haversine(S.me, { lat: q.coords.latitude, lng: q.coords.longitude });
+      setMe(q); if (moved > 50 && $('#detailView').hidden) renderList();
+    }, () => {}, { enableHighAccuracy: true, maximumAge: 30000 });
+  }, err => {
+    fab.classList.remove('loading');
+    S.loc = err.code === 1 ? 'denied' : 'error';
+    if ($('#detailView').hidden) renderList();
+    if (manual) toast(err.code === 1 ? 'Bạn chưa cho phép truy cập vị trí' : 'Không xác định được vị trí, vui lòng thử lại');
+  }, { enableHighAccuracy: true, timeout: 12000, maximumAge: 60000 });
+}
+// Hiện toàn bộ điểm của tab hiện tại (kèm vị trí khách nếu ở gần địa bàn)
+function fitAll(){
+  const list = visible(), pts = list.map(x => x.it);
+  if (!pts.length){ if (S.me) map.flyTo([S.me.lat, S.me.lng], 13); return; }
+  if (S.me && list[0].d != null && list[0].d < 60000) pts.push(S.me);
+  fitItems(pts, 15);
+}
+function fitMeNearest(){
+  if (!S.me) return;
+  const near = nearestOf(visible());
+  if (near && near.d < 60000) fitItems([S.me, near.it], 16);
+  else map.flyTo([S.me.lat, S.me.lng], 14);
+}
+
+/* ---------- Sự kiện ---------- */
+document.addEventListener('click', e => {
+  const o = e.target.closest('[data-open]');
+  if (o && !e.target.closest('a')){
+    const [k, id] = o.dataset.open.split('|');
+    const it = S[k].find(x => x.id === id); if (it) openDetail(it);
+    return;
+  }
+  const sw = e.target.closest('[data-swap]');
+  if (sw){
+    const [k, id] = sw.dataset.swap.split('|');
+    const it = S[k].find(x => x.id === id);
+    if (it && it !== S.sel) openDetail(it);
+    return;
+  }
+  const a = e.target.closest('[data-act]'); if (!a) return;
+  const act = a.dataset.act;
+  if (act === 'back') closeDetail();
+  else if (act === 'locate') locate(true);
+  else if (act === 'share' && S.sel) share(S.sel);
+  else if (act === 'qr' && S.sel) showQR(S.sel);
+});
+$('#locateBtn').addEventListener('click', () => locate(true));
+const qIn = $('#q');
+qIn.addEventListener('input', () => {
+  S.q = qIn.value; $('#qClear').hidden = !S.q;
+  if (!$('#detailView').hidden) closeDetail();
+  renderList();
+});
+qIn.addEventListener('focus', () => { if (!isDesk() && sheet.state === 'peek') sheet.to('half'); });
+qIn.addEventListener('keydown', e => { if (e.key === 'Enter'){ qIn.blur(); fitItems(visible().map(x => x.it)); } });
+$('#qClear').addEventListener('click', () => { qIn.value = ''; qIn.dispatchEvent(new Event('input')); qIn.focus(); });
+document.querySelectorAll('.seg [data-tab]').forEach(b => b.addEventListener('click', () => {
+  S.tab = b.dataset.tab;
+  document.querySelectorAll('.seg [data-tab]').forEach(x => x.setAttribute('aria-selected', x === b));
+  document.querySelectorAll('.chip').forEach(c => c.hidden = S.tab !== 'atm');
+  closeDetail(); renderList();
+  fitAll();
+}));
+document.querySelectorAll('.chip').forEach(c => c.addEventListener('click', () => {
+  const k = c.dataset.filter; S.f[k] = !S.f[k]; c.setAttribute('aria-pressed', S.f[k]);
+  closeDetail(); renderList();
+}));
+let rT; addEventListener('resize', () => { clearTimeout(rT); rT = setTimeout(() => { measureTop(); sheet.to(sheet.state); map.invalidateSize(); }, 120); });
+function measureTop(){ root.style.setProperty('--top-h', $('#topbar').getBoundingClientRect().bottom + 'px'); }
+
+/* ---------- Khởi động ---------- */
+// Chuyển dòng dữ liệu của máy chủ (atm_load) sang cấu trúc của webapp
+function toItem(x, kind){
+  const st = x.tt || '', hours = x.gio || '';
+  return { kind, id: x.ma || x.ten, code: x.ma || '', name: x.ten || x.ma, lat: x.lat, lng: x.lng,
+    type: kind === 'atm' ? (/cdm/i.test(x.loai || '') ? 'CDM' : 'ATM') : (x.loai || 'Điểm giao dịch'),
+    address: x.diaChi || '', ward: x.xa || '', hours, h24: /24\s*\/\s*7|24\s*h/i.test(hours), services: x.dichVu || '',
+    photo: x.anh || '', status: st || 'Hoạt động', active: !st || norm(st).startsWith('hoat dong'),
+    updated: x.capNhat || '', phone: x.dt || '', pub: x.congKhai !== false,
+    search: norm([x.ten, x.ma, x.diaChi, x.xa, x.loai].join(' ')) };
+}
+const okPos = x => x.lat > 8 && x.lat < 24 && x.lng > 102 && x.lng < 110;
+async function refresh(initial){
+  const r = await BR.load(!initial);
+  if (!r) return;                                  // phiên hết hạn: trang chính tự xử lý
+  const selKey = S.sel && [S.sel.kind, S.sel.id];
+  S.atm = (r.atm || []).filter(okPos).map(x => toItem(x, 'atm')); S.pgd = (r.pgd || []).filter(okPos).map(x => toItem(x, 'pgd'));
+  S.loadedAt = r.t || null; S.failed = !!r.failed; S.source = r.source || 'server';
+  if (selKey){ const it = S[selKey[0]].find(x => x.id === selKey[1]); S.sel = it || null; }
+  if ($('#detailView').hidden || !S.sel){ $('#detailView').hidden = true; $('#listView').hidden = false; renderList(); } else openDetail(S.sel);
+  if (initial) fitItems(S.atm);
+}
+// Trang chính gọi mỗi lần mở lại màn hình: tính lại kích thước, nạp lại dữ liệu nếu đã cũ
+window.amWake = () => { measureTop(); sheet.to(sheet.state); map.invalidateSize(); if (Date.now() - (S.loadedAt || 0) > 60000) refresh(false); };
+function boot(){
+  $('#appTitle').textContent = CFG.APP_TITLE || 'Tìm ATM VietinBank';
+  $('#branchName').textContent = 'Mạng lưới ATM · Điểm giao dịch';
+  const logo = $('#logo');
+  logo.onerror = () => { logo.hidden = true; $('#logoText').hidden = false; };
+  logo.src = BR.logo();
+  measureTop();
+  sheet.to('peek');
+  renderList();
+  refresh(true).then(() => { S.booted = true; locate(false); });
+  const mins = Math.max(1, +CFG.REFRESH_MINUTES || 5);
+  setInterval(() => { if (!document.hidden && BR.visible()) refresh(false); }, mins*60000);
+}
+boot();
+})();
+</script>
 
 <section class="view" id="v-bantin" hidden>
  <div class="stack">
@@ -1332,7 +2083,7 @@ footer .shell{display:flex;flex-direction:column;align-items:center;gap:6px;padd
 /* =====================================================================
    CẤU HÌNH — chỉnh tại đây khi triển khai
    ===================================================================== */
-const APP_VERSION='2.1.1 · 11/11/2026';
+const APP_VERSION='2.2.0 · 12/11/2026';
 // Tên bộ công cụ (song ngữ)
 const SUITE={vi:'Không Gian Số Nội Bộ',en:'TTG Inside'};
 
@@ -1376,7 +2127,7 @@ const TOOLKIT=[
   ]}
   ,{id:'kh',vi:'Phục vụ khách hàng',en:'Customer service',solo:true,tools:[
     {id:'tinh-lai',app:'I011',title:'Tính lãi tiết kiệm',desc:'Tiền lãi theo từng phương thức lĩnh lãi; so sánh cầm cố sổ với rút trước hạn.',icon:'percent'},
-    {id:'diem-atm',app:'I012',title:'ATM và điểm giao dịch',desc:'Vị trí ATM/CDM, điểm giao dịch của chi nhánh; tìm điểm gần nhất, chỉ đường, bản đồ.',icon:'pin'}
+    {id:'diem-atm',app:'I012',title:'ATM và điểm giao dịch',desc:'Bản đồ ATM/CDM và điểm giao dịch của chi nhánh; tìm điểm gần nhất, chỉ đường, chia sẻ, mã QR.',icon:'pin'}
   ]}
   ,{id:'uq',vi:'Pháp lý',en:'Legal',tools:[
     {id:'uy-quyen',app:'I008',title:'Theo dõi giấy ủy quyền',desc:'Tải giấy ủy quyền, AI kiểm tra theo luật, theo dõi thời hạn và nhắc hạn qua email.',icon:'doccheck'}
@@ -3657,97 +4408,56 @@ const TL={cfg:{terms:[1,2,3,4,5,6,7,8,9,10,11,12,24,36],lsKhongKyHan:0.2,bienDoV
 window.addEventListener('ttg:view',e=>{if(e.detail==='tinh-lai')TL.open()});
 
 /* =====================================================================
-   ATM VÀ ĐIỂM GIAO DỊCH (I012) – atm_load đọc file quản lý ATM (DS_ATM, DS_PGD)
-   Bản đồ: Leaflet + nền OpenStreetMap, chỉ nạp khi mở màn hình
+   ATM VÀ ĐIỂM GIAO DỊCH (I012) – webapp "Tìm ATM VietinBank" chạy trong khung nhúng #amFrame
+   Trang này chỉ lo: lấy dữ liệu (atm_load), dựng khung, làm cầu nối amBridge cho khung gọi sang.
    ===================================================================== */
-const AM={d:null,q:'',f:'',me:null,map:null,layer:null,at:0};
+const AM={d:null,first:null,built:false};
 const AM_LEAF=/*AM_LEAF*/{js:'lib/leaflet/leaflet.js',css:'lib/leaflet/leaflet.css'};
 const amApi=(action,data={})=>DEMO?amDemo():api(action,{token:S?.token,...data});
-const amKm=(a,b)=>{const R=6371,r=x=>x*Math.PI/180,dLat=r(b.lat-a.lat),dLng=r(b.lng-a.lng),h=Math.sin(dLat/2)**2+Math.cos(r(a.lat))*Math.cos(r(b.lat))*Math.sin(dLng/2)**2;return 2*R*Math.asin(Math.sqrt(h))};
-const amKmTxt=k=>k<1?Math.round(k*1000/10)*10+' m':k.toFixed(k<10?1:0).replace('.',',')+' km';
-const amKind=x=>x.kind==='pgd'?'pgd':/cdm/i.test(x.loai)?'cdm':'atm';
-const amDir=x=>`https://www.google.com/maps/dir/?api=1&destination=${x.lat},${x.lng}`;
-const amTel=s=>String(s||'').replace(/[^\d+]/g,'');
-function amAll(){const d=AM.d;if(!d)return[];return d.pgd.map(x=>({...x,kind:'pgd'})).concat(d.atm.map(x=>({...x,kind:'atm'})))}
-function amShown(){
-  const q=AM.q?taKhongDau(AM.q):'';
-  let l=amAll().filter(x=>(!AM.f||amKind(x)===AM.f)&&(!q||taKhongDau([x.ten,x.diaChi,x.xa,x.ma,x.loai,x.dichVu].join(' ')).includes(q)));
-  if(AM.me)l=l.map(x=>({...x,km:x.lat!=null&&x.lng!=null?amKm(AM.me,x):null})).sort((a,b)=>(a.km??1e9)-(b.km??1e9));
-  return l;
+const amTxt=id=>document.getElementById(id).textContent;
+/** Lấy dữ liệu từ máy chủ; lỗi mạng thì dùng bản lưu lần trước trên máy. Trả null khi phiên hết hạn */
+async function amFetch(){
+  const r=await amApi('atm_load');
+  if(r.error==='expired'||r.error==='revoked'){logout(r.error);return null}
+  if(r.ok){AM.d=r;const out={atm:r.atm||[],pgd:r.pgd||[],t:Date.now(),source:'server'};
+    if(!DEMO)store.set('am.cache',JSON.stringify({...out,cfg:r.cfg||null,hienMa:r.hienMa}));return out}
+  if(r.error!=='forbidden'){try{const c=JSON.parse(store.get('am.cache')||'null');if(c&&c.atm&&c.atm.length){AM.d=AM.d||c;return{atm:c.atm,pgd:c.pgd||[],t:c.t,source:'cache'}}}catch(e){}}
+  return{atm:[],pgd:[],t:null,failed:true,source:'none',error:r};
 }
-async function amLoad(fresh){
-  if(!S)return;
-  if(AM.d&&!fresh&&Date.now()-AM.at<5*60e3){amRender();amMapDraw(true);return}
-  $('#amUpd').textContent='Đang tải…';$('#amErr').hidden=true;
-  const r=await amApi('atm_load',{fresh:!!fresh});
-  if(r.error==='expired'||r.error==='revoked')return logout(r.error);
-  if(!r.ok){$('#amUpd').textContent='';$('#amErr').hidden=false;$('#amErr').textContent=r.message||(r.error==='forbidden'?'Tài khoản chưa được cấp quyền xem màn hình này.':'Không tải được danh sách. Kiểm tra mạng rồi bấm Làm mới.');return}
-  AM.d=r;AM.at=Date.now();
-  $('#amUpd').textContent='Dữ liệu lúc '+r.luc+(DEMO?' · dữ liệu xem thử':'');
-  amRender();amMapInit();
-}
-function amRender(){
-  const all=amAll(),cnt=k=>all.filter(x=>amKind(x)===k).length;
-  $('#amFilter').innerHTML=[['','Tất cả',all.length],['atm','ATM',cnt('atm')],['cdm','CDM',cnt('cdm')],['pgd','Điểm giao dịch',cnt('pgd')]].filter(c=>c[2]||!c[0])
-    .map(c=>`<button class="chip" aria-pressed="${AM.f===c[0]}" data-f="${c[0]}">${c[1]} · ${c[2]}</button>`).join('');
-  $('#amFilter').querySelectorAll('.chip').forEach(b=>b.onclick=()=>{AM.f=b.dataset.f;amRender();amMapDraw(true)});
-  const l=amShown(),nearest=AM.me&&l.length&&l[0].km!=null?l[0].ma+'|'+l[0].kind:'';
-  $('#amSum').innerHTML=`<span>Đang hiện <b>${l.length}</b>/${all.length} điểm</span><span>${AM.me?'Sắp theo khoảng cách':''}</span>`;
-  $('#amList').innerHTML=l.length?l.map(x=>{const k=amKind(x),off=x.kind==='atm'&&x.tt&&!/^hoạt động$/i.test(x.tt),has=x.lat!=null&&x.lng!=null;
-    return `<article class="am-it${nearest===x.ma+'|'+x.kind?' near':''}">${x.anh?`<img src="${esc(x.anh)}" alt="" loading="lazy" referrerpolicy="no-referrer" onerror="this.remove()">`:''}
-      <div class="bd"><div class="r1"><span class="am-b ${k}">${k==='pgd'?esc(x.loai||'Điểm giao dịch'):k==='cdm'?'CDM':'ATM'}</span>${x.km!=null?`<span class="am-b km">${amKmTxt(x.km)}</span>`:''}${nearest===x.ma+'|'+x.kind?'<span class="am-b pgd">Gần nhất</span>':''}${off?`<span class="am-b off">${esc(x.tt)}</span>`:''}${x.congKhai===false?'<span class="am-b nb">Nội bộ</span>':''}</div>
-      <h3>${esc(x.ten)}</h3><p>${esc(x.diaChi)}</p>
-      <p class="mt">${[x.gio&&'Giờ: '+esc(x.gio),x.dichVu&&esc(x.dichVu),x.dt&&'ĐT: '+esc(x.dt),x.kind==='atm'&&AM.d.hienMa&&x.ma&&'Mã: '+esc(x.ma)].filter(Boolean).join(' · ')}</p>
-      <div class="act">${has?`<a class="btn" href="${amDir(x)}" target="_blank" rel="noopener noreferrer">Chỉ đường</a><button class="btn ghost" data-pan="${esc(x.kind+'|'+x.ma)}">Xem trên bản đồ</button>`:'<span class="hint">Chưa có tọa độ</span>'}${x.dt?`<a class="btn ghost" href="tel:${esc(amTel(x.dt))}">Gọi</a>`:''}</div></div></article>`}).join('')
-    :'<p class="hint" style="margin:0">Không có điểm nào khớp điều kiện tìm.</p>';
-  $('#amList').querySelectorAll('[data-pan]').forEach(b=>b.onclick=()=>amPan(b.dataset.pan));
-}
-function amLoadLeaf(){
-  if(window.L)return Promise.resolve(true);
-  if(AM.leaf)return AM.leaf;
-  return AM.leaf=new Promise(res=>{const c=document.createElement('link');c.rel='stylesheet';c.href=AM_LEAF.css;document.head.append(c);
-    const s=document.createElement('script');s.src=AM_LEAF.js;s.onload=()=>res(!!window.L);s.onerror=()=>{AM.leaf=null;res(false)};document.head.append(s)});
-}
-async function amMapInit(){
-  if(!AM.d?.banDo){$('#amMapCard').hidden=true;return}
-  if(!await amLoadLeaf()||$('#v-diem-atm').hidden)return;
-  $('#amMapCard').hidden=false;
-  if(!AM.map){AM.map=L.map('amMap',{scrollWheelZoom:false,attributionControl:true}).setView([10.4,106.12],10);AM.map.attributionControl.setPrefix(false);
-    L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19,attribution:'© OpenStreetMap'}).addTo(AM.map);AM.layer=L.layerGroup().addTo(AM.map)}
-  setTimeout(()=>{AM.map.invalidateSize();amMapDraw(true)},60);
-}
-function amMapDraw(fit){
-  if(!AM.map||!window.L)return;AM.layer.clearLayers();AM.marks={};
-  const groups={};amShown().filter(x=>x.lat!=null&&x.lng!=null).forEach(x=>{const k=x.lat.toFixed(4)+','+x.lng.toFixed(4);(groups[k]=groups[k]||[]).push(x)});
-  const pts=[];
-  Object.values(groups).forEach(g=>{const top=g.find(x=>x.kind==='pgd')||g.find(x=>amKind(x)==='cdm')||g[0],p=[top.lat,top.lng];pts.push(p);
-    const m=L.marker(p,{icon:L.divIcon({className:'',html:`<i class="am-pin ${amKind(top)}"></i>`,iconSize:[20,20],iconAnchor:[10,10]}),title:top.ten}).addTo(AM.layer)
-      .bindPopup(g.map(x=>`<b>${esc(x.ten)}</b>${x.kind==='atm'?' ('+(amKind(x)==='cdm'?'CDM':'ATM')+')':''}`).join('<br>')+`<br>${esc(top.diaChi)}<br><a href="${amDir(top)}" target="_blank" rel="noopener noreferrer">Chỉ đường</a>`);
-    g.forEach(x=>AM.marks[x.kind+'|'+x.ma]=m)});
-  if(AM.me){pts.push([AM.me.lat,AM.me.lng]);L.marker([AM.me.lat,AM.me.lng],{icon:L.divIcon({className:'',html:'<i class="am-pin me"></i>',iconSize:[16,16],iconAnchor:[8,8]}),title:'Vị trí của tôi'}).addTo(AM.layer).bindPopup('Vị trí của tôi')}
-  if(fit&&pts.length)AM.map.fitBounds(pts,{padding:[28,28],maxZoom:15});
-}
-function amPan(key){
-  const m=AM.marks?.[key];if(!AM.map||!m){toast('Bản đồ chưa sẵn sàng. Bấm Chỉ đường để mở Google Maps.');return}
-  $('#amMapCard').scrollIntoView({behavior:'smooth',block:'center'});AM.map.setView(m.getLatLng(),16);m.openPopup();
-}
-$('#amReload').onclick=()=>amLoad(true);
-$('#amQ').addEventListener('input',()=>{AM.q=$('#amQ').value.trim();amRender();amMapDraw(true)});
-$('#amNear').onclick=()=>{
-  const t=$('#amNearTxt');t.hidden=false;
-  if(!navigator.geolocation){t.textContent='Máy này không hỗ trợ định vị.';return}
-  t.textContent='Đang lấy vị trí…';
-  navigator.geolocation.getCurrentPosition(p=>{AM.me={lat:p.coords.latitude,lng:p.coords.longitude};const l=amShown();
-    t.textContent=l.length&&l[0].km!=null?`Gần nhất: ${l[0].ten} – cách khoảng ${amKmTxt(l[0].km)} (đường chim bay). Vị trí chỉ dùng trên máy, không gửi đi.`:'Đã lấy vị trí.';amRender();amMapDraw(true)},
-    e=>{t.textContent=e.code===1?'Chưa cho phép định vị. Bật quyền vị trí cho trình duyệt/TTG Inside rồi thử lại.':'Chưa lấy được vị trí, thử lại sau.'},{enableHighAccuracy:true,timeout:12000,maximumAge:60000});
+/** Cầu nối: chương trình trong khung gọi parent.amBridge.* */
+window.amBridge={
+  cfg:()=>{const c=(AM.d&&AM.d.cfg)||{};return{APP_TITLE:'Tìm ATM VietinBank',HOTLINE:c.hotline||'1900 558 868',WEBSITE:c.website||'www.vietinbank.vn',
+    TRAVEL_MODE:c.cheDo||'two-wheeler',PUBLIC_URL:c.linkCongKhai||'',REFRESH_MINUTES:c.lamMoiPhut||5,SHOW_CODE:AM.d?AM.d.hienMa!==false:true,MAP_CENTER:[10.38,106.0],MAP_ZOOM:11}},
+  logo:()=>$('#logo').src,
+  visible:()=>!!S&&!$('#v-diem-atm').hidden,
+  load:async()=>{if(AM.first){const f=AM.first;AM.first=null;return f}return S?amFetch():null}
 };
-window.addEventListener('ttg:view',e=>{if(e.detail==='diem-atm')amLoad()});
-function amDemo(){return new Promise(r=>setTimeout(()=>r({ok:true,hienMa:true,banDo:true,luc:'xem thử',
-  atm:[{ma:'ATM-DEMO-01',ten:'ATM VietinBank - Trụ sở Chi nhánh',loai:'ATM',diaChi:'560 QL1A, Cai Lậy, Đồng Tháp',xa:'Phường Cai Lậy',lat:10.403975,lng:106.124924,gio:'24/7',dichVu:'Rút tiền, Chuyển khoản, Vấn tin số dư',anh:'',tt:'Hoạt động',congKhai:true},
-    {ma:'CDM-DEMO-01',ten:'ATM VietinBank - Trụ sở Chi nhánh',loai:'CDM',diaChi:'560 QL1A, Cai Lậy, Đồng Tháp',xa:'Phường Cai Lậy',lat:10.403975,lng:106.124924,gio:'24/7',dichVu:'Rút tiền, Nạp tiền, Chuyển khoản',anh:'',tt:'Hoạt động',congKhai:true},
-    {ma:'ATM-DEMO-02',ten:'ATM VietinBank - PGD Cái Bè',loai:'CDM',diaChi:'321 ĐT875, Cái Bè, Đồng Tháp',xa:'Xã Cái Bè',lat:10.340172,lng:106.033627,gio:'24/7',dichVu:'Rút tiền, Nạp tiền, Chuyển khoản',anh:'',tt:'Đang bảo trì',congKhai:true},
-    {ma:'ATM-DEMO-03',ten:'ATM VietinBank - KCN Tân Hương',loai:'ATM',diaChi:'Tân Hương, Đồng Tháp',xa:'Xã Tân Hương',lat:10.480864,lng:106.362889,gio:'24/7',dichVu:'Rút tiền, Chuyển khoản, Vấn tin số dư',anh:'',tt:'Hoạt động',congKhai:false}],
-  pgd:[{ma:'TSCN',ten:'VietinBank - Trụ sở Chi nhánh Tây Tiền Giang',loai:'Trụ sở',diaChi:'560 QL1A, Cai Lậy, Đồng Tháp',xa:'Phường Cai Lậy',lat:10.403975,lng:106.124924,gio:'Sáng 7:30–11:30, chiều 13:30–16:30',dt:'0273.3826807',anh:'',congKhai:true},
+function amSize(){const f=$('#amFrame'),top=Math.max(0,Math.round($('#ctx').getBoundingClientRect().bottom));f.style.top=top+'px';f.style.height=`calc(100dvh - ${top}px)`}
+async function amOpen(){
+  if(!S)return;
+  window.scrollTo(0,0);amSize();
+  if(AM.built){try{$('#amFrame').contentWindow.amWake?.()}catch(e){}return}
+  $('#amWait').hidden=false;$('#amUpd').textContent='Đang tải bản đồ…';$('#amErr').hidden=true;$('#amReload').hidden=true;
+  const first=await amFetch();if(!first)return;
+  if(first.failed){const e=first.error||{};$('#amUpd').textContent='';$('#amErr').hidden=false;$('#amReload').hidden=false;
+    $('#amErr').textContent=e.message||(e.error==='forbidden'?'Tài khoản chưa được cấp quyền xem màn hình này.':'Chưa tải được dữ liệu. Kiểm tra kết nối mạng rồi bấm Thử lại.');return}
+  AM.first=first;
+  // Font SVN-Gilroy đã nhúng ở trang chính: chép sang khung
+  const fonts=[...document.styleSheets].flatMap(x=>{try{return[...x.cssRules]}catch(e){return[]}}).filter(r=>r.type===5).map(r=>r.cssText).join('\n');
+  const base=/^https?:/.test(document.baseURI)?`<base href="${esc(document.baseURI)}">`:'';
+  const f=$('#amFrame');
+  f.srcdoc=`<!doctype html><html lang="vi"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">${base}<link rel="stylesheet" href="${AM_LEAF.css}"><style>${fonts}\n${amTxt('amTplCss')}</style></head><body>${amTxt('amTplBody')}<script src="${AM_LEAF.js}"><\/script><script>${amTxt('amTplJs')}<\/script></body></html>`;
+  f.hidden=false;$('#amWait').hidden=true;AM.built=true;
+}
+$('#amReload').onclick=amOpen;
+window.addEventListener('resize',()=>{if(!$('#v-diem-atm').hidden)amSize()});
+window.addEventListener('ttg:view',e=>{if(e.detail==='diem-atm')amOpen()});
+function amDemo(){return new Promise(r=>setTimeout(()=>r({ok:true,hienMa:true,luc:'xem thử',cfg:{},
+  atm:[{ma:'ATM-DEMO-01',ten:'ATM VietinBank - Trụ sở Chi nhánh',loai:'ATM',diaChi:'560 QL1A, Cai Lậy, Đồng Tháp',xa:'Phường Cai Lậy',lat:10.403864,lng:106.122123,gio:'24/7',dichVu:'Rút tiền, Chuyển khoản, Vấn tin số dư',anh:'',tt:'Hoạt động',congKhai:true,capNhat:'14/10/2026'},
+    {ma:'CDM-DEMO-01',ten:'ATM VietinBank - Trụ sở Chi nhánh',loai:'CDM',diaChi:'560 QL1A, Cai Lậy, Đồng Tháp',xa:'Phường Cai Lậy',lat:10.403864,lng:106.122123,gio:'24/7',dichVu:'Rút tiền, Nạp tiền, Chuyển khoản',anh:'',tt:'Hoạt động',congKhai:true,capNhat:'14/10/2026'},
+    {ma:'CDM-DEMO-02',ten:'ATM VietinBank - PGD Cái Bè',loai:'CDM',diaChi:'321 ĐT875, Cái Bè, Đồng Tháp',xa:'Xã Cái Bè',lat:10.340172,lng:106.033627,gio:'24/7',dichVu:'Rút tiền, Nạp tiền, Chuyển khoản',anh:'',tt:'Đang bảo trì',congKhai:true,capNhat:'14/10/2026'},
+    {ma:'ATM-DEMO-03',ten:'ATM VietinBank - KCN Tân Hương',loai:'ATM',diaChi:'Tân Hương, Đồng Tháp',xa:'Xã Tân Hương',lat:10.480864,lng:106.362889,gio:'24/7',dichVu:'Rút tiền, Chuyển khoản, Vấn tin số dư',anh:'',tt:'Hoạt động',congKhai:false,capNhat:'14/10/2026'}],
+  pgd:[{ma:'TSCN',ten:'VietinBank - Trụ sở Chi nhánh Tây Tiền Giang',loai:'Trụ sở',diaChi:'560 QL1A, Cai Lậy, Đồng Tháp',xa:'Phường Cai Lậy',lat:10.403864,lng:106.122123,gio:'Sáng 7:30–11:30, chiều 13:30–16:30',dt:'0273.3826807',anh:'',congKhai:true},
     {ma:'PGD-CB',ten:'VietinBank Tây Tiền Giang - PGD Cái Bè',loai:'Phòng giao dịch',diaChi:'321 ĐT875, Cái Bè, Đồng Tháp',xa:'Xã Cái Bè',lat:10.340235,lng:106.03363,gio:'Sáng 7:30–11:30, chiều 13:30–16:30',dt:'0273.3824885',anh:'',congKhai:true}]}),250))}
 
 /* Khởi động phần bổ sung: chuông thông báo; nạp dữ liệu cho màn hình đang mở sẵn (mở lại trang hoặc bấm vào thông báo) */

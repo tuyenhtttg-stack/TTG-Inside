@@ -1,6 +1,6 @@
 /**
  * KHÔNG GIAN SỐ NỘI BỘ (TTG Inside) – Máy chủ phân quyền
- * VietinBank Chi nhánh Tây Tiền Giang · phiên bản 2.1.1 · 11/11/2026
+ * VietinBank Chi nhánh Tây Tiền Giang · phiên bản 2.2.0 · 12/11/2026
  *
  * Script này GẮN VỚI file Google Sheet phân quyền (Tiện ích mở rộng → Apps Script), làm 2 việc:
  *   1. Menu quản trị + tự tick quyền theo vai trò ngay trong Sheet.
@@ -344,7 +344,7 @@ function kiemTraDuLieu() {
 }
 
 function lamMoiBoNhoDem(silent) {
-  CacheService.getScriptCache().removeAll([CACHE_KEY, 'ta_cfg', 'uq_cfg', 'sct_cfg', 'cp_cfg', 'tl_cfg', 'atm_data']);
+  CacheService.getScriptCache().removeAll([CACHE_KEY, 'ta_cfg', 'uq_cfg', 'sct_cfg', 'cp_cfg', 'tl_cfg', 'atm_data2']);
   if (silent !== true) SpreadsheetApp.getActive().toast('Ứng dụng sẽ dùng dữ liệu mới ngay lần mở kế tiếp.', 'Không Gian Số');
 }
 
@@ -3530,7 +3530,11 @@ const ATM_CAUHINH_BAN_DAU = [
   ['HIEN_KHONG_CONG_KHAI', 'Có', 'Có: cán bộ thấy cả máy/điểm chưa công khai cho khách (có nhãn "Nội bộ"); Không: chỉ hiện dòng Công khai = Có'],
   ['HIEN_MA_MAY', 'Có', 'Có: hiện mã ATM trên màn hình cho cán bộ'],
   ['DO_RONG_ANH', '800', 'Độ rộng ảnh hiển thị (điểm ảnh). Ảnh trên Drive phải chia sẻ "Bất kỳ ai có đường liên kết"'],
-  ['BAN_DO', 'Bật', 'Bật/Tắt bản đồ trên màn hình (bản đồ nền OpenStreetMap)']
+  ['CHE_DO_DI_CHUYEN', 'two-wheeler', 'Chế độ chỉ đường Google Maps: two-wheeler (xe máy), driving (ô tô), walking (đi bộ)'],
+  ['LINK_CONG_KHAI', '', 'Địa chỉ webapp Tìm ATM công khai cho khách (nếu có). Có: nút Chia sẻ và Mã QR dẫn tới trang đó; để trống: dẫn tới vị trí trên Google Maps'],
+  ['HOTLINE', '1900 558 868', 'Số tổng đài hiện ở cuối danh sách'],
+  ['WEBSITE', 'www.vietinbank.vn', 'Trang web hiện ở cuối danh sách'],
+  ['TU_LAM_MOI_PHUT', '5', 'Khi đang mở màn hình, cứ bấy nhiêu phút tự nạp lại dữ liệu']
 ];
 
 function caiDatTienIchKhachHang() {
@@ -3544,7 +3548,7 @@ function caiDatTienIchKhachHang() {
   });
   const roles = Object.keys(rolePerms_());
   const n11 = dangKyUngDung_(TL_APP, 'Tính lãi tiết kiệm', 'Tính lãi theo phương thức lĩnh lãi; so sánh cầm cố sổ với rút trước hạn', roles);
-  const n12 = dangKyUngDung_(ATM_APP, 'ATM và điểm giao dịch', 'Vị trí ATM/CDM và điểm giao dịch của chi nhánh, chỉ đường, bản đồ', roles);
+  const n12 = dangKyUngDung_(ATM_APP, 'ATM và điểm giao dịch', 'Bản đồ ATM/CDM và điểm giao dịch của chi nhánh, tìm điểm gần nhất, chỉ đường', roles);
   lamMoiBoNhoDem(true);
   let kt = ''; try { const d = atmData_(true); kt = 'Đọc được ' + d.atm.length + ' máy ATM/CDM và ' + d.pgd.length + ' điểm giao dịch.'; } catch (e) { kt = 'LƯU Ý: chưa đọc được file ATM (' + e.message + '). Kiểm tra FILE_ID ở sheet ' + ATM_SH + '.'; }
   ui.alert('Tính lãi tiết kiệm (I011) và ATM, điểm giao dịch (I012)',
@@ -3578,7 +3582,7 @@ function apiTlCfg_(b) {
 /** Đọc file quản lý ATM: tìm dòng tiêu đề theo tên cột nên chèn/đổi thứ tự cột không ảnh hưởng */
 function atmData_(fresh) {
   const cache = CacheService.getScriptCache();
-  if (!fresh) { const hit = cache.get('atm_data'); if (hit) return JSON.parse(hit); }
+  if (!fresh) { const hit = cache.get('atm_data2'); if (hit) return JSON.parse(hit); }
   const kv = tienIchKv_(ATM_SH, ATM_CAUHINH_BAN_DAU), f = SpreadsheetApp.openById(String(kv.FILE_ID).replace(/^.*\/d\/([\w-]+).*$/, '$1'));
   const yes = s => /^(có|co|bật|bat|x|true|1)$/i.test(String(s).trim()), noiBo = yes(kv.HIEN_KHONG_CONG_KHAI), w = Math.max(200, Math.min(1600, parseInt(kv.DO_RONG_ANH, 10) || 800));
   const table = (name, keyCol) => { const sh = f.getSheetByName(name); if (!sh) throw new Error('Không thấy sheet ' + name);
@@ -3593,8 +3597,11 @@ function atmData_(fresh) {
   let pgd = [];
   try { pgd = table(kv.SHEET_PGD, 'Mã điểm').map(g => ({ ma: g('Mã điểm'), ten: g('Tên điểm giao dịch'), loai: g('Loại') || 'Phòng giao dịch', diaChi: g('Địa chỉ'), xa: g('Xã/Phường'), lat: num(g('Vĩ độ (Lat)')), lng: num(g('Kinh độ (Lng)')),
     gio: g('Giờ làm việc'), dt: g('Điện thoại'), anh: img(g('Link ảnh (Google Drive)')), congKhai: !/^không|^khong/i.test(g('Công khai')) })).filter(x => x.ten && (noiBo || x.congKhai)); } catch (e) { pgd = []; }
-  const out = { atm, pgd, hienMa: yes(kv.HIEN_MA_MAY), banDo: yes(kv.BAN_DO), luc: Utilities.formatDate(new Date(), TZ, 'HH:mm dd/MM/yyyy') };
-  try { cache.put('atm_data', JSON.stringify(out), 600); } catch (e) {}
+  const link = String(kv.LINK_CONG_KHAI || '').trim(), mode = String(kv.CHE_DO_DI_CHUYEN || '').trim().toLowerCase();
+  const out = { atm, pgd, hienMa: yes(kv.HIEN_MA_MAY), luc: Utilities.formatDate(new Date(), TZ, 'HH:mm dd/MM/yyyy'),
+    cfg: { cheDo: ['two-wheeler', 'driving', 'walking', 'transit', 'bicycling'].includes(mode) ? mode : 'two-wheeler', linkCongKhai: /^https:\/\/[^\s"'<>]+$/i.test(link) ? link : '',
+      hotline: String(kv.HOTLINE || '1900 558 868').slice(0, 30), website: String(kv.WEBSITE || 'www.vietinbank.vn').replace(/^https?:\/\//i, '').replace(/[^\w./-]/g, '').slice(0, 80), lamMoiPhut: Math.max(1, Math.min(60, parseInt(kv.TU_LAM_MOI_PHUT, 10) || 5)) } };
+  try { cache.put('atm_data2', JSON.stringify(out), 600); } catch (e) {}
   return out;
 }
 function apiAtmLoad_(b) {

@@ -1,7 +1,7 @@
 # Không Gian Số Nội Bộ · TTG Inside
 
 Bộ tiện ích nội bộ dành cho cán bộ **VietinBank Chi nhánh Tây Tiền Giang**, thiết kế cho điện thoại.
-Phiên bản 2.1.1 – 11/11/2026: chuông thông báo cho mọi cán bộ; màn hình Tính lãi và ATM đứng riêng (không hiện nút chuyển qua lại). Bản 2.1.0: thông báo popup và thông báo đẩy cho sổ công tác; thêm I011 Tính lãi tiết kiệm và I012 ATM và điểm giao dịch. Bản 2.0.0: Sổ công tác (I009, I010). Bản 1.9.x: Theo dõi giấy ủy quyền.
+Phiên bản 2.2.0 – 12/11/2026: màn hình ATM và điểm giao dịch (I012) dùng lại nguyên webapp "Tìm ATM VietinBank" v1.1 (bản đồ toàn màn hình, bảng trượt, chi tiết, mã QR). Bản 2.1.1: chuông thông báo cho mọi cán bộ; Tính lãi và ATM đứng riêng. Bản 2.1.0: thông báo popup, I011, I012.
 
 | Nhóm | Tiện ích | Mô tả |
 |---|---|---|
@@ -23,7 +23,7 @@ manifest.webmanifest    Khai báo để cài lên màn hình chính điện tho�
 sw.js                   Service worker: mở nhanh, dùng được khi mạng yếu; nhận thông báo đẩy
 lib/qrcode.js           Thư viện tạo mã QR (qrcode-generator 1.4.4, MIT)
 lib/jsQR.js             Thư viện đọc mã QR từ ảnh (jsQR 1.4.0, Apache-2.0)
-lib/leaflet/            Thư viện bản đồ (Leaflet 1.9.4, BSD-2) – chỉ tải khi mở màn hình ATM; nền bản đồ OpenStreetMap
+lib/leaflet/            Thư viện bản đồ (Leaflet 1.9.4, BSD-2) – chỉ tải khi mở màn hình ATM; nền bản đồ OpenStreetMap. Giao diện và chương trình của màn hình ATM nằm trong index.html (3 khối amTplBody, amTplCss, amTplJs)
 lib/tesseract/          Thư viện đọc chữ trên ảnh thẻ (Tesseract.js 5.1.1, Apache-2.0) – chỉ tải khi bấm chụp thẻ
 icons/                  Biểu tượng ứng dụng
 apps-script/Code.gs     Máy chủ phân quyền (gắn với Google Sheet) + trợ lý AI giai đoạn 2
@@ -214,5 +214,6 @@ Thêm thuộc tính tập lệnh `ANTHROPIC_API_KEY` trong Apps Script (cùng sc
 
 - Cài đặt: menu **Không Gian Số → Cài đặt / cập nhật Tính lãi, ATM và điểm giao dịch (I011, I012)**. Tạo sheet `TL_CauHinh`, `ATM_CauHinh` trong file phân quyền, đăng ký 2 mã và tick sẵn cho mọi vai trò.
 - `TL_CauHinh`: kỳ hạn, lãi suất không kỳ hạn, biên độ và lãi suất vay cầm cố tối thiểu, tỷ lệ vay tối đa, cơ sở ngày. Công thức quy đổi lãi suất theo CV 4277/CV-NHCT3 nằm trong `index.html`.
-- `ATM_CauHinh`: `FILE_ID` của file quản lý ATM (sheet `DS_ATM`, `DS_PGD`), có hiện máy chưa công khai cho cán bộ hay không, bật/tắt bản đồ. Ứng dụng tìm cột theo tên tiêu đề; không hiển thị cột "Ghi chú nội bộ". Sửa file ATM xong bấm **Làm mới** trên màn hình (dữ liệu đệm 10 phút).
+- **I012 từ v2.2.0** là webapp "Tìm ATM VietinBank" v1.1 chạy trong khung nhúng: bản đồ toàn màn hình, thanh tìm kiếm, tab ATM / Điểm giao dịch, lọc CDM, 24/7, Đang hoạt động, bảng trượt danh sách, thẻ "gần bạn nhất", trang chi tiết có ảnh, chỉ đường, chia sẻ, mã QR, ghim gộp nhiều máy cùng vị trí. Khác bản công khai: dữ liệu lấy qua máy chủ (đăng nhập mới xem được), có nhãn "Nội bộ" cho điểm chưa công khai. Khi mở màn hình này phần đầu trang Không Gian Số tạm ẩn, còn nút Trang chủ.
+- `ATM_CauHinh`: `FILE_ID` của file quản lý ATM (sheet `DS_ATM`, `DS_PGD`), `HIEN_KHONG_CONG_KHAI`, `HIEN_MA_MAY`, `CHE_DO_DI_CHUYEN` (two-wheeler/driving/walking), `LINK_CONG_KHAI` (địa chỉ webapp ATM công khai – có thì Chia sẻ và Mã QR dẫn tới trang đó, trống thì dẫn tới Google Maps), `HOTLINE`, `WEBSITE`, `TU_LAM_MOI_PHUT`. Ứng dụng tìm cột theo tên tiêu đề; không hiển thị cột "Ghi chú nội bộ". Dữ liệu đệm 10 phút.
 - Ảnh trên Drive phải chia sẻ "Bất kỳ ai có đường liên kết". Vị trí "gần tôi" chỉ tính trên điện thoại, không gửi về máy chủ.
