@@ -1,7 +1,7 @@
 # Không Gian Số Nội Bộ · TTG Inside
 
 Bộ tiện ích nội bộ dành cho cán bộ **VietinBank Chi nhánh Tây Tiền Giang**, thiết kế cho điện thoại.
-Phiên bản 2.3.0 – 12/11/2026: thêm I013 Thiệp chúc mừng (10 mẫu sinh nhật, xuất video MP4 hoặc ảnh PNG, nhạc tự phối, gợi ý lời chúc bằng AI, tạo theo lô từ Excel); thêm sheet DungThu để cấp quyền dùng thử theo từng cán bộ. Bản 2.2.0: I012 dùng lại webapp Tìm ATM VietinBank v1.1. Bản 2.1.x: thông báo popup, chuông cho mọi cán bộ, I011.
+Phiên bản 2.4.0 – 13/11/2026: I013 thêm 15 mẫu Ngày Nhà giáo Việt Nam 20/11 (lời chúc, nhạc "Lời tri ân" tự sáng tác: piano, đàn tranh, hộp nhạc), xưng hô Thầy, thanh căn ảnh đặt ngay trên phần xem trước (phóng to, lên/xuống, trái/phải, kéo trực tiếp trên thiệp); menu mở Thiệp chúc mừng cho tất cả cán bộ kèm thông báo; Dải Hoa nở dựng lại theo Quy chuẩn NDTH v1.0. Bản 2.3.0 – 12/11/2026: thêm I013 Thiệp chúc mừng (10 mẫu sinh nhật, xuất video MP4 hoặc ảnh PNG, nhạc tự phối, gợi ý lời chúc bằng AI, tạo theo lô từ Excel); thêm sheet DungThu để cấp quyền dùng thử theo từng cán bộ. Bản 2.2.0: I012 dùng lại webapp Tìm ATM VietinBank v1.1. Bản 2.1.x: thông báo popup, chuông cho mọi cán bộ, I011.
 
 | Nhóm | Tiện ích | Mô tả |
 |---|---|---|
@@ -230,3 +230,9 @@ Thêm thuộc tính tập lệnh `ANTHROPIC_API_KEY` trong Apps Script (cùng sc
 - **Mẫu thiệp:** nằm trong `index.html`, mảng `TC_MAU` (mỗi mẫu có bảng màu 3 tông và các hàm vẽ). Nhạc: hàm `tcMusic` tự phối giai điệu Happy Birthday (phạm vi công cộng) thành 3 bản: hộp nhạc, piano, vui tươi – không dùng file nhạc ngoài.
 - **Video:** MP4 720×1280, 30 hình/giây, H.264 + AAC (dựng bằng WebCodecs của Chrome/Edge/Safari mới). Máy không có bộ mã hóa chuẩn sẽ có cảnh báo ngay dưới file. Ảnh: PNG 1080×1920.
 - **Tạo theo lô:** tải file Excel mẫu trên màn hình, điền Xưng hô / Tên trên thiệp / Tông màu / Lời chúc riêng; kết quả là 1 file zip, mỗi thiệp mang tên người nhận.
+
+### Cập nhật v2.4.0 – Ngày Nhà giáo 20/11 và mở cho tất cả cán bộ
+- **15 mẫu 20/11:** Hoa xanh tri ân, Trang sách tri thức, Bảng phấn, Hạc giấy, Đóa hồng tri ân, Lá thu tháng 11, Mái trường thân yêu, Sen hồng, Lá thư tri ân, Thủy mặc – trúc xanh, Xanh vàng sang trọng, Bút chì sắc màu, Cúc họa mi, Con đò tri thức, VietinBank tri ân. Một số mẫu dùng khung vòm/khung chữ nhật lớn và tên người nhận viết tay (font Great Vibes, giấy phép SIL OFL – nhúng sẵn trong trang).
+- **Nhạc 20/11:** giai điệu "Lời tri ân" tự sáng tác, phối 3 kiểu: piano, đàn tranh (gảy và luyến bằng bộ tổng hợp âm thanh), hộp nhạc.
+- **Lời chúc:** chạy lại menu Cài đặt / cập nhật Thiệp chúc mừng – tự thêm 8 lời chúc 20/11 vào `THIEP_LoiChuc` (không nhân đôi) và thêm `20-11` vào `DIP_DANG_MO`.
+- **Mở cho tất cả cán bộ:** menu **Mở Thiệp chúc mừng cho tất cả cán bộ + gửi thông báo** – tick cột "Mở cho tất cả" của I013 ở sheet `UngDung`, làm mới bộ nhớ đệm và gửi popup "Ứng dụng mới: Thiệp chúc mừng" đến mọi cán bộ đang hoạt động. Bấm "Xem" trên popup: trang tự nạp lại quyền rồi mở thẳng màn hình thiệp. Thu hẹp lại: bỏ tick cột đó.
