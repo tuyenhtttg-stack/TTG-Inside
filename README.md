@@ -1,7 +1,7 @@
 # Không Gian Số Nội Bộ · TTG Inside
 
 Bộ tiện ích nội bộ dành cho cán bộ **VietinBank Chi nhánh Tây Tiền Giang**, thiết kế cho điện thoại.
-Phiên bản 2.4.0 – 13/11/2026: I013 thêm 15 mẫu Ngày Nhà giáo Việt Nam 20/11 (lời chúc, nhạc "Lời tri ân" tự sáng tác: piano, đàn tranh, hộp nhạc), xưng hô Thầy, thanh căn ảnh đặt ngay trên phần xem trước (phóng to, lên/xuống, trái/phải, kéo trực tiếp trên thiệp); menu mở Thiệp chúc mừng cho tất cả cán bộ kèm thông báo; Dải Hoa nở dựng lại theo Quy chuẩn NDTH v1.0. Bản 2.3.0 – 12/11/2026: thêm I013 Thiệp chúc mừng (10 mẫu sinh nhật, xuất video MP4 hoặc ảnh PNG, nhạc tự phối, gợi ý lời chúc bằng AI, tạo theo lô từ Excel); thêm sheet DungThu để cấp quyền dùng thử theo từng cán bộ. Bản 2.2.0: I012 dùng lại webapp Tìm ATM VietinBank v1.1. Bản 2.1.x: thông báo popup, chuông cho mọi cán bộ, I011.
+Phiên bản 2.5.1 – 16/11/2026: thiệp Tết thêm kiểu "Theo mệnh khách hàng" (nhập ngày sinh → âm lịch, can chi, mệnh nạp âm, màu hợp mệnh, huy hiệu mệnh). Bản 2.5.0 – 16/11/2026: I013 thêm 3 dịp – Giáng sinh (12 mẫu), Năm mới (10 mẫu), Tết Nguyên đán (15 mẫu, con giáp tự đổi theo năm) – cùng 19 bản nhạc và 26 lời chúc; dịp tự sắp theo ngày gần nhất; menu "Mở dịp thiệp mới + gửi thông báo". Bản 2.4.0 – 13/11/2026: I013 thêm 15 mẫu Ngày Nhà giáo Việt Nam 20/11 (lời chúc, nhạc "Lời tri ân" tự sáng tác: piano, đàn tranh, hộp nhạc), xưng hô Thầy, thanh căn ảnh đặt ngay trên phần xem trước (phóng to, lên/xuống, trái/phải, kéo trực tiếp trên thiệp); menu mở Thiệp chúc mừng cho tất cả cán bộ kèm thông báo; Dải Hoa nở dựng lại theo Quy chuẩn NDTH v1.0. Bản 2.3.0 – 12/11/2026: thêm I013 Thiệp chúc mừng (10 mẫu sinh nhật, xuất video MP4 hoặc ảnh PNG, nhạc tự phối, gợi ý lời chúc bằng AI, tạo theo lô từ Excel); thêm sheet DungThu để cấp quyền dùng thử theo từng cán bộ. Bản 2.2.0: I012 dùng lại webapp Tìm ATM VietinBank v1.1. Bản 2.1.x: thông báo popup, chuông cho mọi cán bộ, I011.
 
 | Nhóm | Tiện ích | Mô tả |
 |---|---|---|
@@ -230,6 +230,20 @@ Thêm thuộc tính tập lệnh `ANTHROPIC_API_KEY` trong Apps Script (cùng sc
 - **Mẫu thiệp:** nằm trong `index.html`, mảng `TC_MAU` (mỗi mẫu có bảng màu 3 tông và các hàm vẽ). Nhạc: hàm `tcMusic` tự phối giai điệu Happy Birthday (phạm vi công cộng) thành 3 bản: hộp nhạc, piano, vui tươi – không dùng file nhạc ngoài.
 - **Video:** MP4 720×1280, 30 hình/giây, H.264 + AAC (dựng bằng WebCodecs của Chrome/Edge/Safari mới). Máy không có bộ mã hóa chuẩn sẽ có cảnh báo ngay dưới file. Ảnh: PNG 1080×1920.
 - **Tạo theo lô:** tải file Excel mẫu trên màn hình, điền Xưng hô / Tên trên thiệp / Tông màu / Lời chúc riêng; kết quả là 1 file zip, mỗi thiệp mang tên người nhận.
+
+### Cập nhật v2.5.1 – Thiệp Tết theo mệnh
+- Dịp Tết Nguyên đán có thêm **Kiểu thiệp Tết: Theo mẫu / Theo mệnh khách hàng**. Theo mệnh: nhập ngày sinh dương lịch (dd/mm/yyyy) → trang đổi sang âm lịch Việt Nam (thuật toán Hồ Ngọc Đức, múi giờ +7; sinh trước Tết tính năm âm trước), ra can chi, mệnh nạp âm (60 năm Giáp Tý), màu hợp (bản mệnh + tương sinh) và màu nên tránh (tương khắc).
+- 6 mẫu theo mệnh: Hoa xuân hợp mệnh, Trống đồng hợp mệnh, Mây cát tường hợp mệnh, Lồng đèn hợp mệnh, Lì xì hợp mệnh, Vòng ngũ hành. Màu thiệp chỉ lấy trong bảng màu hợp mệnh (`TC_MENH_PAL`, mỗi mệnh 2–3 bảng), có huy hiệu mệnh (biểu tượng hành + "MỆNH …" + tên nạp âm) và huy hiệu con giáp của năm. Logo và Dải Hoa nở giữ nguyên theo quy chuẩn thương hiệu.
+- Ngày sinh chỉ dùng để tính trên máy cán bộ: không gửi máy chủ, không lưu, không in lên thiệp. Tên file có thêm "(mệnh Kim)"…
+- Tạo theo lô: file Excel mẫu có thêm cột "Ngày sinh"; ở kiểu theo mệnh, dòng có ngày sinh lấy màu và huy hiệu theo mệnh, dòng trống dùng màu mặc định. Nhận cả ngày dạng số của Excel.
+- Code.gs không đổi so với v2.5.0.
+
+### Cập nhật v2.5.0 – Giáng sinh, Năm mới, Tết Nguyên đán
+- **Mẫu:** Giáng sinh 12, Năm mới (Tết dương lịch) 10, Tết Nguyên đán 15. Tết dùng 12 con giáp kiểu cắt giấy (vẽ bằng mã, không dùng ảnh ngoài).
+- **Tự đổi năm:** bảng mùng 1 Tết âm lịch Việt Nam 2026–2041 nằm trong `TC_TET` (index.html). Thiệp Tết hiện năm của Tết sắp tới, đến 30 ngày sau mùng 1 (`TC_TET_DOI_SAU`) thì chuyển sang năm kế tiếp, đổi luôn can chi và con giáp. Thiệp năm mới: từ 01/02 hiện năm kế tiếp. Tên file theo năm, ví dụ "Thiệp Tết Đinh Mùi 2027".
+- **Nhạc:** Giáng sinh – Jingle Bells, We Wish You a Merry Christmas, Deck the Halls, O Christmas Tree, Joy to the World (đã hết bản quyền) và "Đêm tuyết vui" (tự sáng tác); Năm mới – Auld Lang Syne (đã hết bản quyền), "Rộn ràng năm mới", "Bình minh năm mới"; Tết – "Xuân về", "Mai vàng", "Lộc xuân" (tự sáng tác, ngũ cung). Kiểu phối mới: chuông ngân, sáo trúc, trống lân. Không dùng các bài còn bản quyền.
+- **Thứ tự dịp:** Sinh nhật luôn đầu tiên; các dịp khác xếp theo ngày diễn ra gần nhất, qua dịp thì tự xuống cuối (Tết giữ đến mùng 7).
+- **Phát hành dịp:** menu **Mở dịp thiệp mới + gửi thông báo** – bổ sung lời chúc mẫu còn thiếu, thêm dịp vào `DIP_DANG_MO`, bảo đảm I013 mở cho tất cả cán bộ và gửi popup "Thiệp chúc mừng có mẫu mới" đến mọi cán bộ đang hoạt động. Hằng số `THIEP_DIP_CO_MAU` trong Code.gs liệt kê các dịp đã có mẫu.
 
 ### Cập nhật v2.4.0 – Ngày Nhà giáo 20/11 và mở cho tất cả cán bộ
 - **15 mẫu 20/11:** Hoa xanh tri ân, Trang sách tri thức, Bảng phấn, Hạc giấy, Đóa hồng tri ân, Lá thu tháng 11, Mái trường thân yêu, Sen hồng, Lá thư tri ân, Thủy mặc – trúc xanh, Xanh vàng sang trọng, Bút chì sắc màu, Cúc họa mi, Con đò tri thức, VietinBank tri ân. Một số mẫu dùng khung vòm/khung chữ nhật lớn và tên người nhận viết tay (font Great Vibes, giấy phép SIL OFL – nhúng sẵn trong trang).

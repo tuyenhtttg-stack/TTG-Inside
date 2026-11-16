@@ -1,6 +1,6 @@
 /**
  * KHÔNG GIAN SỐ NỘI BỘ (TTG Inside) – Máy chủ phân quyền
- * VietinBank Chi nhánh Tây Tiền Giang · phiên bản 2.4.0 · 13/11/2026
+ * VietinBank Chi nhánh Tây Tiền Giang · phiên bản 2.5.0 · 16/11/2026
  *
  * Script này GẮN VỚI file Google Sheet phân quyền (Tiện ích mở rộng → Apps Script), làm 2 việc:
  *   1. Menu quản trị + tự tick quyền theo vai trò ngay trong Sheet.
@@ -67,6 +67,7 @@ function onOpen() {
     .addItem('Cài đặt / cập nhật Tính lãi, ATM và điểm giao dịch (I011, I012)', 'caiDatTienIchKhachHang')
     .addItem('Cài đặt / cập nhật Thiệp chúc mừng (I013)', 'caiDatThiep')
     .addItem('Mở Thiệp chúc mừng cho tất cả cán bộ + gửi thông báo', 'moThiepChoTatCa')
+    .addItem('Mở dịp thiệp mới + gửi thông báo', 'moDipThiepMoi')
     .addItem('Gửi thử thông báo popup cho tôi…', 'tbGuiThu')
     .addItem('Kiểm tra kết nối AI (Claude)', 'kiemTraAI')
     .addItem('Thêm ứng dụng mới…', 'themUngDung')
@@ -3643,10 +3644,12 @@ function tbGuiThu() {
    ===================================================================== */
 const THIEP_APP = 'I013';
 const THIEP_SH = { CH: 'THIEP_CauHinh', LC: 'THIEP_LoiChuc', DT: 'DungThu' };
-const THIEP_DIP = { 'sinh-nhat': 'Sinh nhật', '8-3': 'Quốc tế Phụ nữ 8/3', '20-10': 'Phụ nữ Việt Nam 20/10', '20-11': 'Nhà giáo Việt Nam 20/11', 'giang-sinh': 'Giáng sinh', 'nam-moi': 'Năm mới' };
+const THIEP_DIP = { 'sinh-nhat': 'Sinh nhật', '8-3': 'Quốc tế Phụ nữ 8/3', '20-10': 'Phụ nữ Việt Nam 20/10', '20-11': 'Nhà giáo Việt Nam 20/11', 'giang-sinh': 'Giáng sinh', 'nam-moi': 'Năm mới (Tết dương lịch)', 'tet': 'Tết Nguyên đán' };
+/** Các dịp đã có mẫu thiệp trong trang (cập nhật khi phát hành dịp mới) */
+const THIEP_DIP_CO_MAU = ['sinh-nhat', '20-11', 'giang-sinh', 'nam-moi', 'tet'];
 const THIEP_CAUHINH_BAN_DAU = [
   ['TEN_DON_VI', 'VietinBank Chi nhánh Tây Tiền Giang', 'Dòng đơn vị hiện dưới họ tên cán bộ ở cuối thiệp'],
-  ['DIP_DANG_MO', 'sinh-nhat', 'Các dịp đã có mẫu và cho cán bộ chọn, cách nhau dấu phẩy: sinh-nhat, 8-3, 20-10, 20-11, giang-sinh, nam-moi'],
+  ['DIP_DANG_MO', 'sinh-nhat', 'Các dịp đã có mẫu và cho cán bộ chọn, cách nhau dấu phẩy: sinh-nhat, 8-3, 20-10, 20-11, giang-sinh, nam-moi, tet. Thứ tự trên màn hình tự sắp: Sinh nhật đầu tiên, sau đó dịp gần nhất'],
   ['GOI_Y_AI', 'Bật', 'Bật/Tắt nút "Gợi ý lời chúc" bằng AI (cần ANTHROPIC_API_KEY)'],
   ['HAN_MUC_AI_NGAY', '30', 'Số lần mỗi cán bộ được bấm gợi ý AI trong 1 ngày'],
   ['MODEL_LOI_CHUC', '', 'Tên mô hình AI viết lời chúc. Để trống = dùng mô hình mặc định của Không Gian Số'],
@@ -3670,7 +3673,33 @@ const THIEP_LOICHUC_BAN_DAU = [
   ['20-11', 'Nam', 'Nhân Ngày Nhà giáo Việt Nam 20/11, kính chúc {xungHo} luôn mạnh khỏe, vững vàng và mãi là tấm gương sáng cho các thế hệ học trò.', true],
   ['20-11', 'Nam', 'VietinBank trân trọng gửi lời tri ân đến {xungHo} nhân ngày 20/11. Kính chúc {xungHo} an khang, thịnh vượng và luôn thành công trên bục giảng.', true],
   ['20-11', 'Nữ', 'Nhân Ngày Nhà giáo Việt Nam 20/11, kính chúc {xungHo} luôn tươi trẻ, hạnh phúc và mãi giữ ngọn lửa yêu nghề, yêu học trò.', true],
-  ['20-11', 'Nữ', 'Gửi đến {xungHo} lời tri ân sâu sắc nhân ngày 20/11. Chúc {xungHo} luôn rạng rỡ, bình an và ngập tràn niềm vui bên học trò thân yêu.', true]
+  ['20-11', 'Nữ', 'Gửi đến {xungHo} lời tri ân sâu sắc nhân ngày 20/11. Chúc {xungHo} luôn rạng rỡ, bình an và ngập tràn niềm vui bên học trò thân yêu.', true],
+  ['giang-sinh', 'Chung', 'Merry Christmas! VietinBank kính chúc {xungHo} và gia đình một mùa Giáng sinh an lành, ấm áp và tràn ngập niềm vui.', true],
+  ['giang-sinh', 'Chung', 'Giáng sinh về mang theo bao điều tốt đẹp. Kính chúc {xungHo} một mùa lễ hội an vui, hạnh phúc bên những người thân yêu.', true],
+  ['giang-sinh', 'Chung', 'Cảm ơn {xungHo} đã luôn tin tưởng, đồng hành cùng VietinBank. Chúc {xungHo} Giáng sinh ấm áp, năm mới bình an và thành công.', true],
+  ['giang-sinh', 'Chung', 'Chúc {xungHo} đêm Giáng sinh lung linh, ngập tràn tiếng cười và một mùa lễ hội cuối năm thật nhiều may mắn.', true],
+  ['giang-sinh', 'Nam', 'Nhân dịp Giáng sinh, VietinBank kính chúc {xungHo} sức khỏe dồi dào, công việc hanh thông và một mùa lễ hội trọn vẹn bên gia đình.', true],
+  ['giang-sinh', 'Nam', 'Merry Christmas! Chúc {xungHo} một mùa Giáng sinh an lành, khép lại năm cũ thành công và đón năm mới vững vàng.', true],
+  ['giang-sinh', 'Nữ', 'Merry Christmas! Chúc {xungHo} một mùa Giáng sinh thật lung linh, luôn rạng rỡ và hạnh phúc bên những người thân yêu.', true],
+  ['giang-sinh', 'Nữ', 'Giáng sinh an lành! VietinBank kính chúc {xungHo} luôn xinh đẹp, bình an và đón nhận thật nhiều niềm vui ngọt ngào.', true],
+  ['nam-moi', 'Chung', 'Chúc mừng năm mới! VietinBank kính chúc {xungHo} và gia đình một năm mới an khang, thịnh vượng, vạn sự như ý.', true],
+  ['nam-moi', 'Chung', 'Năm mới, khởi đầu mới. Kính chúc {xungHo} dồi dào sức khỏe, công việc thuận lợi và gặt hái nhiều thành công.', true],
+  ['nam-moi', 'Chung', 'Cảm ơn {xungHo} đã đồng hành cùng VietinBank trong năm qua. Kính chúc {xungHo} năm mới bình an, hạnh phúc và phát đạt.', true],
+  ['nam-moi', 'Chung', 'Happy New Year! Chúc {xungHo} một năm mới rực rỡ, mọi dự định đều thành công và mỗi ngày đều là một ngày vui.', true],
+  ['nam-moi', 'Nam', 'Chúc mừng năm mới! Kính chúc {xungHo} sức khỏe, bản lĩnh, sự nghiệp thăng tiến và tài lộc dồi dào trong năm mới.', true],
+  ['nam-moi', 'Nam', 'VietinBank kính chúc {xungHo} một năm mới kinh doanh phát đạt, gia đình an vui và vạn sự hanh thông.', true],
+  ['nam-moi', 'Nữ', 'Chúc mừng năm mới! Chúc {xungHo} luôn tươi trẻ, rạng ngời, gia đình hạnh phúc và một năm mới ngập tràn niềm vui.', true],
+  ['nam-moi', 'Nữ', 'Happy New Year! Kính chúc {xungHo} năm mới an yên, xinh đẹp, công việc thuận lợi và mọi điều ước đều thành hiện thực.', true],
+  ['tet', 'Chung', 'Chúc mừng năm mới! VietinBank kính chúc {xungHo} và gia đình năm mới an khang thịnh vượng, vạn sự như ý, tấn tài tấn lộc.', true],
+  ['tet', 'Chung', 'Xuân sang, lộc đến. Kính chúc {xungHo} một năm mới dồi dào sức khỏe, gia đình sum vầy, công việc hanh thông.', true],
+  ['tet', 'Chung', 'Cảm ơn {xungHo} đã luôn tin tưởng, đồng hành cùng VietinBank. Kính chúc {xungHo} đón Tết an vui, năm mới phát tài phát lộc.', true],
+  ['tet', 'Chung', 'Mừng xuân mới, kính chúc {xungHo} và gia đình năm mới bình an, hạnh phúc, mọi điều tốt lành và may mắn.', true],
+  ['tet', 'Chung', 'Chúc {xungHo} năm mới tiền vào như nước, sức khỏe dồi dào, gia đạo an vui và thành công trên mọi lĩnh vực.', true],
+  ['tet', 'Nam', 'Chúc mừng năm mới! Kính chúc {xungHo} năm mới sức khỏe dồi dào, sự nghiệp thăng hoa, kinh doanh phát đạt.', true],
+  ['tet', 'Nam', 'Xuân mới, kính chúc {xungHo} an khang thịnh vượng, mã đáo thành công và gia đình luôn ấm no, hạnh phúc.', true],
+  ['tet', 'Nữ', 'Chúc mừng năm mới! Kính chúc {xungHo} năm mới luôn tươi trẻ, rạng rỡ, gia đình sum vầy và vạn sự như ý.', true],
+  ['tet', 'Nữ', 'Xuân sang, kính chúc {xungHo} một năm mới bình an, hạnh phúc, tài lộc đầy nhà và nụ cười luôn rạng ngời.', true],
+  ['tet', 'Nữ', 'Mừng xuân mới, VietinBank kính chúc {xungHo} sức khỏe, an yên và một năm mới ngập tràn may mắn, niềm vui.', true]
 ];
 
 /* ---------- Cấp quyền DÙNG THỬ theo từng cán bộ (ngoài bảng vai trò) ----------
@@ -3700,15 +3729,13 @@ function caiDatThiep() {
   const keys = ch.getDataRange().getValues().map(r => String(r[0]).trim());
   THIEP_CAUHINH_BAN_DAU.forEach(r => { if (!keys.includes(r[0])) { ch.appendRow(r); out.push('thêm tham số ' + r[0]); } });
   const [lc, lcNew] = mk(THIEP_SH.LC, ['Dịp (mã)', 'Tông (Chung/Nam/Nữ)', 'Lời chúc – viết {xungHo} ở chỗ cần gọi Anh/Chị…', 'Đang dùng'], [110, 150, 760, 90]);
-  if (lcNew) { lc.getRange(2, 1, THIEP_LOICHUC_BAN_DAU.length, 4).setValues(THIEP_LOICHUC_BAN_DAU); lc.getRange('D2:D200').insertCheckboxes(); lc.getRange('C2:C200').setWrap(true);
+  if (lcNew) { lc.getRange('A2:A').setNumberFormat('@'); lc.getRange(2, 1, THIEP_LOICHUC_BAN_DAU.length, 4).setValues(THIEP_LOICHUC_BAN_DAU); lc.getRange('D2:D200').insertCheckboxes(); lc.getRange('C2:C200').setWrap(true);
     lc.getRange('F1').setValue('Mã dịp: ' + Object.keys(THIEP_DIP).map(k => k + ' = ' + THIEP_DIP[k]).join('; ')); }
-  else { const have = lc.getLastRow() > 1 ? lc.getRange(2, 3, lc.getLastRow() - 1, 1).getValues().map(r => String(r[0]).trim()) : [];
-    const add = THIEP_LOICHUC_BAN_DAU.filter(r => !have.includes(r[2]));
-    if (add.length) { const r0 = lc.getLastRow() + 1; lc.getRange(r0, 1, add.length, 4).setValues(add); lc.getRange(r0, 4, add.length, 1).insertCheckboxes(); lc.getRange(r0, 3, add.length, 1).setWrap(true); out.push('thêm ' + add.length + ' lời chúc mẫu (' + Array.from(new Set(add.map(r => THIEP_DIP[r[0]]))).join(', ') + ')'); } }
+  else thiepSeedLC_(lc, out);
   if (thiepMoDip_('20-11')) out.push('mở dịp 20-11 trong DIP_DANG_MO');
   const [dt, dtNew] = mk(THIEP_SH.DT, ['Mã ứng dụng', 'Cán bộ (mã ID hoặc đúng họ tên)', 'Ghi chú'], [120, 280, 420]); dt.getRange('A2:B').setNumberFormat('@');
   if (dtNew) dt.getRange(2, 1, 1, 3).setValues([[THIEP_APP, 'Lê Thị Thùy Dương', 'Dùng thử Thiệp chúc mừng trong giai đoạn phát triển. Xóa dòng này khi đã tick quyền theo vai trò.']]);
-  const n = dangKyUngDung_(THIEP_APP, 'Thiệp chúc mừng', 'Tạo thiệp video/ảnh chúc mừng khách hàng: sinh nhật, 8/3, 20/10, 20/11, Giáng sinh, năm mới', ['Quản trị hệ thống']);
+  const n = dangKyUngDung_(THIEP_APP, 'Thiệp chúc mừng', 'Tạo thiệp video/ảnh chúc mừng khách hàng: sinh nhật, 20/11, Giáng sinh, năm mới, Tết Nguyên đán', ['Quản trị hệ thống']);
   lamMoiBoNhoDem(true);
   const m = dungThuMap_().filter(r => r[0] === THIEP_APP), us = Object.values(loadData_().users);
   const found = m.map(r => { const hit = us.filter(u => String(u.id) === r[1] || taKhongDau(u.hoTen) === r[1]); return hit.length ? hit.map(u => u.hoTen + ' (' + u.pb + ')').join(', ') : 'KHÔNG TÌM THẤY "' + r[1] + '"'; });
@@ -3717,12 +3744,46 @@ function caiDatThiep() {
     'Cán bộ dùng thử (sheet DungThu): ' + (found.length ? found.join('; ') : 'chưa có') + '.\n\n' +
     'Khi triển khai chính thức: tick I013 cho các vai trò ở sheet VaiTro rồi bấm Làm mới bộ nhớ đệm.\nTiếp theo: Triển khai → Quản lý triển khai → Phiên bản mới.', ui.ButtonSet.OK);
 }
+/** Bổ sung lời chúc mẫu còn thiếu (không nhân đôi) và sửa ô mã dịp bị đổi thành ngày */
+function thiepSeedLC_(lc, out) {
+  const have = lc.getLastRow() > 1 ? lc.getRange(2, 3, lc.getLastRow() - 1, 1).getValues().map(r => String(r[0]).trim()) : [];
+    // Sửa các ô mã dịp đã bị Google Sheets đổi thành ngày (vd 20-11 → 20/11/2026) về lại dạng chữ
+    lc.getRange('A2:A').setNumberFormat('@');
+    if (lc.getLastRow() > 1) { const ra = lc.getRange(2, 1, lc.getLastRow() - 1, 1), va = ra.getValues(); if (va.some(r => r[0] instanceof Date)) { ra.setValues(va.map(r => [r[0] instanceof Date ? thiepMaDip_(r[0]) : r[0]])); out.push('sửa mã dịp bị đổi thành ngày'); } }
+    const add = THIEP_LOICHUC_BAN_DAU.filter(r => !have.includes(r[2]));
+    // dòng trống đầu tiên của cột lời chúc (cột Đang dùng có sẵn ô tick đến dòng 200 nên không dùng getLastRow)
+    if (add.length) { const cv = lc.getRange(2, 3, Math.max(lc.getMaxRows() - 1, 1), 1).getValues(); let r0 = 2; for (let k = cv.length - 1; k >= 0; k--) if (String(cv[k][0]).trim()) { r0 = k + 3; break; }
+      lc.getRange(r0, 1, add.length, 1).setNumberFormat('@'); lc.getRange(r0, 1, add.length, 4).setValues(add); lc.getRange(r0, 4, add.length, 1).insertCheckboxes(); lc.getRange(r0, 3, add.length, 1).setWrap(true); out.push('thêm ' + add.length + ' lời chúc mẫu (' + Array.from(new Set(add.map(r => THIEP_DIP[r[0]]))).join(', ') + ')'); }
+}
 /** Thêm mã dịp vào DIP_DANG_MO (nếu chưa có). Trả về true khi có thay đổi */
 function thiepMoDip_(ma) {
   const sh = ss_().getSheetByName(THIEP_SH.CH); if (!sh) return false;
   const v = sh.getDataRange().getValues(), i = v.findIndex(r => String(r[0]).trim() === 'DIP_DANG_MO'); if (i < 1) return false;
   const cur = String(v[i][1]).split(/[,;\s]+/).map(x => x.trim()).filter(Boolean); if (cur.includes(ma)) return false;
   sh.getRange(i + 1, 2).setValue(cur.concat(ma).join(', ')); CacheService.getScriptCache().remove('thiep_cfg'); return true;
+}
+/** Phát hành dịp thiệp mới: bổ sung lời chúc, mở dịp, bảo đảm I013 mở cho tất cả cán bộ, gửi popup thông báo */
+function moDipThiepMoi() {
+  const ui = SpreadsheetApp.getUi(), ss = SpreadsheetApp.getActive(), ch = ss.getSheetByName(THIEP_SH.CH), lc = ss.getSheetByName(THIEP_SH.LC);
+  if (!ch || !lc) { ui.alert('Chưa cài Thiệp chúc mừng. Chạy "Cài đặt / cập nhật Thiệp chúc mừng (I013)" trước.'); return; }
+  const cur = String((ch.getDataRange().getValues().find(r => String(r[0]).trim() === 'DIP_DANG_MO') || [])[1] || '').split(/[,;\s]+/).filter(Boolean);
+  const chua = THIEP_DIP_CO_MAU.filter(k => !cur.includes(k));
+  const r = ui.prompt('Mở dịp thiệp mới + gửi thông báo',
+    'Dịp đã mở: ' + (cur.map(k => THIEP_DIP[k] || k).join(', ') || 'chưa có') + '\nDịp có mẫu nhưng chưa mở: ' + (chua.map(k => k + ' (' + THIEP_DIP[k] + ')').join(', ') || 'không còn') +
+    '\n\nNhập mã dịp muốn mở, cách nhau dấu phẩy. Để trống = mở tất cả dịp còn lại ở trên.', ui.ButtonSet.OK_CANCEL);
+  if (r.getSelectedButton() !== ui.Button.OK) return;
+  const ds = (r.getResponseText().trim() ? r.getResponseText().split(/[,;\s]+/).map(thiepMaDip_).filter(Boolean) : chua).filter(k => THIEP_DIP[k]);
+  if (!ds.length) { ui.alert('Không có dịp nào để mở.'); return; }
+  const out = []; thiepSeedLC_(lc, out); ds.forEach(k => thiepMoDip_(k));
+  const ud = ss.getSheetByName(SH.UNGDUNG), v = ud.getRange(2, 1, Math.max(ud.getLastRow() - 1, 1), 5).getValues(), i = v.findIndex(x => String(x[0]).trim() === THIEP_APP);
+  if (i >= 0) ud.getRange(i + 2, 4, 1, 2).setValues([[true, true]]);
+  lamMoiBoNhoDem(true); CacheService.getScriptCache().remove('thiep_cfg');
+  const users = Object.values(loadData_().users).filter(u => u.tt === TT.ON), ten = ds.map(k => THIEP_DIP[k]).join(', ');
+  const n = tbGui_(users.map(u => u.id), { app: THIEP_APP, view: 'thiep', tieuDe: 'Thiệp chúc mừng có mẫu mới: ' + ten,
+    noiDung: 'Ứng dụng Thiệp chúc mừng vừa có thêm mẫu thiệp, lời chúc và nhạc cho dịp ' + ten + '. Tất cả cán bộ đều dùng được: chọn dịp, nhập tên khách, chọn mẫu và tải thiệp video hoặc ảnh gửi qua Zalo. Bấm "Xem" để trải nghiệm.',
+    ngan: 'Thiệp chúc mừng có mẫu mới: ' + ten + '.' });
+  log_('', 'Quản trị (menu Google Sheet)', 'Mở dịp thiệp', THIEP_APP, ds.join(', ') + ' · gửi thông báo ' + n + ' cán bộ', '');
+  ui.alert('Đã mở dịp: ' + ten, (out.length ? 'Đã cập nhật: ' + out.join('; ') + '.\n' : '') + 'I013 đang mở cho tất cả cán bộ.\nĐã gửi thông báo đến ' + n + ' cán bộ (popup trong vòng 1 phút, máy bật thông báo sẽ nhận thông báo đẩy).', ui.ButtonSet.OK);
 }
 /** Triển khai chính thức: mở Thiệp chúc mừng cho TẤT CẢ cán bộ (cột "Mở cho tất cả" ở UngDung) và gửi popup báo ứng dụng mới */
 function moThiepChoTatCa() {
@@ -3740,13 +3801,18 @@ function moThiepChoTatCa() {
   log_('', 'Quản trị (menu Google Sheet)', 'Mở ứng dụng cho tất cả', THIEP_APP, 'Gửi thông báo ' + n + ' cán bộ', '');
   ui.alert('Đã mở Thiệp chúc mừng cho tất cả cán bộ', 'Đã gửi thông báo đến ' + n + ' cán bộ.\n- Đang mở TTG Inside: popup hiện trong vòng 1 phút.\n- Máy đã bật thông báo: nhận thông báo đẩy.\n\nMuốn thu hẹp lại: bỏ tick cột "Mở cho tất cả" của I013 ở sheet UngDung rồi bấm Làm mới dữ liệu cho ứng dụng.', ui.ButtonSet.OK);
 }
+/** Mã dịp trong ô sheet. Google Sheets tự đổi "20-11", "8-3", "20-10" thành NGÀY → đổi ngược lại về mã */
+function thiepMaDip_(v) {
+  if (v instanceof Date) return v.getDate() + '-' + (v.getMonth() + 1);
+  return String(v == null ? '' : v).trim().toLowerCase().replace(/^(\d{1,2})[\/.](\d{1,2})(?:[\/.]\d{2,4})?$/, (m, d, mo) => (+d) + '-' + (+mo));
+}
 function thiepConfig_() {
   const cache = CacheService.getScriptCache(), hit = cache.get('thiep_cfg'); if (hit) return JSON.parse(hit);
   const kv = tienIchKv_(THIEP_SH.CH, THIEP_CAUHINH_BAN_DAU), num = (s, d, lo, hi) => { const x = parseInt(s, 10); return isFinite(x) ? Math.max(lo, Math.min(hi, x)) : d; };
   const sh = ss_().getSheetByName(THIEP_SH.LC);
   const src = sh && sh.getLastRow() > 1 ? sh.getRange(2, 1, sh.getLastRow() - 1, 4).getValues() : THIEP_LOICHUC_BAN_DAU;
-  const loiChuc = src.filter(r => THIEP_DIP[String(r[0]).trim()] && String(r[2]).trim() && r[3] !== false)
-    .map(r => ({ dip: String(r[0]).trim(), tong: /^nam/i.test(String(r[1]).trim()) ? 'nam' : /^n[ữu]/i.test(String(r[1]).trim()) ? 'nu' : 'chung', text: String(r[2]).trim().slice(0, 300) }));
+  const loiChuc = src.map(r => [thiepMaDip_(r[0])].concat(r.slice(1))).filter(r => THIEP_DIP[r[0]] && String(r[2]).trim() && r[3] !== false)
+    .map(r => ({ dip: r[0], tong: /^nam/i.test(String(r[1]).trim()) ? 'nam' : /^n[ữu]/i.test(String(r[1]).trim()) ? 'nu' : 'chung', text: String(r[2]).trim().slice(0, 300) }));
   const dip = String(kv.DIP_DANG_MO).split(/[,;\s]+/).map(x => x.trim()).filter(x => THIEP_DIP[x]);
   const out = { donVi: String(kv.TEN_DON_VI).slice(0, 80), dip: dip.length ? dip : ['sinh-nhat'], ai: !/^(tắt|tat|không|khong|off|0)$/i.test(kv.GOI_Y_AI), aiNgay: num(kv.HAN_MUC_AI_NGAY, 30, 0, 500),
     model: String(kv.MODEL_LOI_CHUC || '').trim(), maxChu: num(kv.DO_DAI_LOI_CHUC, 200, 100, 260), maxLo: num(kv.SO_THIEP_TOI_DA_LO, 60, 5, 200), giay: num(kv.DO_DAI_VIDEO_GIAY, 13, 10, 16), loiChuc };
