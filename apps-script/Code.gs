@@ -1,6 +1,6 @@
 /**
  * KHÔNG GIAN SỐ NỘI BỘ (TTG Inside) – Máy chủ phân quyền
- * VietinBank Chi nhánh Tây Tiền Giang · phiên bản 2.5.0 · 16/11/2026
+ * VietinBank Chi nhánh Tây Tiền Giang · phiên bản 2.6.0 · 17/11/2026
  *
  * Script này GẮN VỚI file Google Sheet phân quyền (Tiện ích mở rộng → Apps Script), làm 2 việc:
  *   1. Menu quản trị + tự tick quyền theo vai trò ngay trong Sheet.
@@ -66,6 +66,7 @@ function onOpen() {
     .addItem('Gửi ngay email nhắc hạn giấy ủy quyền', 'nhacHanUyQuyen')
     .addItem('Cài đặt / cập nhật Tính lãi, ATM và điểm giao dịch (I011, I012)', 'caiDatTienIchKhachHang')
     .addItem('Cài đặt / cập nhật Thiệp chúc mừng (I013)', 'caiDatThiep')
+    .addItem('Cài đặt QR thu học phí (I014) + gửi thông báo', 'caiDatQRHocPhi')
     .addItem('Mở Thiệp chúc mừng cho tất cả cán bộ + gửi thông báo', 'moThiepChoTatCa')
     .addItem('Mở dịp thiệp mới + gửi thông báo', 'moDipThiepMoi')
     .addItem('Gửi thử thông báo popup cho tôi…', 'tbGuiThu')
@@ -401,6 +402,7 @@ function doPost(e) {
       case 'tb_pull':   return json_(apiTbPull_(body));
       case 'tl_cfg':    return json_(apiTlCfg_(body));
       case 'atm_load':  return json_(apiAtmLoad_(body));
+      case 'qrhp_cfg':  return json_(apiQrhpCfg_(body));
       case 'thiep_cfg': return json_(apiThiepCfg_(body));
       case 'thiep_ai':  return json_(apiThiepAi_(body));
       case 'thiep_log': return json_(apiThiepLog_(body));
@@ -3862,4 +3864,44 @@ function apiThiepLog_(b) {
   const n = Math.max(1, Math.min(500, parseInt(b.soLuong, 10) || 1)), dip = THIEP_DIP[String(b.dip || '')] || '';
   log_(g.user.id, g.user.hoTen, 'Tạo thiệp', THIEP_APP, [dip, b.loai === 'anh' ? 'ảnh' : 'video', 'mẫu ' + String(b.mau || '').slice(0, 20), n + ' thiệp'].join(' · '), '');
   return { ok: true };
+}
+
+/* =====================================================================
+   13. QR THU HỌC PHÍ (I014)
+   Ứng dụng chạy ở link GitHub riêng (nhà trường dùng trực tiếp, không cần đăng nhập).
+   TTG Inside nhúng link đó và có nút chia sẻ; link đặt ở sheet QRHP_CauHinh.
+   ===================================================================== */
+const QRHP_APP = 'I014', QRHP_SH = 'QRHP_CauHinh';
+const QRHP_CAUHINH_BAN_DAU = [
+  ['LINK_UNG_DUNG', '', 'Link GitHub Pages của ứng dụng QR thu học phí, ví dụ https://ten-tai-khoan.github.io/qr-hoc-phi/ . Để trống: màn hình I014 báo "chưa cài link".'],
+  ['TEN_CHIA_SE', 'Tạo mã QR thu học phí – VietinBank Tây Tiền Giang', 'Tiêu đề kèm theo khi cán bộ bấm Chia sẻ link'],
+  ['LOI_GIOI_THIEU', 'Nhà trường chọn file Excel danh sách học sinh, ứng dụng tạo file PDF mã VietQR theo từng lớp (1, 2 hoặc 6 mã mỗi trang A4). Dữ liệu xử lý ngay trên máy, không gửi lên mạng.', 'Lời giới thiệu kèm link khi chia sẻ']];
+function caiDatQRHocPhi() {
+  const ui = SpreadsheetApp.getUi(), ss = SpreadsheetApp.getActive(), out = [];
+  let sh = ss.getSheetByName(QRHP_SH);
+  if (!sh) { sh = ss.insertSheet(QRHP_SH); sh.getRange(1, 1, 1, 3).setValues([['Tham số', 'Giá trị', 'Ý nghĩa']]); sh.getRange('B2:B').setNumberFormat('@');
+    sh.setFrozenRows(1); sh.getRange(1, 1, 1, 3).setFontWeight('bold').setFontColor('#FFFFFF').setBackground('#005993'); [180, 420, 620].forEach((w, i) => sh.setColumnWidth(i + 1, w)); out.push('tạo sheet ' + QRHP_SH); }
+  const keys = sh.getDataRange().getValues().map(r => String(r[0]).trim());
+  QRHP_CAUHINH_BAN_DAU.forEach(r => { if (!keys.includes(r[0])) { sh.appendRow(r); out.push('thêm ' + r[0]); } });
+  sh.getRange('C:C').setWrap(true);
+  const moi = dangKyUngDung_(QRHP_APP, 'QR thu học phí', 'Tạo mã VietQR thu học phí theo lớp từ file Excel, xuất PDF; chia sẻ link cho nhà trường', Object.keys(rolePerms_()));
+  const ud = ss.getSheetByName(SH.UNGDUNG), v = ud.getRange(2, 1, Math.max(ud.getLastRow() - 1, 1), 5).getValues(), i = v.findIndex(r => String(r[0]).trim() === QRHP_APP);
+  if (i >= 0) ud.getRange(i + 2, 4, 1, 2).setValues([[true, true]]);            // đang dùng + mở cho tất cả cán bộ
+  lamMoiBoNhoDem(true);
+  const link = tienIchKv_(QRHP_SH, QRHP_CAUHINH_BAN_DAU).LINK_UNG_DUNG;
+  let msg = (out.length ? 'Đã cập nhật: ' + out.join('; ') + '.\n' : '') + (moi ? 'Đã đăng ký I014 – QR thu học phí, mở cho tất cả cán bộ.\n' : 'I014 đã có, giữ nguyên và mở cho tất cả cán bộ.\n');
+  if (!link) { ui.alert('QR thu học phí (I014)', msg + '\nBƯỚC TIẾP: dán link GitHub Pages của ứng dụng vào ô LINK_UNG_DUNG (sheet ' + QRHP_SH + '), rồi chạy lại menu này để gửi thông báo cho cán bộ.', ui.ButtonSet.OK); return; }
+  if (ui.alert('QR thu học phí (I014)', msg + '\nLink ứng dụng: ' + link + '\n\nGửi thông báo popup "Ứng dụng mới: QR thu học phí" đến tất cả cán bộ đang hoạt động?', ui.ButtonSet.YES_NO) !== ui.Button.YES) return;
+  const users = Object.values(loadData_().users).filter(u => u.tt === TT.ON);
+  const n = tbGui_(users.map(u => u.id), { app: QRHP_APP, view: 'qr-hoc-phi', tieuDe: 'Ứng dụng mới: QR thu học phí',
+    noiDung: 'Không Gian Số Nội Bộ có thêm ứng dụng QR thu học phí: từ file Excel danh sách học sinh tạo file PDF mã VietQR theo từng lớp, quét là tự điền số tiền và nội dung. Có nút Chia sẻ để gửi link cho nhà trường tự tạo mã gửi phụ huynh. Bấm "Xem" để trải nghiệm.',
+    ngan: 'Có ứng dụng mới: QR thu học phí. Mở TTG Inside để xem.' });
+  log_('', 'Quản trị (menu Google Sheet)', 'Mở ứng dụng cho tất cả', QRHP_APP, 'Gửi thông báo ' + n + ' cán bộ', '');
+  ui.alert('Đã gửi thông báo đến ' + n + ' cán bộ.');
+}
+function apiQrhpCfg_(b) {
+  const v = checkToken_(b.token); if (v.error) return v;
+  if (!userApps_(v.user).includes(QRHP_APP)) return { error: 'forbidden' };
+  const kv = tienIchKv_(QRHP_SH, QRHP_CAUHINH_BAN_DAU);
+  return { ok: true, link: String(kv.LINK_UNG_DUNG || '').trim(), ten: kv.TEN_CHIA_SE, gioiThieu: kv.LOI_GIOI_THIEU };
 }
