@@ -1,6 +1,6 @@
 /**
  * KHÔNG GIAN SỐ NỘI BỘ (TTG Inside) – Máy chủ phân quyền
- * VietinBank Chi nhánh Tây Tiền Giang · phiên bản 2.6.0 · 17/11/2026
+ * VietinBank Chi nhánh Tây Tiền Giang · phiên bản 2.7.0 · 18/11/2026
  *
  * Script này GẮN VỚI file Google Sheet phân quyền (Tiện ích mở rộng → Apps Script), làm 2 việc:
  *   1. Menu quản trị + tự tick quyền theo vai trò ngay trong Sheet.
@@ -22,6 +22,7 @@
  *   BT_FOLDER_ID       : (v1.5.0) ID thư mục BanTin chứa file BanTin_YYYY-MM-DD.json (tự đặt khi chạy Cài đặt Bản tin sáng)
  *   TA_SHEET_ID        : (v1.6.0) ID file cấu hình thẻ ATM KhongGianSoNoiBo_TheATM (tự tạo khi chạy Cài đặt Thẻ ATM máy thu)
  *   SCT_SHEET_ID, SCT_TMP_ID : (v2.0.0) file sổ công tác và file tạm dựng Bảng chấm công PDF (tự tạo khi chạy Cài đặt Sổ công tác)
+ *   DX_SHEET_ID        : (v2.7.0) ID file đặt xe KhongGianSoNoiBo_DatXe (tự tạo khi chạy Cài đặt Đặt xe công tác)
  *   UQ_SHEET_ID, UQ_FOLDER_ID : (v1.9.0) file cấu hình + sổ giấy ủy quyền và thư mục lưu PDF (tự tạo khi chạy Cài đặt Giấy ủy quyền)
  * Manifest appsscript.json (v1.9.0) khai báo quyền tối thiểu; Drive cần quyền ghi (drive) để lưu file PDF giấy ủy quyền vào thư mục riêng.
  */
@@ -67,6 +68,7 @@ function onOpen() {
     .addItem('Cài đặt / cập nhật Tính lãi, ATM và điểm giao dịch (I011, I012)', 'caiDatTienIchKhachHang')
     .addItem('Cài đặt / cập nhật Thiệp chúc mừng (I013)', 'caiDatThiep')
     .addItem('Cài đặt QR thu học phí (I014) + gửi thông báo', 'caiDatQRHocPhi')
+    .addItem('Cài đặt / cập nhật Đặt xe công tác (I015, I016, I017)', 'caiDatDatXe')
     .addItem('Mở Thiệp chúc mừng cho tất cả cán bộ + gửi thông báo', 'moThiepChoTatCa')
     .addItem('Mở dịp thiệp mới + gửi thông báo', 'moDipThiepMoi')
     .addItem('Gửi thử thông báo popup cho tôi…', 'tbGuiThu')
@@ -406,6 +408,19 @@ function doPost(e) {
       case 'thiep_cfg': return json_(apiThiepCfg_(body));
       case 'thiep_ai':  return json_(apiThiepAi_(body));
       case 'thiep_log': return json_(apiThiepLog_(body));
+      case 'dx_load':    return json_(apiDxLoad_(body));
+      case 'dx_kiemtra': return json_(apiDxKiemTra_(body));
+      case 'dx_dat':     return json_(apiDxDat_(body));
+      case 'dx_huy':     return json_(apiDxHuy_(body));
+      case 'dx_dp_load': return json_(apiDxDpLoad_(body));
+      case 'dx_dieuphoi': return json_(apiDxDieuPhoi_(body));
+      case 'dx_khongduyet': return json_(apiDxKhongDuyet_(body));
+      case 'dx_thay':    return json_(apiDxHoanThanhThay_(body));
+      case 'dx_bc_pdf':  return json_(apiDxBcPdf_(body));
+      case 'dx_tx_load': return json_(apiDxTxLoad_(body));
+      case 'dx_tx_dongy': return json_(apiDxTxDongY_(body));
+      case 'dx_tx':      return json_(apiDxTx_(body));
+      case 'dx_vitri':   return json_(apiDxViTri_(body));
       default:       return json_({ error: 'bad_request' });
     }
   } catch (err) {
@@ -456,7 +471,7 @@ function apiOpen_(b) {
 
 function session_(u) {
   return { user: { ten: firstName_(u.hoTen), xungHo: u.gt === 'Nữ' ? 'chị' : u.gt === 'Nam' ? 'anh' : 'anh/chị', phongBan: u.pb, maPhongBan: u.maPB || '', loaiPhongBan: u.loaiPB || '', vaiTro: u.vt },
-           apps: sctFilterApps_(u, uqFilterApps_(u, taFilterApps_(u, userApps_(u)))), stats: countVisit_(), ai: !!PropertiesService.getScriptProperties().getProperty('ANTHROPIC_API_KEY') && userApps_(u).includes('I002'),
+           apps: dxFilterApps_(u, sctFilterApps_(u, uqFilterApps_(u, taFilterApps_(u, userApps_(u))))), stats: countVisit_(), ai: !!PropertiesService.getScriptProperties().getProperty('ANTHROPIC_API_KEY') && userApps_(u).includes('I002'),
            tb: tbSession_(u), expires: endOfDayIso_() };
 }
 
@@ -3904,4 +3919,876 @@ function apiQrhpCfg_(b) {
   if (!userApps_(v.user).includes(QRHP_APP)) return { error: 'forbidden' };
   const kv = tienIchKv_(QRHP_SH, QRHP_CAUHINH_BAN_DAU);
   return { ok: true, link: String(kv.LINK_UNG_DUNG || '').trim(), ten: kv.TEN_CHIA_SE, gioiThieu: kv.LOI_GIOI_THIEU };
+}
+
+/* =====================================================================
+ * PHẦN 14 – ĐẶT XE CÔNG TÁC (I015) · ĐIỀU PHỐI & THEO DÕI XE (I016) · CHUYẾN XE CỦA TÔI – TÀI XẾ (I017) – v2.7.0
+ * File: KhongGianSoNoiBo_DatXe (thuộc tính DX_SHEET_ID, tự tạo khi chạy menu cài đặt)
+ *   DX_CauHinh : tham số (vai trò ưu tiên, ngưỡng nhắc, hệ số km, số ngày giữ vị trí…)
+ *   DX_Xe      : danh mục xe (tên, số chỗ, biển số) – thêm 1 dòng là có thêm xe
+ *   DX_NhanSu  : ID lãnh đạo Phòng TCTH điều phối xe và ID tài xế, email, điện thoại
+ *   DX_DiemDon : điểm đón mặc định theo phòng/PGD (tọa độ dùng để ước tính giờ về)
+ *   DX_Chuyen  : mỗi dòng 1 yêu cầu đặt xe / chuyến xe
+ *   DX_ViTri   : vị trí xe trong lúc chạy chuyến – tự xóa sau GIU_VI_TRI_NGAY ngày, DX_Chuyen chỉ giữ số km
+ *   DX_LienHe  : email, điện thoại cán bộ tự ghi khi đặt xe (để nhận thông báo)
+ * Quy trình: cán bộ đặt → còn xe đủ chỗ thì báo lãnh đạo TCTH (email + popup); hết xe thì từ chối ngay
+ *   (Phó Giám đốc: không từ chối, báo KHẨN để TCTH hủy lịch cán bộ) → TCTH chọn xe + tài xế hoặc không duyệt
+ *   → tài xế Nhận chuyến → Bắt đầu hành trình (ghi vị trí, giữ màn hình sáng) → Kết thúc → xe, tài xế rảnh.
+ * Không tự động hoàn thành chuyến: chỉ nhắc tài xế và TCTH; TCTH có nút "Hoàn thành thay".
+ * ===================================================================== */
+const DX_APP = 'I015', DX_APP_DP = 'I016', DX_APP_TX = 'I017', DX_FILE_NAME = 'KhongGianSoNoiBo_DatXe';
+const DX_SH = { CH: 'DX_CauHinh', XE: 'DX_Xe', NS: 'DX_NhanSu', DD: 'DX_DiemDon', CT: 'DX_Chuyen', VT: 'DX_ViTri', LH: 'DX_LienHe', HD: 'HuongDan' };
+const DX_ST = { CHO: 'Chờ điều phối', DP: 'Đã điều phối', NHAN: 'Tài xế đã nhận', CHAY: 'Đang chạy', XONG: 'Hoàn thành',
+                KD: 'Không duyệt', HUY: 'Đã hủy', UT: 'Hủy do ưu tiên', HET: 'Hết xe' };
+const DX_ACTIVE = [DX_ST.CHO, DX_ST.DP, DX_ST.NHAN, DX_ST.CHAY];
+const DX_PHASE = { XP: 'Đã xuất phát', DEN: 'Đã đến nơi', VE: 'Đang về' };
+const DC = { MA: 0, LUC: 1, ID: 2, TEN: 3, PB: 4, VT: 5, UT: 6, NGAY_DI: 7, GIO_DI: 8, NGAY_VE: 9, GIO_VE: 10, SO_NGUOI: 11, DON: 12, DEN: 13,
+             MUC_DICH: 14, SDT: 15, TT: 16, TIEN_TRINH: 17, MA_XE: 18, XE: 19, TX_ID: 20, TX: 21, DP_BOI: 22, DP_LUC: 23, LY_DO: 24, NHAN_LUC: 25,
+             XP_LUC: 26, DEN_LUC: 27, VE_LUC: 28, KT_LUC: 29, KM_DO: 30, KM_UT: 31, KM: 32, XONG_BOI: 33, NHAC: 34, DIEM_CUOI: 35, DIEM_DAU: 36, NHAT_KY: 37 };
+const DX_NCOL = 38;
+const DX_HEAD = ['Mã', 'Lúc đặt', 'ID người đặt', 'Họ tên người đặt', 'Phòng/PGD', 'Vai trò', 'Ưu tiên', 'Ngày đi', 'Giờ đi', 'Ngày về', 'Giờ về dự kiến', 'Số người',
+  'Điểm đón', 'Điểm đến', 'Mục đích', 'Điện thoại liên hệ', 'Trạng thái', 'Tiến trình', 'Mã xe', 'Xe', 'ID tài xế', 'Tài xế', 'Người điều phối', 'Lúc điều phối',
+  'Lý do (không duyệt / hủy / tài xế báo)', 'Lúc tài xế nhận', 'Lúc xuất phát', 'Lúc đến nơi', 'Lúc quay về', 'Lúc kết thúc', 'Km đo theo định vị', 'Km ước tính (mất tín hiệu)',
+  'Tổng km', 'Hoàn thành bởi', 'Đã nhắc (hệ thống)', 'Vị trí cuối (hệ thống)', 'Điểm xuất phát (hệ thống)', 'Nhật ký chuyến'];
+const DX_CAUHINH_BAN_DAU = [
+  ['VAI_TRO_UU_TIEN', 'Phó Giám đốc', 'Vai trò được ưu tiên: hết xe vẫn gửi yêu cầu KHẨN cho TCTH (TCTH được hủy lịch của cán bộ khác)'],
+  ['VAI_TRO_THEO_DOI', 'Giám đốc, Phó Giám đốc', 'Vai trò được xem màn hình Điều phối và theo dõi xe (chỉ xem, không điều phối)'],
+  ['VAI_TRO_TOAN_QUYEN', 'Quản trị hệ thống', 'Toàn quyền mọi màn hình đặt xe'],
+  ['DAT_TRUOC_TOI_DA_NGAY', '30', 'Được đặt xe trước tối đa số ngày'],
+  ['HAN_DAT_TRUOC_GIO', '0', 'Phải đặt trước giờ đi ít nhất số giờ này (0 = không áp dụng). Vai trò ưu tiên không bị giới hạn'],
+  ['KHOANG_DEM_PHUT', '0', 'Khoảng nghỉ tối thiểu giữa 2 chuyến của cùng 1 xe (phút)'],
+  ['GIO_LAM_VIEC', '06:00-20:00', 'Khung giờ hiện trên lịch xe và dùng để tìm giờ xe rảnh sớm nhất'],
+  ['NHAC_NHAN_CHUYEN_PHUT', '15', 'Tài xế chưa bấm "Nhận chuyến" sau số phút này kể từ lúc điều phối → nhắc tài xế và báo TCTH'],
+  ['NHAC_QUA_GIO_PHUT', '60', 'Chuyến đang chạy quá giờ về dự kiến số phút này mà chưa kết thúc → nhắc tài xế và TCTH'],
+  ['BAN_KINH_VE_M', '300', 'Xe về trong bán kính này (mét) quanh điểm xuất phát …'],
+  ['DUNG_YEN_PHUT', '10', '… và đứng yên quá số phút này → nhắc tài xế bấm Kết thúc hành trình (không tự kết thúc)'],
+  ['HE_SO_KM_UOC_TINH', '1,3', 'Đoạn mất tín hiệu định vị: km = đường thẳng × hệ số này'],
+  ['GIU_VI_TRI_NGAY', '90', 'Dữ liệu vị trí tự xóa sau số ngày này (chỉ giữ số km)'],
+  ['GUI_VI_TRI_GIAY', '60', 'Trong lúc chạy chuyến, điện thoại tài xế gửi vị trí về máy chủ mỗi bấy nhiêu giây (30–300)'],
+  ['LAM_MOI_GIAY', '60', 'Màn hình điều phối, theo dõi tự cập nhật mỗi bấy nhiêu giây'],
+  ['VAN_TOC_TB', '40', 'Vận tốc trung bình (km/giờ) để ước tính giờ về khi xe đang quay về'],
+  ['GUI_EMAIL', 'Bật', 'Bật/Tắt gửi email (popup vẫn gửi)'],
+  ['MIEN_EMAIL', 'vietinbank.vn', 'Chỉ gửi email tới địa chỉ thuộc tên miền này'],
+  ['TEN_CHI_NHANH', 'CHI NHÁNH TÂY TIỀN GIANG', 'Dòng đơn vị trên báo cáo PDF']
+];
+const DX_XE_BAN_DAU = [['XE4', 'Xe 4 chỗ', 4, 3, '', true, ''], ['XE7', 'Xe 7 chỗ', 7, 6, '', true, '']];
+const DX_DIEMDON_BAN_DAU = [
+  ['Trụ sở chi nhánh', 'Ban Giám đốc, Phòng TCTH, Phòng DVKH, Phòng KHDN, Phòng Bán lẻ, Phòng HTTD', '', '', '', true],
+  ['PGD Cái Bè', 'PGD Cái Bè', '', '', '', true], ['PGD An Hữu', 'PGD An Hữu', '', '', '', true], ['PGD Long Định', 'PGD Long Định', '', '', '', true],
+  ['PGD Hưng Long', 'PGD Hưng Long', '', '', '', true], ['PGD Ấp Bắc', 'PGD Ấp Bắc', '', '', '', true]];
+
+/* ---------- Cài đặt ---------- */
+function caiDatDatXe() {
+  const ui = SpreadsheetApp.getUi(), props = PropertiesService.getScriptProperties(), ss = SpreadsheetApp.getActive();
+  let f = null;
+  try { f = props.getProperty('DX_SHEET_ID') ? SpreadsheetApp.openById(props.getProperty('DX_SHEET_ID')) : null; } catch (e) { f = null; }
+  const isNew = !f;
+  if (isNew) { f = SpreadsheetApp.create(DX_FILE_NAME); f.setSpreadsheetTimeZone(TZ); props.setProperty('DX_SHEET_ID', f.getId()); taoFileDatXe_(f); }
+  const changes = capNhatDatXe_(f);
+  CacheService.getScriptCache().remove('dx_cfg');
+  const roles = Object.keys(rolePerms_());
+  const moi = [[DX_APP, 'Đặt xe công tác', 'Đặt xe cơ quan, xem tình trạng xe, theo dõi yêu cầu đặt xe'],
+    [DX_APP_DP, 'Điều phối và theo dõi xe', 'Lãnh đạo Phòng TCTH điều phối xe, tài xế; Ban Giám đốc theo dõi chuyến xe, báo cáo km'],
+    [DX_APP_TX, 'Chuyến xe của tôi', 'Tài xế nhận chuyến, bắt đầu và kết thúc hành trình']].filter(a => dangKyUngDung_(a[0], a[1], a[2], roles)).map(a => a[0]);
+  const ud = ss.getSheetByName(SH.UNGDUNG), v = ud.getRange(2, 1, Math.max(ud.getLastRow() - 1, 1), 5).getValues();
+  [DX_APP, DX_APP_DP, DX_APP_TX].forEach(code => { const i = v.findIndex(r => String(r[0]).trim() === code); if (i >= 0) ud.getRange(i + 2, 4, 1, 2).setValues([[true, true]]); });
+  const trig = caiLichDatXe_() + tbCaiDat_();
+  lamMoiBoNhoDem(true);
+  const cfg = dxConfig_(true), warn = dxKiemTra_(cfg);
+  const msg = (isNew ? 'Đã tạo file "' + DX_FILE_NAME + '" ở thư mục gốc Drive. Hãy kéo file vào thư mục KhongGianSoNoiBo (không chia sẻ).\n\n' : 'File đặt xe đã có, giữ nguyên dữ liệu.\n\n') +
+    (changes.length ? 'Đã cập nhật: ' + changes.join('; ') + '.\n\n' : '') +
+    (moi.length ? 'Đã đăng ký ' + moi.join(', ') + ' (mở cho tất cả cán bộ; I016 chỉ hiện với người điều phối và Ban Giám đốc, I017 chỉ hiện với tài xế).\n' : '') + trig +
+    '\nLink file: ' + f.getUrl() + (warn ? '\n\n' + warn : '') +
+    '\n\nTiếp theo: điền biển số ở DX_Xe; ID + email lãnh đạo TCTH và tài xế ở DX_NhanSu; tọa độ điểm đón ở DX_DiemDon (nếu trống); Triển khai → Phiên bản mới.';
+  const sanSang = cfg.nhanSu.some(n => n.nhom === 'Điều phối') && cfg.nhanSu.some(n => n.nhom === 'Tài xế') && cfg.xe.length;
+  if (!sanSang) { ui.alert('Đặt xe công tác', msg + '\n\nChạy lại menu này sau khi điền DX_NhanSu để gửi thông báo ứng dụng mới cho cán bộ.', ui.ButtonSet.OK); return; }
+  if (ui.alert('Đặt xe công tác', msg + '\n\nGửi thông báo popup "Ứng dụng mới: Đặt xe công tác" đến tất cả cán bộ đang hoạt động?', ui.ButtonSet.YES_NO) !== ui.Button.YES) return;
+  const users = Object.values(loadData_().users).filter(u => u.tt === TT.ON);
+  const n = tbGui_(users.map(u => u.id), { app: DX_APP, view: 'dat-xe', tieuDe: 'Ứng dụng mới: Đặt xe công tác',
+    noiDung: 'Không Gian Số Nội Bộ có thêm ứng dụng Đặt xe công tác: xem xe nào đang rảnh, đặt xe ngay trên điện thoại, nhận thông báo khi Phòng TCTH điều phối và khi tài xế nhận chuyến. Bấm "Xem" để đặt thử.',
+    ngan: 'Có ứng dụng mới: Đặt xe công tác. Mở TTG Inside để xem.' });
+  log_('', 'Quản trị (menu Google Sheet)', 'Mở ứng dụng cho tất cả', DX_APP, 'Gửi thông báo ' + n + ' cán bộ', '');
+  ui.alert('Đã gửi thông báo đến ' + n + ' cán bộ.');
+}
+function taoFileDatXe_(f) {
+  const ch = f.getSheets()[0]; ch.setName(DX_SH.CH);
+  ch.getRange(1, 1, 1, 3).setValues([['Tham số', 'Giá trị', 'Ý nghĩa']]);
+  ch.getRange(2, 2, DX_CAUHINH_BAN_DAU.length, 1).setNumberFormat('@');
+  ch.getRange(2, 1, DX_CAUHINH_BAN_DAU.length, 3).setValues(DX_CAUHINH_BAN_DAU);
+  dxStyle_(ch, [210, 300, 640]); ch.getRange('C:C').setWrap(true);
+  const hd = f.insertSheet(DX_SH.HD); hd.setColumnWidth(1, 960);
+  const lines = ['HƯỚNG DẪN – ĐẶT XE CÔNG TÁC (I015), ĐIỀU PHỐI VÀ THEO DÕI XE (I016), CHUYẾN XE CỦA TÔI (I017) – Không Gian Số Nội Bộ', '',
+    'DX_Xe: mỗi dòng 1 xe. "Số khách tối đa" = số người đi (không kể tài xế). Bỏ tick "Đang dùng" khi xe đi bảo dưỡng dài ngày.',
+    'DX_NhanSu: ID cán bộ (5 số, đã có trong sheet CanBo), Nhóm = "Điều phối" (Trưởng/Phó phòng TCTH) hoặc "Tài xế", email @vietinbank.vn, điện thoại. Họ tên tự điền khi chạy lại menu cài đặt.',
+    'DX_DiemDon: điểm đón mặc định theo phòng. Vĩ độ/Kinh độ dùng để tính xe về đến đâu và nhắc tài xế kết thúc (lấy trên Google Maps: bấm giữ vào vị trí → dòng số đầu tiên).',
+    'DX_Chuyen: ứng dụng ghi. Không sửa tay cột Mã, Trạng thái, các cột (hệ thống). Muốn hủy/điều phối dùng ứng dụng I016.',
+    'DX_ViTri: vị trí xe khi đang chạy chuyến (chỉ từ lúc tài xế bấm Bắt đầu đến lúc Kết thúc). Tự xóa sau GIU_VI_TRI_NGAY ngày.',
+    'DX_LienHe: email, điện thoại cán bộ tự ghi khi đặt xe để nhận thông báo.',
+    'Hệ thống không tự hoàn thành chuyến: chỉ nhắc tài xế và TCTH. TCTH dùng nút "Hoàn thành thay" khi tài xế quên bấm.'];
+  hd.getRange(1, 1, lines.length, 1).setValues(lines.map(x => [x]));
+  hd.getRange(1, 1).setFontWeight('bold').setFontSize(13).setFontColor('#005993');
+}
+function dxStyle_(s, w) {
+  s.setFrozenRows(1); s.getRange(1, 1, 1, s.getLastColumn()).setFontWeight('bold').setFontColor('#FFFFFF').setBackground('#005993').setWrap(true);
+  (w || []).forEach((x, i) => s.setColumnWidth(i + 1, x));
+}
+/** Tạo các sheet còn thiếu, thêm tham số mới, tự điền họ tên nhân sự và tọa độ điểm đón (lấy từ file ATM nếu trùng tên) */
+function capNhatDatXe_(f) {
+  const out = [];
+  const ch = f.getSheetByName(DX_SH.CH);
+  if (ch) { const keys = ch.getDataRange().getValues().map(r => String(r[0]).trim());
+    DX_CAUHINH_BAN_DAU.forEach(r => { if (!keys.includes(r[0])) { ch.appendRow(r); out.push('thêm tham số ' + r[0]); } }); }
+  if (!f.getSheetByName(DX_SH.XE)) {
+    const s = f.insertSheet(DX_SH.XE, 1); s.getRange(1, 1, 1, 7).setValues([['Mã xe', 'Tên hiển thị', 'Số chỗ (gồm tài xế)', 'Số khách tối đa', 'Biển số', 'Đang dùng', 'Ghi chú (hạn đăng kiểm, bảo hiểm…)']]);
+    s.getRange(2, 1, DX_XE_BAN_DAU.length, 7).setValues(DX_XE_BAN_DAU); s.getRange(2, 6, 30, 1).insertCheckboxes(); s.getRange(2, 6, DX_XE_BAN_DAU.length, 1).setValue(true);
+    s.getRange('A2:A').setNumberFormat('@'); s.getRange('E2:E').setNumberFormat('@'); dxStyle_(s, [80, 160, 120, 120, 120, 90, 320]); out.push('tạo sheet ' + DX_SH.XE);
+  }
+  if (!f.getSheetByName(DX_SH.NS)) {
+    const s = f.insertSheet(DX_SH.NS, 2); s.getRange(1, 1, 1, 7).setValues([['ID cán bộ', 'Họ tên (tự điền)', 'Nhóm', 'Email', 'Điện thoại', 'Đang dùng', 'Xác nhận thông báo vị trí lúc (tài xế)']]);
+    s.getRange('A2:A').setNumberFormat('@'); s.getRange('E2:E').setNumberFormat('@');
+    setList_(s.getRange(2, 3, 40, 1), ['Điều phối', 'Tài xế']); s.getRange(2, 6, 40, 1).insertCheckboxes();
+    dxStyle_(s, [90, 200, 110, 260, 130, 90, 220]); out.push('tạo sheet ' + DX_SH.NS);
+  }
+  if (!f.getSheetByName(DX_SH.DD)) {
+    const s = f.insertSheet(DX_SH.DD, 3); s.getRange(1, 1, 1, 6).setValues([['Tên điểm đón', 'Phòng/PGD dùng điểm này làm mặc định (cách nhau dấu phẩy)', 'Địa chỉ', 'Vĩ độ', 'Kinh độ', 'Đang dùng']]);
+    s.getRange(2, 1, DX_DIEMDON_BAN_DAU.length, 6).setValues(DX_DIEMDON_BAN_DAU); s.getRange(2, 6, 30, 1).insertCheckboxes(); s.getRange(2, 6, DX_DIEMDON_BAN_DAU.length, 1).setValue(true);
+    dxStyle_(s, [170, 420, 320, 100, 100, 90]); out.push('tạo sheet ' + DX_SH.DD);
+  }
+  if (!f.getSheetByName(DX_SH.CT)) {
+    const s = f.insertSheet(DX_SH.CT, 4); s.getRange(1, 1, 1, DX_NCOL).setValues([DX_HEAD]);
+    ['A', 'C', 'I', 'K', 'P', 'S', 'U', 'AH', 'AI', 'AJ', 'AK', 'AL'].forEach(c => s.getRange(c + '2:' + c).setNumberFormat('@'));
+    s.getRange('B2:B').setNumberFormat('dd/mm/yyyy hh:mm:ss'); s.getRange('H2:H').setNumberFormat('dd/mm/yyyy'); s.getRange('J2:J').setNumberFormat('dd/mm/yyyy');
+    s.getRange('X2:X').setNumberFormat('dd/mm/yyyy hh:mm'); s.getRange('Z2:AD').setNumberFormat('dd/mm/yyyy hh:mm'); s.getRange('AE2:AG').setNumberFormat('0.0');
+    dxStyle_(s, [130, 140, 70, 170, 110, 110, 120, 90, 60, 90, 60, 60, 160, 220, 240, 110, 120, 110, 60, 170, 70, 160, 160, 120, 240, 120, 120, 120, 120, 120, 80, 90, 70, 180, 90, 160, 140, 360]);
+    out.push('tạo sheet ' + DX_SH.CT);
+  }
+  if (!f.getSheetByName(DX_SH.VT)) {
+    const s = f.insertSheet(DX_SH.VT); s.getRange(1, 1, 1, 6).setValues([['Mã chuyến', 'Lúc nhận', 'Số điểm', 'Các điểm [thời điểm, vĩ độ, kinh độ, sai số m]', 'Km đo', 'Km ước tính']]);
+    s.getRange('A2:A').setNumberFormat('@'); s.getRange('B2:B').setNumberFormat('dd/mm/yyyy hh:mm:ss'); dxStyle_(s, [130, 150, 70, 600, 70, 80]); out.push('tạo sheet ' + DX_SH.VT);
+  }
+  if (!f.getSheetByName(DX_SH.LH)) {
+    const s = f.insertSheet(DX_SH.LH); s.getRange(1, 1, 1, 5).setValues([['ID cán bộ', 'Họ tên', 'Email nhận thông báo', 'Điện thoại', 'Cập nhật lúc']]);
+    s.getRange('A2:A').setNumberFormat('@'); s.getRange('D2:D').setNumberFormat('@'); s.getRange('E2:E').setNumberFormat('dd/mm/yyyy hh:mm'); dxStyle_(s, [90, 200, 260, 130, 140]); out.push('tạo sheet ' + DX_SH.LH);
+  }
+  // Tự điền họ tên nhân sự theo CanBo
+  const ns = f.getSheetByName(DX_SH.NS), users = loadData_().users;
+  if (ns.getLastRow() > 1) {
+    const rg = ns.getRange(2, 1, ns.getLastRow() - 1, 2), v = rg.getValues();
+    let ch2 = false; v.forEach(r => { const u = users[String(r[0]).trim()]; if (u && r[1] !== u.hoTen) { r[1] = u.hoTen; ch2 = true; } });
+    if (ch2) { rg.setValues(v); out.push('điền họ tên ở ' + DX_SH.NS); }
+  }
+  // Tọa độ điểm đón: lấy từ danh sách điểm giao dịch của ứng dụng ATM (nếu đã cài) khi ô còn trống
+  try {
+    const dd = f.getSheetByName(DX_SH.DD), n = dd.getLastRow() - 1;
+    if (n > 0) {
+      const rg = dd.getRange(2, 1, n, 5), v = rg.getValues(), pgd = atmData_(true).pgd, key = s => taKhongDau(String(s)).toLowerCase().replace(/[^a-z0-9]/g, '');
+      let k = 0;
+      v.forEach(r => { if (String(r[3]).trim() && String(r[4]).trim()) return;
+        const nm = key(r[0]).replace(/^trusochinhanh$/, 'truso'), p = pgd.find(x => x.lat && x.lng && (key(x.ten).includes(nm) || (nm === 'truso' && /truso|chinhanh/.test(key(x.ten) + key(x.loai)))));
+        if (p) { r[3] = p.lat; r[4] = p.lng; if (!String(r[2]).trim()) r[2] = p.diaChi; k++; } });
+      if (k) { rg.setValues(v); out.push('điền tọa độ ' + k + ' điểm đón từ danh sách điểm giao dịch'); }
+    }
+  } catch (e) {}
+  return out;
+}
+function caiLichDatXe_() {
+  try {
+    ScriptApp.getProjectTriggers().filter(t => ['dxNhacNho', 'dxDonViTri'].includes(t.getHandlerFunction())).forEach(t => ScriptApp.deleteTrigger(t));
+    ScriptApp.newTrigger('dxNhacNho').timeBased().everyMinutes(10).create();
+    ScriptApp.newTrigger('dxDonViTri').timeBased().everyDays(1).atHour(2).inTimezone(TZ).create();
+    return 'Lịch: mỗi 10 phút kiểm tra nhắc tài xế nhận chuyến / chuyến quá giờ; 2 giờ sáng hằng ngày xóa vị trí quá hạn.\n';
+  } catch (e) { return 'LƯU Ý: chưa cài được lịch nhắc (' + e.message + ').\n'; }
+}
+function dxKiemTra_(cfg) {
+  const msg = [], roles = Object.keys(rolePerms_());
+  [['VAI_TRO_UU_TIEN', cfg.vtUuTien], ['VAI_TRO_THEO_DOI', cfg.vtTheoDoi], ['VAI_TRO_TOAN_QUYEN', cfg.vtToanQuyen]].forEach(([k, l]) =>
+    l.filter(r => !roles.includes(r)).forEach(r => msg.push('- ' + k + ': vai trò "' + r + '" không có trong sheet VaiTro.')));
+  if (!cfg.xe.length) msg.push('- DX_Xe: chưa có xe đang dùng.');
+  cfg.xe.filter(x => !x.bien).forEach(x => msg.push('- DX_Xe: ' + x.ten + ' chưa có biển số.'));
+  if (!cfg.nhanSu.some(n => n.nhom === 'Điều phối')) msg.push('- DX_NhanSu: chưa có người điều phối (lãnh đạo Phòng TCTH).');
+  if (!cfg.nhanSu.some(n => n.nhom === 'Tài xế')) msg.push('- DX_NhanSu: chưa có tài xế.');
+  cfg.nhanSu.filter(n => !n.ten).forEach(n => msg.push('- DX_NhanSu: ID ' + n.id + ' không có (hoặc chưa Hoạt động) trong sheet CanBo.'));
+  cfg.nhanSu.filter(n => !n.emailOk).forEach(n => msg.push('- DX_NhanSu: ' + (n.ten || n.id) + ' chưa có email @' + cfg.mien + ' (chỉ nhận popup).'));
+  cfg.diemDon.filter(d => d.lat === null || d.lng === null).forEach(d => msg.push('- DX_DiemDon: "' + d.ten + '" chưa có tọa độ (không ước tính được giờ về, không nhắc kết thúc theo vị trí).'));
+  return msg.length ? 'LƯU Ý cấu hình đặt xe:\n' + msg.join('\n') : '';
+}
+
+/* ---------- Cấu hình, quyền ---------- */
+function dxFile_() { const id = PropertiesService.getScriptProperties().getProperty('DX_SHEET_ID'); if (!id) throw new Error('dx_not_setup'); return SpreadsheetApp.openById(id); }
+function dxConfig_(fresh) {
+  const cache = CacheService.getScriptCache();
+  if (!fresh) { const hit = cache.get('dx_cfg'); if (hit) return JSON.parse(hit); }
+  const f = dxFile_(), list = s => String(s || '').split(/[,;]/).map(x => x.trim()).filter(Boolean);
+  const rows = name => { const sh = f.getSheetByName(name); return sh && sh.getLastRow() > 1 ? sh.getRange(2, 1, sh.getLastRow() - 1, sh.getLastColumn()).getValues() : []; };
+  const kv = {}; DX_CAUHINH_BAN_DAU.forEach(r => kv[r[0]] = r[1]);
+  rows(DX_SH.CH).forEach(r => { const k = String(r[0]).trim(); if (k && String(r[1]).trim() !== '') kv[k] = String(r[1]).trim(); });
+  const num = (v, d, lo, hi) => { const x = parseFloat(String(v).replace(/\s/g, '').replace(',', '.')); return isFinite(x) ? Math.max(lo, Math.min(hi, x)) : d; };
+  const numOrNull = v => { const x = parseFloat(String(v).replace(',', '.')); return isFinite(x) && x !== 0 ? x : null; };
+  const on = v => v !== false && !/^(không|khong|false|0)$/i.test(String(v).trim());
+  const mien = String(kv.MIEN_EMAIL || 'vietinbank.vn').replace(/^@/, '').toLowerCase();
+  const okMail = e => new RegExp('^[^@\\s,;]+@' + mien.replace(/\./g, '\\.') + '$', 'i').test(String(e || '').trim());
+  const hm = s => { const m = String(s || '').match(/(\d{1,2}):(\d{2})/); return m ? String(Math.min(23, +m[1])).padStart(2, '0') + ':' + m[2] : ''; };
+  const users = loadData_().users;
+  const xe = rows(DX_SH.XE).filter(r => String(r[0]).trim() && on(r[5])).map(r => { const cho = num(r[2], 4, 2, 60);
+    return { ma: String(r[0]).trim(), ten: String(r[1] || r[0]).trim(), soCho: cho, khach: num(r[3], cho - 1, 1, 59), bien: String(r[4] || '').trim(), ghiChu: String(r[6] || '').trim() }; });
+  const nhanSu = rows(DX_SH.NS).map(r => ({ id: String(r[0]).trim(), nhom: /tài xế|tai xe|lái|lai xe/i.test(String(r[2])) ? 'Tài xế' : /điều phối|dieu phoi/i.test(String(r[2])) ? 'Điều phối' : '',
+      email: String(r[3] || '').trim().toLowerCase(), sdt: String(r[4] || '').replace(/[^\d+ .]/g, '').trim(), on: on(r[5]), dongY: r[6] instanceof Date ? Utilities.formatDate(r[6], TZ, 'dd/MM/yyyy HH:mm') : String(r[6] || '').trim() }))
+    .filter(n => /^9\d{4}$/.test(n.id) && n.nhom && n.on)
+    .map(n => Object.assign(n, { ten: users[n.id] && users[n.id].tt === TT.ON ? users[n.id].hoTen : '', emailOk: okMail(n.email) }));
+  const diemDon = rows(DX_SH.DD).filter(r => String(r[0]).trim() && on(r[5])).map(r => ({ ten: String(r[0]).trim(), pbs: list(r[1]), diaChi: String(r[2] || '').trim(), lat: numOrNull(r[3]), lng: numOrNull(r[4]) }));
+  const gio = String(kv.GIO_LAM_VIEC || '').split('-');
+  const cfg = { vtUuTien: list(kv.VAI_TRO_UU_TIEN), vtTheoDoi: list(kv.VAI_TRO_THEO_DOI), vtToanQuyen: list(kv.VAI_TRO_TOAN_QUYEN),
+    datTruocNgay: num(kv.DAT_TRUOC_TOI_DA_NGAY, 30, 1, 365), hanDatGio: num(kv.HAN_DAT_TRUOC_GIO, 0, 0, 168), demPhut: num(kv.KHOANG_DEM_PHUT, 0, 0, 240),
+    gioTu: hm(gio[0]) || '06:00', gioDen: hm(gio[1]) || '20:00', nhacNhan: num(kv.NHAC_NHAN_CHUYEN_PHUT, 15, 5, 240), nhacQuaGio: num(kv.NHAC_QUA_GIO_PHUT, 60, 10, 600),
+    banKinh: num(kv.BAN_KINH_VE_M, 300, 50, 5000), dungYen: num(kv.DUNG_YEN_PHUT, 10, 3, 120), heSo: num(kv.HE_SO_KM_UOC_TINH, 1.3, 1, 3), giuNgay: num(kv.GIU_VI_TRI_NGAY, 90, 7, 3650),
+    guiViTri: num(kv.GUI_VI_TRI_GIAY, 60, 30, 300), lamMoi: num(kv.LAM_MOI_GIAY, 60, 20, 600), vtb: num(kv.VAN_TOC_TB, 40, 10, 100),
+    guiEmail: !/^(tắt|tat|không|khong|off|0)$/i.test(kv.GUI_EMAIL || 'Bật'), mien, tenCN: kv.TEN_CHI_NHANH || 'CHI NHÁNH TÂY TIỀN GIANG', xe, nhanSu, diemDon };
+  try { cache.put('dx_cfg', JSON.stringify(cfg), 60); } catch (e) {}
+  return cfg;
+}
+function dxRole_(u, cfg) {
+  const ns = cfg.nhanSu.filter(n => n.id === u.id), full = cfg.vtToanQuyen.includes(u.vt);
+  const dieuPhoi = full || ns.some(n => n.nhom === 'Điều phối'), taiXe = ns.some(n => n.nhom === 'Tài xế');
+  return { full, dieuPhoi, taiXe, xem: dieuPhoi || cfg.vtTheoDoi.includes(u.vt), uuTien: cfg.vtUuTien.includes(u.vt) };
+}
+function dxFilterApps_(u, apps) {
+  if (![DX_APP, DX_APP_DP, DX_APP_TX].some(a => apps.includes(a))) return apps;
+  let r; try { r = dxRole_(u, dxConfig_()); } catch (e) { return apps.filter(a => ![DX_APP, DX_APP_DP, DX_APP_TX].includes(a)); }
+  return apps.filter(a => (a !== DX_APP_DP || r.xem) && (a !== DX_APP_TX || r.taiXe || r.full));
+}
+function dxGuard_(b, app) {
+  const v = checkToken_(b.token); if (v.error) return v;
+  if (!userApps_(v.user).includes(app)) return { error: 'forbidden' };
+  let cfg; try { cfg = dxConfig_(); } catch (e) { return { error: 'not_configured', message: 'Ứng dụng đặt xe chưa được cài đặt.' }; }
+  const role = dxRole_(v.user, cfg);
+  if (app === DX_APP_DP && !role.xem) return { error: 'forbidden', message: 'Tài khoản không thuộc danh sách điều phối hoặc theo dõi xe.' };
+  if (app === DX_APP_TX && !role.taiXe && !role.full) return { error: 'forbidden', message: 'Tài khoản không có trong danh sách tài xế.' };
+  return { user: v.user, cfg, role };
+}
+
+/* ---------- Ngày giờ, khoảng cách ---------- */
+const dxNow_ = () => Utilities.formatDate(new Date(), TZ, 'yyyy-MM-dd HH:mm');
+const dxMs_ = s => { const m = String(s || '').match(/^(\d{4})-(\d{2})-(\d{2})[ T](\d{2}):(\d{2})/); return m ? Date.UTC(+m[1], +m[2] - 1, +m[3], +m[4], +m[5]) - 7 * 3600e3 : NaN; };
+const dxStr_ = ms => Utilities.formatDate(new Date(ms), TZ, 'yyyy-MM-dd HH:mm');
+const dxHm_ = s => String(s || '').slice(11, 16);
+const dxDm_ = s => String(s || '').slice(8, 10) + '/' + String(s || '').slice(5, 7);
+const dxAddDay_ = (ymd, k) => { const [y, m, d] = ymd.split('-').map(Number); return new Date(Date.UTC(y, m - 1, d + k)).toISOString().slice(0, 10); };
+const dxTs_ = v => v instanceof Date && !isNaN(v) ? Utilities.formatDate(v, TZ, 'yyyy-MM-dd HH:mm') : String(v || '').trim();
+const dxKhi_ = x => dxDm_(x.di) + ' ' + dxHm_(x.di) + ' – ' + (x.ve.slice(0, 10) !== x.di.slice(0, 10) ? dxDm_(x.ve) + ' ' : '') + dxHm_(x.ve);
+const dxR1_ = n => Math.round((+n || 0) * 10) / 10;
+function dxKm_(a1, o1, a2, o2) {
+  const R = 6371.0088, r = Math.PI / 180, dA = (a2 - a1) * r, dO = (o2 - o1) * r;
+  const h = Math.sin(dA / 2) ** 2 + Math.cos(a1 * r) * Math.cos(a2 * r) * Math.sin(dO / 2) ** 2;
+  return 2 * R * Math.asin(Math.min(1, Math.sqrt(h)));
+}
+
+/* ---------- Đọc, ghi sổ chuyến ---------- */
+function dxSheet_(f) { const sh = (f || dxFile_()).getSheetByName(DX_SH.CT); if (!sh) throw new Error('dx_not_setup'); return sh; }
+function dxRows_(sh) {
+  const n = sh.getLastRow() - 1; if (n < 1) return [];
+  const s = v => String(v == null ? '' : v).trim(), j = v => { try { return v ? JSON.parse(v) : null; } catch (e) { return null; } };
+  return sh.getRange(2, 1, n, DX_NCOL).getValues().map((r, i) => {
+    if (!s(r[DC.MA])) return null;
+    const ngDi = uqYmd_(r[DC.NGAY_DI]), ngVe = uqYmd_(r[DC.NGAY_VE]) || ngDi;
+    return { row: i + 2, ma: s(r[DC.MA]), luc: dxTs_(r[DC.LUC]), id: s(r[DC.ID]), ten: s(r[DC.TEN]), pb: s(r[DC.PB]), vt: s(r[DC.VT]), ut: s(r[DC.UT]),
+      di: ngDi + ' ' + sctHm_(r[DC.GIO_DI]), ve: ngVe + ' ' + sctHm_(r[DC.GIO_VE]), soNguoi: parseInt(r[DC.SO_NGUOI], 10) || 1, don: s(r[DC.DON]), den: s(r[DC.DEN]), mucDich: s(r[DC.MUC_DICH]),
+      sdt: s(r[DC.SDT]), tt: s(r[DC.TT]), tienTrinh: s(r[DC.TIEN_TRINH]), maXe: s(r[DC.MA_XE]), xe: s(r[DC.XE]), txId: s(r[DC.TX_ID]), tx: s(r[DC.TX]), dpBoi: s(r[DC.DP_BOI]),
+      dpLuc: dxTs_(r[DC.DP_LUC]), lyDo: s(r[DC.LY_DO]), nhanLuc: dxTs_(r[DC.NHAN_LUC]), xpLuc: dxTs_(r[DC.XP_LUC]), denLuc: dxTs_(r[DC.DEN_LUC]), veLuc: dxTs_(r[DC.VE_LUC]),
+      ktLuc: dxTs_(r[DC.KT_LUC]), kmDo: +r[DC.KM_DO] || 0, kmUt: +r[DC.KM_UT] || 0, km: +r[DC.KM] || 0, xongBoi: s(r[DC.XONG_BOI]), nhac: s(r[DC.NHAC]),
+      cuoi: j(r[DC.DIEM_CUOI]), dau: j(r[DC.DIEM_DAU]) };
+  }).filter(x => x && x.di.length === 16 && x.ve.length === 16);
+}
+/** Ghi đè các cột của 1 dòng; p.log = thêm 1 dòng vào nhật ký chuyến */
+function dxUpdate_(sh, row, p) {
+  const rg = sh.getRange(row, 1, 1, DX_NCOL), v = rg.getValues()[0];
+  Object.keys(p).forEach(k => { if (k !== 'log') v[DC[k]] = p[k]; });
+  if (p.log) v[DC.NHAT_KY] = (String(v[DC.NHAT_KY] || '') + (v[DC.NHAT_KY] ? '\n' : '') + Utilities.formatDate(new Date(), TZ, 'dd/MM HH:mm') + ' ' + p.log).slice(-4000);
+  rg.setValues([v]);
+}
+function dxLock_() { const l = LockService.getScriptLock(); l.waitLock(15000); return l; }
+
+/* ---------- Xe rảnh, ghép xe ---------- */
+const dxEnd_ = (x, now) => x.tt === DX_ST.CHAY && now > x.ve ? now : x.ve; // đang chạy quá giờ: xe vẫn bận
+function dxOverlap_(a1, a2, b1, b2, bufMin) { const g = (bufMin || 0) * 60e3; return dxMs_(a1) < dxMs_(b2) + g && dxMs_(b1) < dxMs_(a2) + g; }
+function dxConflicts_(trips, di, ve, cfg, now, exceptMa) {
+  return trips.filter(x => DX_ACTIVE.includes(x.tt) && x.ma !== exceptMa && dxOverlap_(di, ve, x.di, dxEnd_(x, now), cfg.demPhut));
+}
+/** Có xe cho yêu cầu mới không: xe đã giao chuyến trùng giờ thì bận; các yêu cầu đang chờ trùng giờ cũng cần 1 xe đủ chỗ (ghép cặp) */
+function dxKhaThi_(trips, cfg, di, ve, n, now, exceptMa) {
+  const ov = dxConflicts_(trips, di, ve, cfg, now, exceptMa), taken = new Set(ov.filter(x => x.maXe).map(x => x.maXe));
+  const free = cfg.xe.filter(c => !taken.has(c.ma)), need = ov.filter(x => !x.maXe).map(x => x.soNguoi).concat([n]), match = {};
+  const tryK = (k, seen) => { for (const c of free) { if (c.khach < need[k] || seen[c.ma]) continue; seen[c.ma] = 1;
+    if (match[c.ma] === undefined || tryK(match[c.ma], seen)) { match[c.ma] = k; return true; } } return false; };
+  for (let k = need.length - 1; k >= 0; k--) if (!tryK(k, {})) return { ok: false, ov, free };
+  return { ok: true, ov, free, xe: cfg.xe.find(c => match[c.ma] === need.length - 1) };
+}
+/** Giờ đi sớm nhất (cùng thời lượng, bước 15 phút, trong giờ làm việc, tối đa 3 ngày) còn xe */
+function dxSomNhat_(trips, cfg, di, ve, n, now) {
+  const dur = dxMs_(ve) - dxMs_(di), act = trips.filter(x => DX_ACTIVE.includes(x.tt));
+  let t = Math.ceil(dxMs_(di) / 9e5) * 9e5;
+  for (let i = 0; i < 288; i++) {
+    t += 9e5; const s = dxStr_(t), hm = s.slice(11);
+    if (hm < cfg.gioTu || hm > cfg.gioDen) continue;
+    const k = dxKhaThi_(act, cfg, s, dxStr_(t + dur), n, now); if (k.ok) return { di: s, ve: dxStr_(t + dur), xe: k.xe };
+  }
+  return null;
+}
+function dxKetQua_(trips, cfg, v, now) {
+  const maxK = cfg.xe.reduce((m, c) => Math.max(m, c.khach), 0);
+  if (!cfg.xe.length) return { conXe: false, msg: 'Chưa có xe trong danh mục. Liên hệ Phòng TCTH.' };
+  if (v.soNguoi > maxK) return { conXe: false, msg: 'Không có xe chở được ' + v.soNguoi + ' người (xe lớn nhất chở tối đa ' + maxK + ' người, không kể tài xế).' };
+  const k = dxKhaThi_(trips, cfg, v.di, v.ve, v.soNguoi, now);
+  if (k.ok) { const phu = k.free.filter(c => c.khach >= v.soNguoi).map(c => c.ten);
+    return { conXe: true, msg: 'Còn xe phù hợp trong khung ' + dxKhi_(v) + ': ' + phu.join(', ') + '. Yêu cầu sẽ gửi lãnh đạo Phòng TCTH điều phối.' }; }
+  const s = dxSomNhat_(trips, cfg, v.di, v.ve, v.soNguoi, now);
+  return { conXe: false, msg: 'Khung ' + dxKhi_(v) + ' không còn xe trống cho ' + v.soNguoi + ' người.' +
+    (s ? ' Xe rảnh sớm nhất từ ' + dxHm_(s.di) + (s.di.slice(0, 10) !== v.di.slice(0, 10) ? ' ngày ' + sctDmy_(s.di.slice(0, 10)) : '') + ' (' + s.xe.ten + ').' : ''),
+    somNhat: s ? { di: s.di, ve: s.ve } : null };
+}
+
+/* ---------- Dữ liệu trả về ---------- */
+function dxTienDo_(x, cfg, now) {
+  if (x.tt !== DX_ST.CHAY) return null;
+  const buoc = x.tienTrinh === DX_PHASE.VE ? 3 : x.tienTrinh === DX_PHASE.DEN ? 2 : 1, n = Date.now();
+  const a = dxMs_(x.xpLuc || x.di), b = dxMs_(x.ve);
+  let eta = x.ve, nguon = 'giờ về dự kiến';
+  const dau = dxDau_(x, cfg);
+  if (buoc === 3 && x.cuoi && dau) {
+    const d = dxKm_(x.cuoi.lat, x.cuoi.lng, dau[0], dau[1]) * cfg.heSo;
+    eta = dxStr_(Math.max(n, x.cuoi.lt || x.cuoi.t) + d / cfg.vtb * 3600e3); nguon = 'theo vị trí xe';
+  }
+  let pct = b > a ? (n - a) / (b - a) : 0.5; pct = Math.max(0.04, Math.min(0.96, pct));
+  if (buoc === 2) pct = Math.max(pct, 0.4); if (buoc === 3) pct = Math.max(pct, 0.7);
+  const tre = Math.round((dxMs_(now) - dxMs_(x.ve)) / 60e3);
+  const lt = x.cuoi ? (x.cuoi.lt || x.cuoi.t) : 0;
+  return { buoc, pct: Math.round(pct * 100), eta, nguon, tre: tre > 0 ? tre : 0, viTriLuc: lt ? dxStr_(lt) : '', matTinHieu: !lt || n - lt > 5 * 60e3 };
+}
+/** Điểm xuất phát: vị trí lúc bấm Bắt đầu, nếu không có thì tọa độ điểm đón */
+function dxDau_(x, cfg) {
+  if (x.dau && isFinite(x.dau[0])) return x.dau;
+  const d = cfg.diemDon.find(z => z.ten === x.don && z.lat !== null && z.lng !== null);
+  return d ? [d.lat, d.lng] : null;
+}
+function dxTxSdt_(cfg, id) { const n = cfg.nhanSu.find(z => z.id === id && z.nhom === 'Tài xế'); return n ? n.sdt : ''; }
+function dxOut_(x, cfg, now, muc) {
+  const o = { ma: x.ma, luc: x.luc, di: x.di, ve: x.ve, soNguoi: x.soNguoi, don: x.don, den: x.den, mucDich: x.mucDich, tt: x.tt, tienTrinh: x.tienTrinh, ut: x.ut,
+    xe: x.xe, tx: x.tx, txSdt: x.txId ? dxTxSdt_(cfg, x.txId) : '', dpBoi: x.dpBoi, dpLuc: x.dpLuc, lyDo: x.lyDo, nhanLuc: x.nhanLuc, xpLuc: x.xpLuc, denLuc: x.denLuc,
+    veLuc: x.veLuc, ktLuc: x.ktLuc, km: dxR1_(x.km), tienDo: dxTienDo_(x, cfg, now) };
+  if (muc === 'cb') o.coTheHuy = [DX_ST.CHO, DX_ST.DP, DX_ST.NHAN].includes(x.tt);
+  if (muc === 'dp' || muc === 'tx') Object.assign(o, { id: x.id, ten: x.ten, pb: x.pb, vt: x.vt, sdt: x.sdt, maXe: x.maXe, txId: x.txId });
+  if (muc === 'dp') {
+    const dau = dxDau_(x, cfg);
+    Object.assign(o, { kmDo: dxR1_(x.kmDo), kmUt: dxR1_(x.kmUt), xongBoi: x.xongBoi, viTri: x.cuoi && x.tt === DX_ST.CHAY ? { lat: x.cuoi.lat, lng: x.cuoi.lng, luc: dxStr_(x.cuoi.lt || x.cuoi.t) } : null,
+      dau: x.tt === DX_ST.CHAY ? dau : null,
+      quaGio: x.tt === DX_ST.CHAY && dxMs_(now) - dxMs_(x.ve) >= cfg.nhacQuaGio * 60e3,
+      kmGoiY: dxR1_(x.kmDo + x.kmUt + (x.cuoi && dau ? dxKm_(x.cuoi.lat, x.cuoi.lng, dau[0], dau[1]) * cfg.heSo : 0)) });
+  }
+  return o;
+}
+function dxXePublic_(cfg) { return cfg.xe.map(c => ({ ma: c.ma, ten: c.ten, khach: c.khach, soCho: c.soCho, bien: c.bien })); }
+function dxTrangThaiXe_(trips, cfg, now) {
+  return cfg.xe.map(c => {
+    const mine = trips.filter(x => x.maXe === c.ma && DX_ACTIVE.includes(x.tt)), chay = mine.find(x => x.tt === DX_ST.CHAY);
+    const sap = mine.filter(x => x.tt !== DX_ST.CHAY && x.ve >= now).sort((a, b) => a.di.localeCompare(b.di));
+    return { ma: c.ma, ten: c.ten, khach: c.khach, soCho: c.soCho, bien: c.bien,
+      chay: chay ? { ve: chay.ve, tienTrinh: chay.tienTrinh, tx: chay.tx, pb: chay.pb, tienDo: dxTienDo_(chay, cfg, now) } : null,
+      ke: sap.slice(0, 3).map(x => ({ di: x.di, ve: x.ve })) };
+  });
+}
+function dxTxTrangThai_(trips, cfg, now) {
+  const seen = {};
+  return cfg.nhanSu.filter(n => n.nhom === 'Tài xế' && !seen[n.id] && (seen[n.id] = 1)).map(n => {
+    const mine = trips.filter(x => x.txId === n.id && DX_ACTIVE.includes(x.tt)), chay = mine.find(x => x.tt === DX_ST.CHAY);
+    const sap = mine.filter(x => x.tt !== DX_ST.CHAY).sort((a, b) => a.di.localeCompare(b.di));
+    return { id: n.id, ten: n.ten || n.id, sdt: n.sdt, dongY: n.dongY, chay: chay ? { xe: chay.xe, ve: chay.ve } : null, ke: sap.slice(0, 3).map(x => ({ di: x.di, ve: x.ve, xe: x.xe, tt: x.tt })) };
+  });
+}
+/** Lịch xe 1 ngày: mỗi xe 1 hàng; yêu cầu chưa có xe ở hàng "Chờ xếp xe". ct = có tên người đặt (TCTH) */
+function dxLich_(trips, cfg, ngay, now, ct, myId) {
+  const d0 = ngay + ' 00:00', d1 = ngay + ' 23:59';
+  const ov = trips.filter(x => (DX_ACTIVE.includes(x.tt) || x.tt === DX_ST.XONG) && x.di <= d1 && dxEnd_(x, now) >= d0);
+  const bar = x => { const a = x.tt === DX_ST.XONG && x.xpLuc ? x.xpLuc : x.di, e = x.tt === DX_ST.XONG && x.ktLuc ? x.ktLuc : dxEnd_(x, now);
+    const o = { di: a < d0 ? d0 : a, ve: e > d1 ? d1 : e, tt: x.tt, ut: !!x.ut, cuaToi: !!myId && x.id === myId };
+    if (ct) Object.assign(o, { ma: x.ma, ten: x.ten, pb: x.pb, soNguoi: x.soNguoi }); return o; };
+  return { ngay, gioTu: cfg.gioTu, gioDen: cfg.gioDen, xe: cfg.xe.map(c => ({ ma: c.ma, ten: c.ten, bars: ov.filter(x => x.maXe === c.ma).map(bar) })),
+    cho: ov.filter(x => !x.maXe && x.tt === DX_ST.CHO).map(bar) };
+}
+function dxDonMacDinh_(u, cfg) { const d = cfg.diemDon.find(z => z.pbs.includes(u.pb)); return d ? d.ten : (cfg.diemDon[0] ? cfg.diemDon[0].ten : ''); }
+function dxLienHe_() {
+  const sh = dxFile_().getSheetByName(DX_SH.LH), out = {}; if (!sh || sh.getLastRow() < 2) return out;
+  sh.getRange(2, 1, sh.getLastRow() - 1, 4).getValues().forEach((r, i) => { const id = String(r[0]).trim(); if (id) out[id] = { row: i + 2, email: String(r[2] || '').trim().toLowerCase(), sdt: String(r[3] || '').trim() }; });
+  return out;
+}
+function dxLuuLienHe_(u, email, sdt) {
+  try {
+    const sh = dxFile_().getSheetByName(DX_SH.LH), cur = dxLienHe_()[u.id];
+    if (cur && cur.email === email && cur.sdt === sdt) return;
+    const row = [u.id, u.hoTen, email, sdt, new Date()];
+    if (cur) sh.getRange(cur.row, 1, 1, 5).setValues([row]); else sh.appendRow(row);
+  } catch (e) { console.error('dxLuuLienHe_', e); }
+}
+
+/* ---------- Thông báo ---------- */
+function dxDpIds_(cfg, exceptId) { return Array.from(new Set(cfg.nhanSu.filter(n => n.nhom === 'Điều phối' && n.id !== exceptId).map(n => n.id))); }
+function dxEmailOf_(id, cfg, lh) {
+  const okMail = e => new RegExp('^[^@\\s,;]+@' + cfg.mien.replace(/\./g, '\\.') + '$', 'i').test(e || '');
+  const n = cfg.nhanSu.find(z => z.id === id && z.emailOk); if (n) return n.email;
+  const l = lh[id]; return l && okMail(l.email) ? l.email : '';
+}
+function dxTomTat_(x) { return dxKhi_(x) + ' · ' + x.soNguoi + ' người · ' + x.don + ' → ' + x.den; }
+function dxMailHtml_(x, loiMo, them) {
+  const td = 'border:1px solid #c9d6e2;padding:6px 8px;vertical-align:top;font-size:13px', th = td + ';background:#DEEAF6;white-space:nowrap;text-align:left';
+  const dong = [['Người đặt', x.ten + ' – ' + x.pb], ['Thời gian', dxKhi_(x)], ['Số người', x.soNguoi], ['Điểm đón', x.don], ['Điểm đến', x.den], ['Mục đích', x.mucDich]]
+    .concat(x.xe ? [['Xe', x.xe]] : []).concat(x.tx ? [['Tài xế', x.tx]] : []).concat(x.sdt ? [['Điện thoại liên hệ', x.sdt]] : []).concat(them || []);
+  return '<div style="font-family:Arial,sans-serif;color:#14324A"><p>' + loiMo + '</p><table style="border-collapse:collapse">' +
+    dong.map(r => '<tr><th style="' + th + '">' + taEsc(r[0]) + '</th><td style="' + td + '">' + taEsc(String(r[1])) + '</td></tr>').join('') +
+    '</table><p style="color:#555;font-size:12.5px">Xem chi tiết tại Không Gian Số Nội Bộ → Công tác.</p><p style="color:#888;font-size:12px">Email tự động – Đặt xe công tác, Không Gian Số Nội Bộ.</p></div>';
+}
+/** p = {popup:[ids], email:[ids], app, view, tieuDe, noiDung, ngan, subject, html} */
+function dxBao_(cfg, p, lh) {
+  let n = 0, m = 0;
+  try { if (p.popup && p.popup.length) n = tbGui_(p.popup, { app: p.app, view: p.view, tieuDe: p.tieuDe, noiDung: p.noiDung, ngan: p.ngan || 'Có cập nhật đặt xe công tác. Mở TTG Inside để xem.' }); }
+  catch (e) { console.error('dx popup', e); }
+  if (cfg.guiEmail && p.email && p.email.length) {
+    const to = Array.from(new Set(p.email.map(id => dxEmailOf_(id, cfg, lh || dxLienHe_())).filter(Boolean)));
+    if (to.length) try { if (MailApp.getRemainingDailyQuota() >= to.length) { MailApp.sendEmail({ to: to.join(','), name: 'Đặt xe công tác – Không Gian Số', subject: p.subject || '[Đặt xe] ' + p.tieuDe, htmlBody: p.html }); m = to.length; } }
+    catch (e) { console.error('dx mail', e); }
+  }
+  return { popup: n, email: m };
+}
+
+/* ---------- Kiểm tra dữ liệu đặt xe ---------- */
+function dxValidate_(b, cfg, role) {
+  const ngDi = uqYmd_(b.ngayDi), ngVe = uqYmd_(b.ngayVe) || ngDi, gDi = sctHm_(b.gioDi), gVe = sctHm_(b.gioVe), n = parseInt(b.soNguoi, 10), now = dxNow_();
+  if (!ngDi || !gDi) return { error: 'invalid', message: 'Chọn ngày và giờ đi.' };
+  if (!gVe) return { error: 'invalid', message: 'Chọn giờ về dự kiến.' };
+  const di = ngDi + ' ' + gDi, ve = ngVe + ' ' + gVe;
+  if (ve <= di) return { error: 'invalid', message: 'Giờ về dự kiến phải sau giờ đi.' };
+  if (dxMs_(di) < Date.now() - 30 * 60e3) return { error: 'invalid', message: 'Giờ đi đã qua.' };
+  if (ngDi > dxAddDay_(now.slice(0, 10), cfg.datTruocNgay)) return { error: 'invalid', message: 'Chỉ đặt trước tối đa ' + cfg.datTruocNgay + ' ngày.' };
+  if (cfg.hanDatGio > 0 && !role.uuTien && dxMs_(di) - Date.now() < cfg.hanDatGio * 3600e3) return { error: 'invalid', message: 'Cần đặt xe trước giờ đi ít nhất ' + cfg.hanDatGio + ' giờ.' };
+  if (dxMs_(ve) - dxMs_(di) > 7 * 864e5) return { error: 'invalid', message: 'Một chuyến tối đa 7 ngày.' };
+  if (!(n >= 1 && n <= 59)) return { error: 'invalid', message: 'Nhập số người đi (không kể tài xế).' };
+  return { di, ve, soNguoi: n };
+}
+const dxClean_ = (s, n) => String(s || '').replace(/[\u0000-\u001f]/g, ' ').replace(/\s+/g, ' ').trim().slice(0, n);
+
+/* ---------- API I015: cán bộ đặt xe ---------- */
+function apiDxLoad_(b) {
+  const g = dxGuard_(b, DX_APP); if (g.error) return g;
+  const { user, cfg, role } = g, now = dxNow_(), today = now.slice(0, 10);
+  const ngay = /^\d{4}-\d{2}-\d{2}$/.test(String(b.ngay || '')) ? String(b.ngay) : today;
+  let trips; try { trips = dxRows_(dxSheet_()); } catch (e) { return { error: 'not_configured', message: 'Ứng dụng đặt xe chưa được cài đặt.' }; }
+  const lh = dxLienHe_()[user.id] || {}, from = dxAddDay_(today, -60);
+  const mine = trips.filter(x => x.id === user.id && x.di >= from).sort((a, c) => c.luc.localeCompare(a.luc)).slice(0, 30);
+  return { ok: true, now, today, ngay, me: { ten: user.hoTen, pb: user.pb, vt: user.vt }, uuTien: role.uuTien,
+    cfg: { diemDon: cfg.diemDon.map(d => d.ten), donMacDinh: dxDonMacDinh_(user, cfg), maxNgay: dxAddDay_(today, cfg.datTruocNgay), hanDatGio: role.uuTien ? 0 : cfg.hanDatGio,
+      gioTu: cfg.gioTu, gioDen: cfg.gioDen, maxKhach: cfg.xe.reduce((m, c) => Math.max(m, c.khach), 0), lamMoi: cfg.lamMoi },
+    lienHe: { email: lh.email || '', sdt: lh.sdt || '' }, xe: dxTrangThaiXe_(trips, cfg, now), lich: dxLich_(trips, cfg, ngay, now, false, user.id),
+    items: mine.map(x => dxOut_(x, cfg, now, 'cb')) };
+}
+function apiDxKiemTra_(b) {
+  const g = dxGuard_(b, DX_APP); if (g.error) return g;
+  const v = dxValidate_(b, g.cfg, g.role); if (v.error) return v;
+  const now = dxNow_(), trips = dxRows_(dxSheet_()), kq = dxKetQua_(trips, g.cfg, v, now);
+  if (!kq.conXe && g.role.uuTien) kq.msg += ' Yêu cầu của ' + g.user.vt + ' vẫn gửi KHẨN để Phòng TCTH sắp xếp.';
+  return Object.assign({ ok: true, uuTien: g.role.uuTien, lich: dxLich_(trips, g.cfg, v.di.slice(0, 10), now, false, g.user.id) }, kq);
+}
+function apiDxDat_(b) {
+  const g = dxGuard_(b, DX_APP); if (g.error) return g;
+  const { user, cfg, role } = g, v = dxValidate_(b, cfg, role); if (v.error) return v;
+  const don = dxClean_(b.diemDon, 150), den = dxClean_(b.diemDen, 200), md = dxClean_(b.mucDich, 300);
+  const email = String(b.email || '').trim().toLowerCase(), sdt = String(b.sdt || '').replace(/[^\d+ .]/g, '').trim().slice(0, 15);
+  if (don.length < 3) return { error: 'invalid', message: 'Chọn hoặc nhập điểm đón.' };
+  if (den.length < 3) return { error: 'invalid', message: 'Nhập điểm đến.' };
+  if (md.length < 5) return { error: 'invalid', message: 'Ghi mục đích chuyến đi.' };
+  if (email && !new RegExp('^[^@\\s,;]+@' + cfg.mien.replace(/\./g, '\\.') + '$', 'i').test(email)) return { error: 'invalid', message: 'Email nhận thông báo phải là địa chỉ @' + cfg.mien + '.' };
+  let lock; try { lock = dxLock_(); } catch (e) { return { error: 'busy', message: 'Hệ thống đang bận, thử lại sau vài giây.' }; }
+  let rec, kq;
+  try {
+    const sh = dxSheet_(), trips = dxRows_(sh), now = dxNow_();
+    if (trips.some(x => x.id === user.id && x.di === v.di && DX_ACTIVE.includes(x.tt))) return { error: 'invalid', message: 'Anh/chị đã có yêu cầu đặt xe lúc ' + dxHm_(v.di) + ' ngày ' + dxDm_(v.di) + '.' };
+    kq = dxKetQua_(trips, cfg, v, now);
+    const tt = kq.conXe || role.uuTien ? DX_ST.CHO : DX_ST.HET, nowD = new Date();
+    rec = Object.assign({ ma: 'DX' + Utilities.formatDate(nowD, TZ, 'yyMMddHHmmss') + String(Math.floor(Math.random() * 90 + 10)), id: user.id, ten: user.hoTen, pb: user.pb, vt: user.vt,
+      ut: role.uuTien ? (kq.conXe ? 'Ưu tiên – ' + user.vt : 'KHẨN – ' + user.vt + ' (hết xe)') : '', don, den, mucDich: md, sdt, tt }, v);
+    const row = new Array(DX_NCOL).fill('');
+    Object.assign(row, { [DC.MA]: rec.ma, [DC.LUC]: nowD, [DC.ID]: user.id, [DC.TEN]: user.hoTen, [DC.PB]: user.pb, [DC.VT]: user.vt, [DC.UT]: rec.ut,
+      [DC.NGAY_DI]: uqDate_(v.di.slice(0, 10)), [DC.GIO_DI]: dxHm_(v.di), [DC.NGAY_VE]: uqDate_(v.ve.slice(0, 10)), [DC.GIO_VE]: dxHm_(v.ve), [DC.SO_NGUOI]: v.soNguoi,
+      [DC.DON]: don, [DC.DEN]: den, [DC.MUC_DICH]: md, [DC.SDT]: sdt, [DC.TT]: tt, [DC.LY_DO]: tt === DX_ST.HET ? kq.msg : '',
+      [DC.NHAT_KY]: Utilities.formatDate(nowD, TZ, 'dd/MM HH:mm') + ' ' + user.hoTen + ' đặt xe' + (tt === DX_ST.HET ? ' – hết xe, hệ thống từ chối' : '') });
+    sh.getRange(sh.getLastRow() + 1, 1, 1, DX_NCOL).setValues([row]);
+  } finally { lock.releaseLock(); }
+  dxLuuLienHe_(user, email, sdt);
+  if (rec.tt === DX_ST.HET) {
+    log_(user.id, user.hoTen, 'Đặt xe – hết xe', DX_APP, rec.ma + ' · ' + dxKhi_(rec), '');
+    return Object.assign(apiDxLoad_({ token: b.token, ngay: v.di.slice(0, 10) }), { hetXe: true, msg: kq.msg, somNhat: kq.somNhat || null });
+  }
+  const khan = role.uuTien, tieuDe = (khan ? 'KHẨN – ' : '') + user.hoTen + ' đặt xe ' + dxKhi_(rec);
+  const kqTb = dxBao_(cfg, { popup: dxDpIds_(cfg), email: dxDpIds_(cfg), app: DX_APP_DP, view: 'dieu-phoi-xe', tieuDe,
+    noiDung: user.pb + ' · ' + rec.soNguoi + ' người · ' + don + ' → ' + den + '\n' + md + (khan && !kq.conXe ? '\nKhung giờ này đã hết xe: cần hủy lịch của cán bộ để ưu tiên.' : ''),
+    ngan: (khan ? 'KHẨN: ' : '') + 'Có yêu cầu đặt xe mới cần điều phối.', subject: '[Đặt xe] ' + tieuDe,
+    html: dxMailHtml_(rec, (khan ? '<b style="color:#D71249">YÊU CẦU KHẨN – ' + taEsc(user.vt) + '</b><br>' : '') + 'Có yêu cầu đặt xe cần Phòng TCTH điều phối:',
+      khan && !kq.conXe ? [['Lưu ý', 'Khung giờ này đã hết xe. Vào Điều phối và theo dõi xe để hủy lịch của cán bộ và giao xe.']] : []) });
+  log_(user.id, user.hoTen, 'Đặt xe', DX_APP, rec.ma + ' · ' + dxKhi_(rec) + (khan ? ' · ưu tiên' : ''), '');
+  return Object.assign(apiDxLoad_({ token: b.token, ngay: v.di.slice(0, 10) }), { added: rec.ma,
+    msg: 'Đã gửi yêu cầu đặt xe' + (kqTb.popup || kqTb.email ? ' cho lãnh đạo Phòng TCTH' : '') + (khan ? ' (khẩn)' : '') + '.' });
+}
+function apiDxHuy_(b) {
+  const g = dxGuard_(b, DX_APP); if (g.error) return g;
+  const { user, cfg } = g;
+  let lock; try { lock = dxLock_(); } catch (e) { return { error: 'busy', message: 'Hệ thống đang bận, thử lại sau vài giây.' }; }
+  let x;
+  try {
+    const sh = dxSheet_(); x = dxRows_(sh).find(r => r.ma === String(b.ma || '') && r.id === user.id);
+    if (!x) return { error: 'invalid', message: 'Không tìm thấy yêu cầu đặt xe của anh/chị.' };
+    if (![DX_ST.CHO, DX_ST.DP, DX_ST.NHAN].includes(x.tt)) return { error: 'invalid', message: 'Yêu cầu đang ở trạng thái "' + x.tt + '", không hủy được.' };
+    dxUpdate_(sh, x.row, { TT: DX_ST.HUY, LY_DO: 'Cán bộ tự hủy', log: user.hoTen + ' hủy yêu cầu' });
+  } finally { lock.releaseLock(); }
+  const lh = dxLienHe_();
+  dxBao_(cfg, { popup: dxDpIds_(cfg), app: DX_APP_DP, view: 'dieu-phoi-xe', tieuDe: user.hoTen + ' hủy đặt xe ' + dxKhi_(x), noiDung: user.pb + ' · ' + dxTomTat_(x) }, lh);
+  if (x.txId) dxBao_(cfg, { popup: [x.txId], email: [x.txId], app: DX_APP_TX, view: 'chuyen-xe', tieuDe: 'Chuyến ' + dxKhi_(x) + ' đã hủy', noiDung: 'Người đặt hủy chuyến: ' + dxTomTat_(x),
+    subject: '[Đặt xe] Hủy chuyến ' + dxKhi_(x), html: dxMailHtml_(x, 'Chuyến xe anh được giao đã bị <b>người đặt hủy</b>:') }, lh);
+  log_(user.id, user.hoTen, 'Hủy đặt xe', DX_APP, x.ma + ' · ' + dxKhi_(x), '');
+  return Object.assign(apiDxLoad_({ token: b.token }), { msg: 'Đã hủy yêu cầu đặt xe.' });
+}
+
+/* ---------- API I016: điều phối, theo dõi ---------- */
+function dxGoiY_(x, trips, cfg, now) {
+  const ov = dxConflicts_(trips, x.di, x.ve, cfg, now, x.ma), ngan = t => dxHm_(t.di) + '–' + dxHm_(t.ve) + ' ' + t.pb;
+  const seen = {};
+  return {
+    xe: cfg.xe.map(c => ({ ma: c.ma, ten: c.ten, bien: c.bien, khach: c.khach, du: c.khach >= x.soNguoi, ban: ov.filter(t => t.maXe === c.ma).map(t => ({ ma: t.ma, txt: ngan(t) })) })),
+    tx: cfg.nhanSu.filter(n => n.nhom === 'Tài xế' && !seen[n.id] && (seen[n.id] = 1)).map(n => ({ id: n.id, ten: n.ten || n.id, ban: ov.filter(t => t.txId === n.id).map(t => ({ ma: t.ma, txt: ngan(t) })) })),
+    huy: x.ut ? ov.filter(t => !t.ut && [DX_ST.CHO, DX_ST.DP, DX_ST.NHAN].includes(t.tt)).map(t => ({ ma: t.ma, ten: t.ten, pb: t.pb, khi: dxKhi_(t), soNguoi: t.soNguoi, xe: t.xe, maXe: t.maXe, txId: t.txId, tt: t.tt })) : []
+  };
+}
+function dxThangs_(trips, today) {
+  const first = trips.reduce((m, x) => x.di.slice(0, 7) < m ? x.di.slice(0, 7) : m, today.slice(0, 7)), out = [];
+  let [y, m] = first.split('-').map(Number); const [ty, tm] = today.slice(0, 7).split('-').map(Number);
+  while (y < ty || (y === ty && m <= tm)) { out.push(y + '-' + String(m).padStart(2, '0')); m++; if (m > 12) { m = 1; y++; } }
+  return out.reverse();
+}
+function dxBaoCao_(trips, thang) {
+  const l = trips.filter(x => x.di.slice(0, 7) === thang), xong = l.filter(x => x.tt === DX_ST.XONG);
+  const tong = a => ({ chuyen: a.length, km: dxR1_(a.reduce((s, x) => s + x.km, 0)), kmUt: dxR1_(a.reduce((s, x) => s + x.kmUt, 0)), nguoi: a.reduce((s, x) => s + x.soNguoi, 0) });
+  const nhom = f => { const m = {}; xong.forEach(x => { const k = f(x) || '(chưa rõ)'; (m[k] = m[k] || []).push(x); });
+    return Object.keys(m).map(k => Object.assign({ ten: k }, tong(m[k]))).sort((a, b) => b.km - a.km || a.ten.localeCompare(b.ten, 'vi')); };
+  return { thang, tong: tong(xong), hetXe: l.filter(x => x.tt === DX_ST.HET).length, khongDuyet: l.filter(x => x.tt === DX_ST.KD).length,
+    huy: l.filter(x => x.tt === DX_ST.HUY || x.tt === DX_ST.UT).length, dangMo: l.filter(x => DX_ACTIVE.includes(x.tt)).length,
+    thay: xong.filter(x => /thay/i.test(x.xongBoi)).length,
+    theoXe: nhom(x => x.xe.split(' · ')[0]), theoTx: nhom(x => x.tx), theoDv: nhom(x => x.pb),
+    ds: xong.sort((a, b) => a.di.localeCompare(b.di)).map(x => ({ ma: x.ma, ngay: x.di.slice(0, 10), gioDi: dxHm_(x.xpLuc || x.di), gioVe: dxHm_(x.ktLuc || x.ve), ngayVe: (x.ktLuc || x.ve).slice(0, 10),
+      ten: x.ten, pb: x.pb, soNguoi: x.soNguoi, don: x.don, den: x.den, mucDich: x.mucDich, xe: x.xe, tx: x.tx, km: dxR1_(x.km), kmUt: dxR1_(x.kmUt), xongBoi: x.xongBoi })) };
+}
+function apiDxDpLoad_(b) {
+  const g = dxGuard_(b, DX_APP_DP); if (g.error) return g;
+  const { user, cfg, role } = g, now = dxNow_(), today = now.slice(0, 10);
+  let trips; try { trips = dxRows_(dxSheet_()); } catch (e) { return { error: 'not_configured', message: 'Ứng dụng đặt xe chưa được cài đặt.' }; }
+  const ngay = /^\d{4}-\d{2}-\d{2}$/.test(String(b.ngay || '')) ? String(b.ngay) : today, thangs = dxThangs_(trips, today);
+  const thang = thangs.includes(String(b.thang || '')) ? String(b.thang) : today.slice(0, 7);
+  const out = x => dxOut_(x, cfg, now, 'dp');
+  const cho = trips.filter(x => x.tt === DX_ST.CHO).sort((a, c) => (c.ut ? 1 : 0) - (a.ut ? 1 : 0) || a.di.localeCompare(c.di))
+    .map(x => Object.assign(out(x), { goiY: dxGoiY_(x, trips, cfg, now) }));
+  const sap = trips.filter(x => [DX_ST.DP, DX_ST.NHAN].includes(x.tt)).sort((a, c) => a.di.localeCompare(c.di))
+    .map(x => Object.assign(out(x), { goiY: role.dieuPhoi ? dxGoiY_(x, trips, cfg, now) : null, chuaNhanPhut: x.tt === DX_ST.DP && x.dpLuc ? Math.round((Date.now() - dxMs_(x.dpLuc)) / 60e3) : 0 }));
+  const chay = trips.filter(x => x.tt === DX_ST.CHAY).sort((a, c) => a.ve.localeCompare(c.ve)).map(out);
+  const xong = trips.filter(x => x.tt === DX_ST.XONG && x.ktLuc >= dxAddDay_(today, -1) + ' 00:00').sort((a, c) => c.ktLuc.localeCompare(a.ktLuc)).slice(0, 10).map(out);
+  return { ok: true, now, today, ngay, thang, thangs, me: { ten: user.hoTen, vt: user.vt }, role: { dieuPhoi: role.dieuPhoi, full: role.full },
+    cfg: { lamMoi: cfg.lamMoi, nhacNhan: cfg.nhacNhan, tenCN: cfg.tenCN, diemDon: cfg.diemDon.filter(d => d.lat !== null).map(d => ({ ten: d.ten, lat: d.lat, lng: d.lng })) },
+    xe: dxTrangThaiXe_(trips, cfg, now), tx: dxTxTrangThai_(trips, cfg, now), lich: dxLich_(trips, cfg, ngay, now, true),
+    cho, sap, chay, xong, bc: dxBaoCao_(trips, thang) };
+}
+function dxDpGuard_(b) {
+  const g = dxGuard_(b, DX_APP_DP); if (g.error) return g;
+  if (!g.role.dieuPhoi) return { error: 'forbidden', message: 'Chỉ lãnh đạo Phòng TCTH điều phối xe. Ban Giám đốc xem theo dõi.' };
+  return g;
+}
+function apiDxDieuPhoi_(b) {
+  const g = dxDpGuard_(b); if (g.error) return g;
+  const { user, cfg } = g, now = dxNow_(), huyMa = (Array.isArray(b.huy) ? b.huy : []).map(String).slice(0, 5), lyDoHuy = dxClean_(b.lyDoHuy, 300);
+  const car = cfg.xe.find(c => c.ma === String(b.maXe || '')), drv = cfg.nhanSu.find(n => n.nhom === 'Tài xế' && n.id === String(b.txId || ''));
+  if (!car) return { error: 'invalid', message: 'Chọn xe.' };
+  if (!drv) return { error: 'invalid', message: 'Chọn tài xế.' };
+  let lock; try { lock = dxLock_(); } catch (e) { return { error: 'busy', message: 'Hệ thống đang bận, thử lại sau vài giây.' }; }
+  let x, cu = null; const daHuy = [];
+  try {
+    const sh = dxSheet_(), trips = dxRows_(sh); x = trips.find(r => r.ma === String(b.ma || ''));
+    if (!x) return { error: 'invalid', message: 'Không tìm thấy yêu cầu.' };
+    if (![DX_ST.CHO, DX_ST.DP, DX_ST.NHAN].includes(x.tt)) return { error: 'invalid', message: 'Yêu cầu đang ở trạng thái "' + x.tt + '".' };
+    if (huyMa.length && !x.ut) return { error: 'invalid', message: 'Chỉ hủy lịch của cán bộ để ưu tiên Ban Giám đốc.' };
+    if (huyMa.length && lyDoHuy.length < 3) return { error: 'invalid', message: 'Ghi lý do báo cán bộ bị hủy lịch.' };
+    const huy = trips.filter(t => huyMa.includes(t.ma) && !t.ut && [DX_ST.CHO, DX_ST.DP, DX_ST.NHAN].includes(t.tt) && t.ma !== x.ma);
+    const ov = dxConflicts_(trips, x.di, x.ve, cfg, now, x.ma).filter(t => !huy.some(h => h.ma === t.ma));
+    const xeBan = ov.filter(t => t.maXe === car.ma), txBan = ov.filter(t => t.txId === drv.id);
+    if (xeBan.length) return { error: 'invalid', message: car.ten + ' đã có lịch ' + xeBan.map(t => dxKhi_(t) + ' (' + t.pb + ')').join('; ') + '.' + (x.ut ? ' Chọn lịch cán bộ cần hủy để ưu tiên, hoặc chọn xe khác.' : ' Chọn xe khác.') };
+    if (car.khach < x.soNguoi && b.xacNhan !== true) return { error: 'xac_nhan', message: car.ten + ' chở tối đa ' + car.khach + ' người, yêu cầu ' + x.soNguoi + ' người. Vẫn giao xe này?' };
+    if (txBan.length && b.xacNhan !== true) return { error: 'xac_nhan', message: (drv.ten || drv.id) + ' đã có chuyến ' + txBan.map(t => dxKhi_(t)).join('; ') + '. Vẫn giao cho tài xế này?' };
+    huy.forEach(t => { dxUpdate_(sh, t.row, { TT: DX_ST.UT, LY_DO: lyDoHuy, DP_BOI: user.hoTen, DP_LUC: new Date(), log: user.hoTen + ' hủy để ưu tiên ' + x.ten + ': ' + lyDoHuy }); daHuy.push(t); });
+    if (x.txId && x.txId !== drv.id) cu = { txId: x.txId, tx: x.tx };
+    dxUpdate_(sh, x.row, { TT: DX_ST.DP, MA_XE: car.ma, XE: car.ten + (car.bien ? ' · ' + car.bien : ''), TX_ID: drv.id, TX: drv.ten || drv.id, DP_BOI: user.hoTen, DP_LUC: new Date(),
+      LY_DO: '', NHAN_LUC: '', NHAC: '', log: user.hoTen + ' giao ' + car.ten + ', tài xế ' + (drv.ten || drv.id) });
+    Object.assign(x, { tt: DX_ST.DP, maXe: car.ma, xe: car.ten + (car.bien ? ' · ' + car.bien : ''), txId: drv.id, tx: drv.ten || drv.id, dpBoi: user.hoTen });
+  } finally { lock.releaseLock(); }
+  const lh = dxLienHe_(), tt = dxTomTat_(x);
+  daHuy.forEach(t => {
+    dxBao_(cfg, { popup: [t.id], email: [t.id], app: DX_APP, view: 'dat-xe', tieuDe: 'Lịch xe ' + dxKhi_(t) + ' bị hủy', noiDung: 'Phòng TCTH hủy để ưu tiên Ban Giám đốc. Lý do: ' + lyDoHuy + '\n' + dxTomTat_(t),
+      subject: '[Đặt xe] Lịch xe ' + dxKhi_(t) + ' bị hủy do ưu tiên', html: dxMailHtml_(t, 'Phòng TCTH <b>hủy lịch xe</b> của anh/chị để ưu tiên Ban Giám đốc.', [['Lý do', lyDoHuy], ['Người hủy', user.hoTen]]) }, lh);
+    if (t.txId) dxBao_(cfg, { popup: [t.txId], app: DX_APP_TX, view: 'chuyen-xe', tieuDe: 'Chuyến ' + dxKhi_(t) + ' đã hủy', noiDung: 'Phòng TCTH hủy chuyến để ưu tiên Ban Giám đốc.\n' + dxTomTat_(t) }, lh);
+  });
+  dxBao_(cfg, { popup: [drv.id], email: [drv.id], app: DX_APP_TX, view: 'chuyen-xe', tieuDe: 'Chuyến mới ' + dxKhi_(x) + (x.ut ? ' – ' + x.vt : ''),
+    noiDung: tt + '\nNgười đặt: ' + x.ten + ' (' + x.pb + ')' + (x.sdt ? ' · ' + x.sdt : '') + '\nBấm "Nhận chuyến" để xác nhận.', ngan: 'Anh có chuyến xe mới. Mở TTG Inside để nhận chuyến.',
+    subject: '[Đặt xe] Chuyến mới ' + dxKhi_(x), html: dxMailHtml_(x, 'Phòng TCTH giao anh chuyến xe sau. Vào Không Gian Số Nội Bộ → <b>Chuyến xe của tôi</b> bấm <b>Nhận chuyến</b>.') }, lh);
+  dxBao_(cfg, { popup: [x.id], email: [x.id], app: DX_APP, view: 'dat-xe', tieuDe: 'Đã có xe: ' + dxKhi_(x), noiDung: x.xe + ' · tài xế ' + x.tx + '\n' + tt, ngan: 'Yêu cầu đặt xe của anh/chị đã được điều phối.',
+    subject: '[Đặt xe] Đã điều phối xe ' + dxKhi_(x), html: dxMailHtml_(x, 'Phòng TCTH đã điều phối xe cho yêu cầu của anh/chị:', [['Điều phối', user.hoTen]]) }, lh);
+  dxBao_(cfg, { popup: dxDpIds_(cfg, user.id), app: DX_APP_DP, view: 'dieu-phoi-xe', tieuDe: user.hoTen + ' đã điều phối xe ' + dxKhi_(x), noiDung: x.ten + ' (' + x.pb + ') · ' + x.xe + ' · ' + x.tx }, lh);
+  if (cu) dxBao_(cfg, { popup: [cu.txId], app: DX_APP_TX, view: 'chuyen-xe', tieuDe: 'Chuyến ' + dxKhi_(x) + ' đã chuyển tài xế khác', noiDung: 'Phòng TCTH giao chuyến này cho ' + x.tx + '.' }, lh);
+  log_(user.id, user.hoTen, 'Điều phối xe', DX_APP_DP, x.ma + ' · ' + x.xe + ' · ' + x.tx + (daHuy.length ? ' · hủy ' + daHuy.map(t => t.ma).join(',') : ''), '');
+  return Object.assign(apiDxDpLoad_({ token: b.token, ngay: b.ngay, thang: b.thang }), { msg: 'Đã giao ' + car.ten + ' cho tài xế ' + (drv.ten || drv.id) + (daHuy.length ? '; đã hủy ' + daHuy.length + ' lịch cán bộ' : '') + '.' });
+}
+function apiDxKhongDuyet_(b) {
+  const g = dxDpGuard_(b); if (g.error) return g;
+  const { user, cfg } = g, ly = dxClean_(b.lyDo, 300);
+  if (ly.length < 3) return { error: 'invalid', message: 'Ghi lý do không duyệt.' };
+  let lock; try { lock = dxLock_(); } catch (e) { return { error: 'busy', message: 'Hệ thống đang bận, thử lại sau vài giây.' }; }
+  let x;
+  try {
+    const sh = dxSheet_(); x = dxRows_(sh).find(r => r.ma === String(b.ma || ''));
+    if (!x || ![DX_ST.CHO, DX_ST.DP, DX_ST.NHAN].includes(x.tt)) return { error: 'invalid', message: 'Yêu cầu không còn ở trạng thái chờ.' };
+    dxUpdate_(sh, x.row, { TT: DX_ST.KD, LY_DO: ly, DP_BOI: user.hoTen, DP_LUC: new Date(), log: user.hoTen + ' không duyệt: ' + ly });
+  } finally { lock.releaseLock(); }
+  const lh = dxLienHe_();
+  dxBao_(cfg, { popup: [x.id], email: [x.id], app: DX_APP, view: 'dat-xe', tieuDe: 'Không duyệt đặt xe ' + dxKhi_(x), noiDung: 'Lý do: ' + ly + '\n' + dxTomTat_(x),
+    subject: '[Đặt xe] Không duyệt yêu cầu ' + dxKhi_(x), html: dxMailHtml_(x, 'Phòng TCTH <b>không duyệt</b> yêu cầu đặt xe của anh/chị.', [['Lý do', ly], ['Người xử lý', user.hoTen]]) }, lh);
+  if (x.txId) dxBao_(cfg, { popup: [x.txId], app: DX_APP_TX, view: 'chuyen-xe', tieuDe: 'Chuyến ' + dxKhi_(x) + ' đã hủy', noiDung: 'Phòng TCTH không duyệt chuyến này.' }, lh);
+  log_(user.id, user.hoTen, 'Không duyệt đặt xe', DX_APP_DP, x.ma + ' · ' + ly, '');
+  return Object.assign(apiDxDpLoad_({ token: b.token, ngay: b.ngay, thang: b.thang }), { msg: 'Đã báo không duyệt cho ' + x.ten + '.' });
+}
+function apiDxHoanThanhThay_(b) {
+  const g = dxDpGuard_(b); if (g.error) return g;
+  const { user, cfg } = g, ngVe = uqYmd_(b.ngayVe), gVe = sctHm_(b.gioVe), km = parseFloat(String(b.km || '').replace(',', '.'));
+  if (!ngVe || !gVe) return { error: 'invalid', message: 'Nhập giờ xe về.' };
+  if (!(km >= 0 && km <= 3000)) return { error: 'invalid', message: 'Nhập số km (0 – 3.000).' };
+  const kt = ngVe + ' ' + gVe;
+  if (dxMs_(kt) > Date.now() + 5 * 60e3) return { error: 'invalid', message: 'Giờ về không được sau thời điểm hiện tại.' };
+  let lock; try { lock = dxLock_(); } catch (e) { return { error: 'busy', message: 'Hệ thống đang bận, thử lại sau vài giây.' }; }
+  let x;
+  try {
+    const sh = dxSheet_(); x = dxRows_(sh).find(r => r.ma === String(b.ma || ''));
+    if (!x || ![DX_ST.CHAY, DX_ST.NHAN, DX_ST.DP].includes(x.tt)) return { error: 'invalid', message: 'Chuyến không ở trạng thái đang chạy.' };
+    if (kt < (x.xpLuc || x.di)) return { error: 'invalid', message: 'Giờ về phải sau giờ xuất phát (' + dxHm_(x.xpLuc || x.di) + ' ' + dxDm_(x.xpLuc || x.di) + ').' };
+    const kmDo = Math.min(x.kmDo, km);
+    dxUpdate_(sh, x.row, { TT: DX_ST.XONG, TIEN_TRINH: '', XP_LUC: x.xpLuc ? new Date(dxMs_(x.xpLuc)) : new Date(dxMs_(x.di)), KT_LUC: new Date(dxMs_(kt)),
+      KM_DO: dxR1_(kmDo), KM_UT: dxR1_(km - kmDo), KM: dxR1_(km), XONG_BOI: user.hoTen + ' (hoàn thành thay)', log: user.hoTen + ' hoàn thành thay, về ' + gVe + ' ' + dxDm_(kt) + ', ' + km + ' km' });
+  } finally { lock.releaseLock(); }
+  const lh = dxLienHe_();
+  if (x.txId) dxBao_(cfg, { popup: [x.txId], app: DX_APP_TX, view: 'chuyen-xe', tieuDe: 'Phòng TCTH đã hoàn thành thay chuyến ' + dxKhi_(x), noiDung: 'Giờ về ' + gVe + ' · ' + km + ' km. Lần sau nhớ bấm "Kết thúc hành trình" khi về.' }, lh);
+  log_(user.id, user.hoTen, 'Hoàn thành thay chuyến xe', DX_APP_DP, x.ma + ' · ' + km + ' km', '');
+  return Object.assign(apiDxDpLoad_({ token: b.token, ngay: b.ngay, thang: b.thang }), { msg: 'Đã hoàn thành chuyến; xe và tài xế chuyển sang rảnh.' });
+}
+/** Báo cáo tháng dạng PDF (HTML → PDF của Google) */
+function apiDxBcPdf_(b) {
+  const g = dxGuard_(b, DX_APP_DP); if (g.error) return g;
+  const { cfg } = g, trips = dxRows_(dxSheet_()), today = dxNow_().slice(0, 10), thangs = dxThangs_(trips, today);
+  const thang = thangs.includes(String(b.thang || '')) ? String(b.thang) : today.slice(0, 7), d = dxBaoCao_(trips, thang);
+  const e = taEsc;
+  const kmS = v => { const r = dxR1_(v), p = String(Math.floor(r)).replace(/\B(?=(\d{3})+(?!\d))/g, '.'), dec = Math.round((r - Math.floor(r)) * 10); return dec ? p + ',' + dec : p; };
+  const td = 'border:1px solid #9fb3c4;padding:4px 6px;font-size:10.5px', th = td + ';background:#DEEAF6;font-weight:bold;text-align:center';
+  const bang = (tieuDe, rows) => '<h3 style="font-size:13px;color:#005993;margin:14px 0 6px">' + tieuDe + '</h3><table style="border-collapse:collapse;width:100%"><tr><th style="' + th + '">Tên</th><th style="' + th + '">Số chuyến</th><th style="' + th + '">Số người</th><th style="' + th + '">Km</th><th style="' + th + '">Trong đó km ước tính</th></tr>' +
+    (rows.length ? rows.map(r => '<tr><td style="' + td + '">' + e(r.ten) + '</td><td style="' + td + ';text-align:right">' + r.chuyen + '</td><td style="' + td + ';text-align:right">' + r.nguoi + '</td><td style="' + td + ';text-align:right">' + kmS(r.km) + '</td><td style="' + td + ';text-align:right">' + kmS(r.kmUt) + '</td></tr>').join('')
+      : '<tr><td colspan="5" style="' + td + ';text-align:center">Không có chuyến hoàn thành</td></tr>') + '</table>';
+  const [y, m] = thang.split('-');
+  const html = '<html><head><meta charset="utf-8"><style>@page{size:A4;margin:14mm 12mm}body{font-family:Arial,sans-serif;color:#14324A}</style></head><body>' +
+    '<table style="width:100%"><tr><td style="font-size:11px;line-height:1.4"><b>NGÂN HÀNG TMCP CÔNG THƯƠNG VIỆT NAM</b><br><b>' + e(cfg.tenCN) + '</b><br>Phòng Tổ chức Tổng hợp</td>' +
+    '<td style="text-align:right;font-size:11px;vertical-align:top">Ngày xuất: ' + sctDmy_(today) + '</td></tr></table>' +
+    '<h2 style="text-align:center;font-size:16px;margin:16px 0 4px">BÁO CÁO SỬ DỤNG XE CÔNG TÁC</h2><p style="text-align:center;margin:0 0 12px;font-size:12px">Tháng ' + m + '/' + y + (thang === today.slice(0, 7) ? ' (số liệu đến ngày ' + sctDmy_(today) + ')' : '') + '</p>' +
+    '<p style="font-size:12px">Chuyến hoàn thành: <b>' + d.tong.chuyen + '</b> · Tổng km: <b>' + kmS(d.tong.km) + '</b> (km ước tính do mất tín hiệu định vị: ' + kmS(d.tong.kmUt) + ') · Lượt người: <b>' + d.tong.nguoi + '</b><br>' +
+    'Yêu cầu bị từ chối do hết xe: ' + d.hetXe + ' · Không duyệt: ' + d.khongDuyet + ' · Hủy: ' + d.huy + ' · TCTH hoàn thành thay: ' + d.thay + '</p>' +
+    bang('1. Theo xe', d.theoXe) + bang('2. Theo tài xế', d.theoTx) + bang('3. Theo đơn vị đặt xe', d.theoDv) +
+    '<h3 style="font-size:13px;color:#005993;margin:14px 0 6px">4. Danh sách chuyến</h3><table style="border-collapse:collapse;width:100%"><tr>' +
+    ['STT', 'Ngày', 'Giờ đi – về', 'Đơn vị / người đặt', 'Điểm đến', 'Người', 'Xe', 'Tài xế', 'Km'].map(h => '<th style="' + th + '">' + h + '</th>').join('') + '</tr>' +
+    (d.ds.length ? d.ds.map((r, i) => '<tr><td style="' + td + ';text-align:center">' + (i + 1) + '</td><td style="' + td + '">' + sctDmy_(r.ngay) + '</td><td style="' + td + ';white-space:nowrap">' + r.gioDi + ' – ' + (r.ngayVe !== r.ngay ? dxDm_(r.ngayVe) + ' ' : '') + r.gioVe + '</td>' +
+      '<td style="' + td + '">' + e(r.pb) + '<br>' + e(r.ten) + '</td><td style="' + td + '">' + e(r.den) + '</td><td style="' + td + ';text-align:right">' + r.soNguoi + '</td><td style="' + td + '">' + e(r.xe) + '</td><td style="' + td + '">' + e(r.tx) + '</td>' +
+      '<td style="' + td + ';text-align:right">' + kmS(r.km) + (/thay/i.test(r.xongBoi) ? '*' : '') + '</td></tr>').join('') : '<tr><td colspan="9" style="' + td + ';text-align:center">Không có chuyến hoàn thành</td></tr>') + '</table>' +
+    '<p style="font-size:10px;color:#555">Km đo theo định vị điện thoại tài xế trong lúc chạy chuyến; đoạn mất tín hiệu tính theo đường thẳng × hệ số. (*) TCTH hoàn thành thay, km do TCTH nhập.</p>' +
+    '<table style="width:100%;margin-top:18px;font-size:12px"><tr><td></td><td style="text-align:center;width:45%"><b>NGƯỜI LẬP</b><br><br><br><br></td></tr></table></body></html>';
+  const pdf = Utilities.newBlob(html, 'text/html', 'bc.html').getAs('application/pdf');
+  return { ok: true, name: 'Bao_cao_su_dung_xe_' + m + '-' + y + '.pdf', pdf: Utilities.base64Encode(pdf.getBytes()) };
+}
+
+/* ---------- API I017: tài xế ---------- */
+function apiDxTxLoad_(b) {
+  const g = dxGuard_(b, DX_APP_TX); if (g.error) return g;
+  const { user, cfg, role } = g, now = dxNow_(), today = now.slice(0, 10);
+  const trips = dxRows_(dxSheet_()), tatCa = role.full && !role.taiXe, mine = tatCa ? trips.filter(x => x.txId) : trips.filter(x => x.txId === user.id);
+  const hien = mine.filter(x => [DX_ST.DP, DX_ST.NHAN, DX_ST.CHAY].includes(x.tt)).sort((a, c) => (c.tt === DX_ST.CHAY ? 1 : 0) - (a.tt === DX_ST.CHAY ? 1 : 0) || a.di.localeCompare(c.di));
+  const thang = mine.filter(x => x.tt === DX_ST.XONG && x.di.slice(0, 7) === today.slice(0, 7));
+  const gan = mine.filter(x => x.tt === DX_ST.XONG).sort((a, c) => c.ktLuc.localeCompare(a.ktLuc)).slice(0, 5);
+  const ns = cfg.nhanSu.find(n => n.id === user.id && n.nhom === 'Tài xế');
+  return { ok: true, now, today, me: { ten: user.hoTen }, tatCa, dongY: tatCa || !!(ns && ns.dongY),
+    cfg: { guiViTri: cfg.guiViTri, banKinh: cfg.banKinh, giuNgay: cfg.giuNgay },
+    items: hien.map(x => Object.assign(dxOut_(x, cfg, now, 'tx'), { dau: x.tt === DX_ST.CHAY ? dxDau_(x, cfg) : null })),
+    gan: gan.map(x => dxOut_(x, cfg, now, 'tx')),
+    tk: { chuyen: thang.length, km: dxR1_(thang.reduce((s, x) => s + x.km, 0)), thay: thang.filter(x => /thay/i.test(x.xongBoi)).length } };
+}
+function apiDxTxDongY_(b) {
+  const g = dxGuard_(b, DX_APP_TX); if (g.error) return g;
+  try {
+    const sh = dxFile_().getSheetByName(DX_SH.NS), n = sh.getLastRow() - 1;
+    if (n > 0) sh.getRange(2, 1, n, 1).getValues().forEach((r, i) => { if (String(r[0]).trim() === g.user.id) sh.getRange(i + 2, 7).setValue(new Date()); });
+    CacheService.getScriptCache().remove('dx_cfg');
+  } catch (e) { console.error('dxTxDongY', e); }
+  log_(g.user.id, g.user.hoTen, 'Xác nhận thông báo vị trí', DX_APP_TX, '', '');
+  return { ok: true };
+}
+function dxPos_(p) { // [t, lat, lng, acc]
+  if (!Array.isArray(p) || p.length < 3) return null;
+  const t = Math.round(+p[0]), lat = +p[1], lng = +p[2], acc = Math.round(+p[3] || 0);
+  if (!isFinite(t) || !isFinite(lat) || !isFinite(lng) || Math.abs(lat) > 90 || Math.abs(lng) > 180) return null;
+  if (t < Date.now() - 864e5 || t > Date.now() + 120e3) return null;
+  return [t, Math.round(lat * 1e6) / 1e6, Math.round(lng * 1e6) / 1e6, acc];
+}
+/** Cộng km từ các điểm mới. cuoi = {t, lat, lng (điểm tính km gần nhất), lt (lần nhận gần nhất), at, alat, alng (neo đứng yên)} */
+function dxCongKm_(cuoi, pts, cfg) {
+  let c = cuoi && isFinite(cuoi.lat) ? Object.assign({}, cuoi) : null, kDo = 0, kUt = 0;
+  pts.slice().sort((a, b) => a[0] - b[0]).forEach(p => {
+    const [t, lat, lng, acc] = p; if (acc > 150) return;
+    if (!c) { c = { t, lat, lng, lt: t, at: t, alat: lat, alng: lng }; return; }
+    if (t <= c.lt) return;
+    const d = dxKm_(c.lat, c.lng, lat, lng), gap = (t - c.lt) / 1000, v = d / Math.max((t - c.t) / 3600e3, 1e-6);
+    if (gap <= 180 && d < 0.025) c.lt = t;                    // đứng yên / nhiễu định vị
+    else if (v > 160 && d > 0.3) { c.lt = t; return; }         // điểm nhảy bất thường
+    else { if (gap > 180) kUt += d * cfg.heSo; else kDo += d; Object.assign(c, { t, lat, lng, lt: t }); }
+    if (dxKm_(c.alat, c.alng, lat, lng) > 0.08) Object.assign(c, { at: t, alat: lat, alng: lng });
+  });
+  return { cuoi: c, kmDo: kDo, kmUt: kUt };
+}
+function apiDxTx_(b) {
+  const g = dxGuard_(b, DX_APP_TX); if (g.error) return g;
+  const { user, cfg, role } = g, hd = String(b.hanhDong || ''), pos = dxPos_(b.pos), ly = dxClean_(b.lyDo, 300);
+  if (!['nhan', 'tuchoi', 'batdau', 'dennoi', 'quave', 'ketthuc'].includes(hd)) return { error: 'invalid', message: 'Thao tác không hợp lệ.' };
+  let lock; try { lock = dxLock_(); } catch (e) { return { error: 'busy', message: 'Hệ thống đang bận, thử lại sau vài giây.' }; }
+  let x, kmMsg = '';
+  try {
+    const sh = dxSheet_(), trips = dxRows_(sh); x = trips.find(r => r.ma === String(b.ma || ''));
+    if (!x || (x.txId !== user.id && !role.full)) return { error: 'invalid', message: 'Không tìm thấy chuyến được giao cho anh.' };
+    const ten = user.hoTen, now = new Date();
+    if (hd === 'nhan') {
+      if (x.tt === DX_ST.NHAN) return { error: 'invalid', message: 'Anh đã nhận chuyến này.' };
+      if (x.tt !== DX_ST.DP) return { error: 'invalid', message: 'Chuyến đang ở trạng thái "' + x.tt + '".' };
+      dxUpdate_(sh, x.row, { TT: DX_ST.NHAN, NHAN_LUC: now, log: ten + ' nhận chuyến' });
+    } else if (hd === 'tuchoi') {
+      if (![DX_ST.DP, DX_ST.NHAN].includes(x.tt)) return { error: 'invalid', message: 'Chuyến đang ở trạng thái "' + x.tt + '".' };
+      if (ly.length < 3) return { error: 'invalid', message: 'Ghi lý do không thể đi.' };
+      dxUpdate_(sh, x.row, { TT: DX_ST.CHO, MA_XE: '', XE: '', TX_ID: '', TX: '', NHAN_LUC: '', NHAC: '', LY_DO: 'Tài xế ' + ten + ' báo không thể đi: ' + ly, log: ten + ' báo không thể đi: ' + ly });
+    } else if (hd === 'batdau') {
+      if (![DX_ST.DP, DX_ST.NHAN].includes(x.tt)) return { error: 'invalid', message: 'Chuyến đang ở trạng thái "' + x.tt + '".' };
+      if (dxMs_(x.di) - Date.now() > 3 * 3600e3) return { error: 'invalid', message: 'Chưa đến giờ chuyến (' + dxHm_(x.di) + ' ' + dxDm_(x.di) + '). Bắt đầu được trước giờ đi tối đa 3 tiếng.' };
+      const khac = trips.find(t => t.ma !== x.ma && t.tt === DX_ST.CHAY && t.txId === x.txId);
+      if (khac) return { error: 'invalid', message: 'Anh đang có chuyến ' + dxKhi_(khac) + ' chưa kết thúc. Bấm Kết thúc chuyến đó trước.' };
+      const c = pos ? { t: pos[0], lat: pos[1], lng: pos[2], lt: pos[0], at: pos[0], alat: pos[1], alng: pos[2] } : '';
+      dxUpdate_(sh, x.row, { TT: DX_ST.CHAY, TIEN_TRINH: DX_PHASE.XP, NHAN_LUC: x.nhanLuc ? new Date(dxMs_(x.nhanLuc)) : now, XP_LUC: now, NHAC: '',
+        DIEM_CUOI: c ? JSON.stringify(c) : '', DIEM_DAU: pos ? JSON.stringify([pos[1], pos[2]]) : '', log: ten + ' bắt đầu hành trình' + (pos ? '' : ' (chưa có định vị)') });
+    } else if (hd === 'dennoi' || hd === 'quave') {
+      if (x.tt !== DX_ST.CHAY) return { error: 'invalid', message: 'Chuyến chưa bắt đầu hoặc đã kết thúc.' };
+      dxUpdate_(sh, x.row, hd === 'dennoi' ? { TIEN_TRINH: DX_PHASE.DEN, DEN_LUC: now, log: ten + ' báo đã đến nơi' } : { TIEN_TRINH: DX_PHASE.VE, VE_LUC: now, log: ten + ' báo bắt đầu quay về' });
+    } else if (hd === 'ketthuc') {
+      if (x.tt !== DX_ST.CHAY) return { error: 'invalid', message: 'Chuyến chưa bắt đầu hoặc đã kết thúc.' };
+      let kDo = x.kmDo, kUt = x.kmUt;
+      if (pos) { const r = dxCongKm_(x.cuoi, [pos], cfg); kDo += r.kmDo; kUt += r.kmUt; }
+      dxUpdate_(sh, x.row, { TT: DX_ST.XONG, TIEN_TRINH: '', KT_LUC: now, KM_DO: dxR1_(kDo), KM_UT: dxR1_(kUt), KM: dxR1_(kDo + kUt), XONG_BOI: ten, log: ten + ' kết thúc hành trình, ' + dxR1_(kDo + kUt) + ' km' });
+      x.km = dxR1_(kDo + kUt); kmMsg = ' Quãng đường ' + String(x.km).replace('.', ',') + ' km.';
+    }
+  } finally { lock.releaseLock(); }
+  const lh = dxLienHe_(), tom = dxTomTat_(x);
+  if (hd === 'nhan') {
+    dxBao_(cfg, { popup: [x.id], app: DX_APP, view: 'dat-xe', tieuDe: 'Tài xế đã nhận chuyến ' + dxKhi_(x), noiDung: x.tx + ' · ' + x.xe + (dxTxSdt_(cfg, x.txId) ? ' · ĐT ' + dxTxSdt_(cfg, x.txId) : '') }, lh);
+    dxBao_(cfg, { popup: dxDpIds_(cfg), app: DX_APP_DP, view: 'dieu-phoi-xe', tieuDe: x.tx + ' đã nhận chuyến ' + dxKhi_(x), noiDung: x.ten + ' (' + x.pb + ') · ' + x.xe }, lh);
+  } else if (hd === 'tuchoi') {
+    dxBao_(cfg, { popup: dxDpIds_(cfg), email: dxDpIds_(cfg), app: DX_APP_DP, view: 'dieu-phoi-xe', tieuDe: x.tx + ' không thể đi chuyến ' + dxKhi_(x), noiDung: 'Lý do: ' + ly + '\nCần điều phối lại: ' + x.ten + ' (' + x.pb + ') · ' + tom,
+      ngan: 'Tài xế báo không thể đi, cần điều phối lại.', subject: '[Đặt xe] Tài xế không thể đi – cần điều phối lại ' + dxKhi_(x),
+      html: dxMailHtml_(x, 'Tài xế <b>' + taEsc(x.tx) + '</b> báo không thể đi chuyến sau. Yêu cầu đã chuyển về <b>Chờ điều phối</b>.', [['Lý do', ly]]) }, lh);
+  } else if (hd === 'batdau') {
+    dxBao_(cfg, { popup: [x.id], app: DX_APP, view: 'dat-xe', tieuDe: 'Xe đã xuất phát – ' + dxKhi_(x), noiDung: x.tx + ' · ' + x.xe + ' đang đến ' + x.don + '.' }, lh);
+  } else if (hd === 'ketthuc') {
+    dxBao_(cfg, { popup: dxDpIds_(cfg), app: DX_APP_DP, view: 'dieu-phoi-xe', tieuDe: x.tx + ' đã kết thúc chuyến ' + dxKhi_(x), noiDung: x.ten + ' (' + x.pb + ') · ' + x.xe + ' ·' + kmMsg }, lh);
+  }
+  log_(user.id, user.hoTen, 'Tài xế: ' + hd, DX_APP_TX, x.ma, '');
+  const msg = { nhan: 'Đã nhận chuyến. Người đặt và Phòng TCTH đã được báo.', tuchoi: 'Đã báo Phòng TCTH điều phối lại.', batdau: 'Đã bắt đầu hành trình. Giữ ứng dụng mở, màn hình sáng.',
+    dennoi: 'Đã ghi nhận đến nơi.', quave: 'Đã ghi nhận bắt đầu quay về.', ketthuc: 'Đã kết thúc hành trình.' + kmMsg }[hd];
+  return Object.assign(apiDxTxLoad_({ token: b.token }), { msg });
+}
+/** Nhận vị trí từ điện thoại tài xế (đang chạy chuyến) */
+function apiDxViTri_(b) {
+  const g = dxGuard_(b, DX_APP_TX); if (g.error) return g;
+  const { user, cfg, role } = g, pts = (Array.isArray(b.pts) ? b.pts : []).slice(0, 600).map(dxPos_).filter(Boolean);
+  let lock; try { lock = dxLock_(); } catch (e) { return { error: 'busy' }; }
+  let x, km = 0, nhac = false;
+  try {
+    const f = dxFile_(), sh = dxSheet_(f); x = dxRows_(sh).find(r => r.ma === String(b.ma || ''));
+    if (!x || (x.txId !== user.id && !role.full)) return { error: 'invalid', message: 'Không tìm thấy chuyến.' };
+    if (x.tt !== DX_ST.CHAY) return { ok: true, dung: true, tt: x.tt };
+    if (!pts.length) return { ok: true, km: dxR1_(x.km) };
+    const r = dxCongKm_(x.cuoi, pts, cfg), kDo = x.kmDo + r.kmDo, kUt = x.kmUt + r.kmUt; km = dxR1_(kDo + kUt);
+    f.getSheetByName(DX_SH.VT).appendRow([x.ma, new Date(), pts.length, JSON.stringify(pts), Math.round(r.kmDo * 1000) / 1000, Math.round(r.kmUt * 1000) / 1000]);
+    const p = { KM_DO: Math.round(kDo * 1000) / 1000, KM_UT: Math.round(kUt * 1000) / 1000, KM: km, DIEM_CUOI: r.cuoi ? JSON.stringify(r.cuoi) : '' };
+    if (!x.dau && r.cuoi && !dxDau_(x, cfg)) { p.DIEM_DAU = JSON.stringify([pts[0][1], pts[0][2]]); x.dau = [pts[0][1], pts[0][2]]; }
+    // Nhắc kết thúc: đã đi > 2 km, về gần điểm xuất phát và đứng yên đủ lâu (không tự kết thúc)
+    const dau = dxDau_(x, cfg), c = r.cuoi;
+    if (dau && c && km > 2 && !/(^|,)ve(,|$)/.test(x.nhac) && dxKm_(c.lat, c.lng, dau[0], dau[1]) * 1000 <= cfg.banKinh && (c.lt - c.at) >= cfg.dungYen * 60e3) {
+      p.NHAC = (x.nhac ? x.nhac + ',' : '') + 've'; nhac = true;
+    }
+    dxUpdate_(sh, x.row, p);
+  } finally { lock.releaseLock(); }
+  if (nhac) {
+    const lh = dxLienHe_();
+    dxBao_(cfg, { popup: [x.txId], app: DX_APP_TX, view: 'chuyen-xe', tieuDe: 'Đã về điểm xuất phát?', noiDung: 'Xe đã về gần ' + x.don + ' và đứng yên hơn ' + cfg.dungYen + ' phút. Nếu đã xong chuyến, bấm "Kết thúc hành trình".' }, lh);
+    dxBao_(cfg, { popup: dxDpIds_(cfg), app: DX_APP_DP, view: 'dieu-phoi-xe', tieuDe: x.xe + ' đã về gần điểm xuất phát', noiDung: 'Chuyến ' + dxKhi_(x) + ' (' + x.ten + ') chưa bấm kết thúc. Đã nhắc tài xế ' + x.tx + '.' }, lh);
+  }
+  return { ok: true, km, nhacKetThuc: nhac };
+}
+
+/* ---------- Lịch tự động ---------- */
+/** Mỗi 10 phút: nhắc tài xế chưa nhận chuyến; nhắc chuyến quá giờ về chưa kết thúc (không tự kết thúc) */
+function dxNhacNho() {
+  let cfg; try { cfg = dxConfig_(true); } catch (e) { return; }
+  const lock = LockService.getScriptLock(); try { lock.waitLock(20000); } catch (e) { return; }
+  const can = [];
+  try {
+    const sh = dxSheet_(), now = dxNow_(), nowMs = Date.now();
+    dxRows_(sh).forEach(x => {
+      if (x.tt === DX_ST.DP && x.dpLuc && !/(^|,)nhan(,|$)/.test(x.nhac) && nowMs - dxMs_(x.dpLuc) >= cfg.nhacNhan * 60e3) {
+        dxUpdate_(sh, x.row, { NHAC: (x.nhac ? x.nhac + ',' : '') + 'nhan', log: 'Hệ thống nhắc tài xế nhận chuyến' }); can.push(['nhan', x]);
+      } else if (x.tt === DX_ST.CHAY && !/(^|,)quagio(,|$)/.test(x.nhac) && dxMs_(now) - dxMs_(x.ve) >= cfg.nhacQuaGio * 60e3) {
+        dxUpdate_(sh, x.row, { NHAC: (x.nhac ? x.nhac + ',' : '') + 'quagio', log: 'Hệ thống nhắc chuyến quá giờ về' }); can.push(['quagio', x]);
+      }
+    });
+  } finally { lock.releaseLock(); }
+  if (!can.length) return;
+  const lh = dxLienHe_();
+  can.forEach(([k, x]) => {
+    if (k === 'nhan') {
+      dxBao_(cfg, { popup: [x.txId], email: [x.txId], app: DX_APP_TX, view: 'chuyen-xe', tieuDe: 'Nhắc: nhận chuyến ' + dxKhi_(x), noiDung: 'Anh chưa bấm "Nhận chuyến": ' + dxTomTat_(x), ngan: 'Anh có chuyến xe chưa nhận.',
+        subject: '[Đặt xe] Nhắc nhận chuyến ' + dxKhi_(x), html: dxMailHtml_(x, 'Anh chưa bấm <b>Nhận chuyến</b> cho chuyến sau. Vào Không Gian Số Nội Bộ → Chuyến xe của tôi.') }, lh);
+      dxBao_(cfg, { popup: dxDpIds_(cfg), app: DX_APP_DP, view: 'dieu-phoi-xe', tieuDe: x.tx + ' chưa nhận chuyến ' + dxKhi_(x), noiDung: 'Đã quá ' + cfg.nhacNhan + ' phút kể từ lúc điều phối. Hệ thống đã nhắc tài xế.' }, lh);
+    } else {
+      dxBao_(cfg, { popup: [x.txId], app: DX_APP_TX, view: 'chuyen-xe', tieuDe: 'Chuyến ' + dxKhi_(x) + ' chưa kết thúc', noiDung: 'Đã quá giờ về dự kiến ' + cfg.nhacQuaGio + ' phút. Nếu đã về, bấm "Kết thúc hành trình".' }, lh);
+      dxBao_(cfg, { popup: dxDpIds_(cfg), email: dxDpIds_(cfg), app: DX_APP_DP, view: 'dieu-phoi-xe', tieuDe: 'Chuyến quá giờ chưa kết thúc: ' + x.xe, noiDung: x.ten + ' (' + x.pb + ') · ' + dxTomTat_(x) + '\nNếu xe đã về, dùng "Hoàn thành thay".',
+        subject: '[Đặt xe] Chuyến quá giờ chưa kết thúc ' + dxKhi_(x), html: dxMailHtml_(x, 'Chuyến sau đã quá giờ về dự kiến ' + cfg.nhacQuaGio + ' phút nhưng tài xế chưa bấm Kết thúc. Nếu xe đã về, vào Điều phối và theo dõi xe → <b>Hoàn thành thay</b>.') }, lh);
+    }
+  });
+}
+/** 2 giờ sáng: xóa vị trí quá GIU_VI_TRI_NGAY ngày (cả vị trí cuối/điểm xuất phát lưu trong DX_Chuyen), chỉ giữ km */
+function dxDonViTri() {
+  let cfg; try { cfg = dxConfig_(true); } catch (e) { return; }
+  const f = dxFile_(), han = Date.now() - cfg.giuNgay * 864e5, sh = f.getSheetByName(DX_SH.VT);
+  let xoa = 0;
+  if (sh && sh.getLastRow() > 1) {
+    const v = sh.getRange(2, 2, sh.getLastRow() - 1, 1).getValues();
+    let k = 0; while (k < v.length && v[k][0] instanceof Date && v[k][0].getTime() < han) k++; // các dòng ghi theo thời gian tăng dần
+    if (k > 0) { sh.deleteRows(2, k); xoa = k; }
+  }
+  const ct = dxSheet_(f), rows = dxRows_(ct).filter(x => (x.cuoi || x.dau) && !DX_ACTIVE.includes(x.tt) && dxMs_(x.ktLuc || x.ve) < han);
+  rows.forEach(x => ct.getRange(x.row, DC.DIEM_CUOI + 1, 1, 2).setValues([['', '']]));
+  if (xoa || rows.length) log_('', 'Hệ thống', 'Xóa vị trí xe quá hạn', DX_APP_DP, xoa + ' dòng vị trí, ' + rows.length + ' chuyến', '');
 }
